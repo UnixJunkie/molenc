@@ -1,5 +1,6 @@
 # rd-ap-molenc
-molecular encoder using atom pairs and rdkit
+molecular encoder using atom pairs and rdkit.
+This is a counted, unfolded fingerprint of molecules.
 
 # Bibliography
 
