@@ -15,17 +15,6 @@ logger.setLevel(logging.INFO)
 from rdkit import Geometry
 from rdkit.Chem.Features import FeatDirUtilsRD as FeatDirUtils
 
-_featColors = {
-  'Donor':(0,1,1),
-  'Acceptor':(1,0,1),
-  'NegIonizable':(1,0,0),
-  'PosIonizable':(0,0,1),
-  'ZnBinder':(1,.5,.5),
-  'Aromatic':(1,.8,.2),
-  'LumpedHydrophobe':(.5,.25,0),
-  'Hydrophobe':(.5,.25,0),
-  }
-
 def _getVectNormal(v,tol=1e-4):
   if math.fabs(v.x)>tol:
     res = Geometry.Point3D(v.y,-v.x,0)
@@ -119,8 +108,6 @@ def ShowMolFeats(mol,factory,radius=0.5,confId=-1,showOnly=True,
       name =  mol.GetProp('_Name')
     else:
       name = 'molecule'
-  if not colors:
-    colors = _featColors
 
   molFeats=factory.GetFeaturesForMol(mol)
   if not featLabel:
@@ -133,16 +120,8 @@ def ShowMolFeats(mol,factory,radius=0.5,confId=-1,showOnly=True,
     if family in excludeTypes:
       continue
     pos = feat.GetPos(confId)
-    color = colors.get(family,(.5,.5,.5))
     nm = '%s(%d)'%(family,i+1)
 
-    if transparency:
-      _globalSphereCGO.extend([ALPHA,1-transparency])
-    else:
-      _globalSphereCGO.extend([ALPHA,1])
-    _globalSphereCGO.extend([COLOR,color[0],color[1],color[2],
-                             SPHERE,pos.x,pos.y,pos.z,
-                             radius])
     if writeFeats:
       aidText = ' '.join([str(x+1) for x in feat.GetAtomIds()])
       print('%s\t%.3f\t%.3f\t%.3f\t1.0\t# %s'%(family,pos.x,pos.y,pos.z,aidText))
