@@ -12,26 +12,16 @@ from rdkit import RDLogger as logging
 logger = logging.logger()
 logger.setLevel(logging.INFO)
 
-def ShowMolFeats(mol,factory,radius=0.5,confId=-1,showOnly=True,
-                 name='',transparency=0.0,colors=None,excludeTypes=[],
-                 useFeatDirs=True,featLabel=None,dirLabel=None,includeArrowheads=True,
-                 writeFeats=False,showMol=True,featMapFile=False):
+def ShowMolFeats(mol, factory, confId = -1, name = '', writeFeats = False, featMapFile = False):
   if not name:
     if mol.HasProp('_Name'):
       name =  mol.GetProp('_Name')
     else:
       name = 'molecule'
 
-  molFeats=factory.GetFeaturesForMol(mol)
-  if not featLabel:
-    featLabel='%s-feats'%name
-  if not dirLabel:
-    dirLabel=featLabel+"-dirs"
-
-  for i,feat in enumerate(molFeats):
-    family=feat.GetFamily()
-    if family in excludeTypes:
-      continue
+  molFeats = factory.GetFeaturesForMol(mol)
+  for i, feat in enumerate(molFeats):
+    family = feat.GetFamily()
     pos = feat.GetPos(confId)
     nm = '%s(%d)'%(family,i+1)
 
@@ -126,19 +116,13 @@ if __name__=='__main__':
           print("#Molecule: %s"%m.GetProp('_Name'))
         else:
           print("#Molecule: %s"%nm)
-      ShowMolFeats(m,factory,transparency=0.25,excludeTypes=options.exclude,name=nm,
-                   showOnly=False,
-                   useFeatDirs=options.useDirs,
-                   featLabel=featLabel,dirLabel=dirLabel,
-                   includeArrowheads=options.includeArrowheads,
-                   writeFeats=options.writeFeats,showMol = False,
-                   featMapFile=options.featMapFile)
+      ShowMolFeats(m, factory, name = nm, writeFeats = options.writeFeats,
+                   featMapFile = options.featMapFile)
       i += 1
       if not i%100:
         logger.info("Done %d poses"%i)
 
   if options.featMapFile:
-    print("EndPoints",file=options.featMapFile)
-
+    print("EndPoints", file = options.featMapFile)
 
   sys.exit(0)
