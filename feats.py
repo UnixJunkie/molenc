@@ -12,36 +12,6 @@ from rdkit import RDLogger as logging
 logger = logging.logger()
 logger.setLevel(logging.INFO)
 
-from rdkit import Geometry
-from rdkit.Chem.Features import FeatDirUtilsRD as FeatDirUtils
-
-def _getVectNormal(v,tol=1e-4):
-  if math.fabs(v.x)>tol:
-    res = Geometry.Point3D(v.y,-v.x,0)
-  elif math.fabs(v.y)>tol:
-    res = Geometry.Point3D(-v.y,v.x,0)
-  elif math.fabs(v.z)>tol:
-    res = Geometry.Point3D(1,0,0)
-  else:
-    raise ValueError('cannot find normal to the null vector')
-  res.Normalize()
-  return res
-
-_canonArrowhead=None
-def _buildCanonArrowhead(headFrac,nSteps,aspect):
-  global _canonArrowhead
-  startP = RDGeometry.Point3D(0,0,headFrac)
-  _canonArrowhead=[startP]
-
-  scale = headFrac*aspect
-  baseV = RDGeometry.Point3D(scale,0,0)
-  _canonArrowhead.append(baseV)
-
-  twopi = 2*math.pi
-  for i in range(1,nSteps):
-    v = RDGeometry.Point3D(scale*math.cos(i*twopi),scale*math.sin(i*twopi),0)
-    _canonArrowhead.append(v)
-
 def ShowMolFeats(mol,factory,radius=0.5,confId=-1,showOnly=True,
                  name='',transparency=0.0,colors=None,excludeTypes=[],
                  useFeatDirs=True,featLabel=None,dirLabel=None,includeArrowheads=True,
