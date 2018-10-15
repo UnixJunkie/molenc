@@ -33,18 +33,8 @@ from rdkit import RDConfig
 from optparse import OptionParser
 parser = OptionParser(_usage)
 
-parser.add_option('-x','--exclude',default='',
-                  help='provide a list of feature names that should be excluded')
-parser.add_option('-f','--fdef',default=os.path.join(RDConfig.RDDataDir,'BaseFeatures.fdef'),
-                  help='provide the name of the feature definition (fdef) file.')
 parser.add_option('--noDirs','--nodirs',dest='useDirs',default=True,action='store_false',
                   help='do not draw feature direction indicators')
-parser.add_option('--noHeads',dest='includeArrowheads',default=True,action='store_false',
-                  help='do not draw arrowheads on the feature direction indicators')
-parser.add_option('--noClear','--noClear',dest='clearAll',default=False,action='store_true',
-                  help='do not clear PyMol on startup')
-parser.add_option('--noMols','--nomols',default=False,action='store_true',
-                  help='do not draw the molecules')
 parser.add_option('--writeFeats','--write',default=False,action='store_true',
                   help='print the feature information to the console')
 parser.add_option('--featMapFile','--mapFile',default='',
@@ -61,8 +51,10 @@ if __name__=='__main__':
   if len(args)<1:
     parser.error('please provide either at least one sd or mol file')
 
+  fdef_fn = os.path.join(RDConfig.RDDataDir,'BaseFeatures.fdef')
+  fdef = None
   try:
-    fdef = open(options.fdef,'r').read()
+    fdef = open(fdef_fn, 'r').read()
   except IOError:
     logger.error('ERROR: Could not open fdef file %s'%options.fdef)
     sys.exit(1)
