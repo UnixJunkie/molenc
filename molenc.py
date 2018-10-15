@@ -46,9 +46,11 @@ def encode_molecule(m):
     return res
 
 def print_encoded_atoms(atoms):
-    for a in atoms:
-        print(a, end=' ')
-    print('\n')
+    for i, a in enumerate(atoms):
+        if i > 0:
+            print(' %s' % a, end='')
+        else:
+            print(a, end='')
 
 def main():
     if len(sys.argv) != 2:
@@ -63,6 +65,7 @@ def main():
         if mol is None:
             continue
         print_encoded_atoms(encode_molecule(mol))
+        print('\t%s' % name)
     # output.close()
 
 if __name__ == '__main__':
