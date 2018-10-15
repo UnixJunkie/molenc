@@ -42,17 +42,6 @@ def _buildCanonArrowhead(headFrac,nSteps,aspect):
     v = RDGeometry.Point3D(scale*math.cos(i*twopi),scale*math.sin(i*twopi),0)
     _canonArrowhead.append(v)
 
-# taken from pymol's cgo.py
-BEGIN=2
-END=3
-TRIANGLE_FAN=6
-COLOR=6
-VERTEX=4
-NORMAL=5
-SPHERE=7
-CYLINDER=9
-ALPHA=25
-
 def ShowMolFeats(mol,factory,radius=0.5,confId=-1,showOnly=True,
                  name='',transparency=0.0,colors=None,excludeTypes=[],
                  useFeatDirs=True,featLabel=None,dirLabel=None,includeArrowheads=True,
