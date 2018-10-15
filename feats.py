@@ -3,44 +3,35 @@
 from __future__ import print_function
 
 _usage="""
-   ShowFeats [optional args] <filenames>
+   feats.py [optional args] <file.{sdf|mol}>
 """
 
-import math
-#set up the logger:
+# setup logger
 from rdkit import RDLogger as logging
 logger = logging.logger()
 logger.setLevel(logging.INFO)
 
-def ShowMolFeats(mol, factory, confId = -1, name = '', writeFeats = False, featMapFile = False):
-  if not name:
-    if mol.HasProp('_Name'):
-      name =  mol.GetProp('_Name')
-    else:
-      name = 'molecule'
-
+def ShowMolFeats(mol, factory, name, confId = -1, writeFeats = False, featMapFile = False):
+  if mol.HasProp('_Name'):
+    name =  mol.GetProp('_Name')
   molFeats = factory.GetFeaturesForMol(mol)
   for i, feat in enumerate(molFeats):
     family = feat.GetFamily()
     pos = feat.GetPos(confId)
-    nm = '%s(%d)'%(family,i+1)
-
+    nm = '%s(%d)' % (family, i + 1)
     if writeFeats:
-      aidText = ' '.join([str(x+1) for x in feat.GetAtomIds()])
-      print('%s\t%.3f\t%.3f\t%.3f\t1.0\t# %s'%(family,pos.x,pos.y,pos.z,aidText))
-
+      aidText = ' '.join([str(x + 1) for x in feat.GetAtomIds()])
+      print('%s\t%.3f\t%.3f\t%.3f\t1.0\t# %s' % (family, pos.x, pos.y, pos.z, aidText))
     if featMapFile:
-      print("  family=%s pos=(%.3f,%.3f,%.3f) weight=1.0"%(family,pos.x,pos.y,pos.z),end='',file=featMapFile)
-
-    if featMapFile:
-      aidText = ' '.join([str(x+1) for x in feat.GetAtomIds()])
-      print('# %s'%(aidText),file=featMapFile)
+      print("  family=%s pos=(%.3f,%.3f,%.3f) weight=1.0" % (family, pos.x, pos.y, pos.z), end = '', file = featMapFile)
+      aidText = ' '.join([str(x + 1) for x in feat.GetAtomIds()])
+      print('# %s' % aidText, file = featMapFile)
 
 # --- ----  --- ----  --- ----  --- ----  --- ----  --- ----
-import sys,os,getopt
+import sys, os, getopt
 from rdkit import RDConfig
 from optparse import OptionParser
-parser=OptionParser(_usage)
+parser = OptionParser(_usage)
 
 parser.add_option('-x','--exclude',default='',
                   help='provide a list of feature names that should be excluded')
