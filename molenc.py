@@ -21,6 +21,12 @@ def RobustSmilesMolSupplier(filename):
             name = words[1]
             yield (name, Chem.MolFromSmiles(smile))
 
+def SdfMolSupplier(fn):
+    for mol in Chem.SDMolSupplier(fn):
+        if mol:
+            name = mol.GetProp('_Name')
+            yield (name, mol)
+
 def nb_heavy_atom_neighbors(a):
     neighbors = a.GetNeighbors()
     res = 0
@@ -54,19 +60,19 @@ def print_encoded_atoms(atoms):
 
 def main():
     if len(sys.argv) != 2:
-        print("usage: %s input.smi" % sys.argv[0])
+        print("usage: %s input.{smi|sdf}" % sys.argv[0])
         sys.exit(1)
-    input_smi = sys.argv[1]
-    # output_csv = sys.argv[2]
-    # output = open(output_csv, 'w')
-    # output.write(
-    #     "#molName logP molMR molW nbA nbD nbRotB TPSA countedAtomPairs...\n")
-    for name, mol in RobustSmilesMolSupplier(input_smi):
+    input = sys.argv[1]
+    mol_supplier = None
+    if input.endswith(".smi"):
+        mol_supplier = RobustSmilesMolSupplier
+    if input.endswith(".sdf"):
+        mol_supplier = SdfMolSupplier
+    for name, mol in mol_supplier(input):
         if mol is None:
             continue
         print_encoded_atoms(encode_molecule(mol))
         print('\t%s' % name)
-    # output.close()
 
 if __name__ == '__main__':
     main()
