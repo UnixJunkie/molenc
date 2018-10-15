@@ -42,9 +42,6 @@ def _buildCanonArrowhead(headFrac,nSteps,aspect):
     v = RDGeometry.Point3D(scale*math.cos(i*twopi),scale*math.sin(i*twopi),0)
     _canonArrowhead.append(v)
 
-
-_globalArrowCGO=[]
-_globalSphereCGO=[]
 # taken from pymol's cgo.py
 BEGIN=2
 END=3
@@ -56,53 +53,10 @@ SPHERE=7
 CYLINDER=9
 ALPHA=25
 
-def _cgoArrowhead(viewer,tail,head,radius,color,label,headFrac=0.3,nSteps=10,aspect=.5):
-  global _globalArrowCGO
-  delta = head-tail
-  normal = _getVectNormal(delta)
-  delta.Normalize()
-
-  dv = head-tail
-  dv.Normalize()
-  dv *= headFrac
-  startP = head
-
-  normal*=headFrac*aspect
-
-  cgo = [BEGIN,TRIANGLE_FAN,
-         COLOR,color[0],color[1],color[2],
-          NORMAL,dv.x,dv.y,dv.z,
-         VERTEX,head.x+dv.x,head.y+dv.y,head.z+dv.z]
-  base = [BEGIN,TRIANGLE_FAN,
-          COLOR,color[0],color[1],color[2],
-          NORMAL,-dv.x,-dv.y,-dv.z,
-          VERTEX,head.x,head.y,head.z]
-  v = startP+normal
-  cgo.extend([NORMAL,normal.x,normal.y,normal.z])
-  cgo.extend([VERTEX,v.x,v.y,v.z])
-  base.extend([VERTEX,v.x,v.y,v.z])
-  for i in range(1,nSteps):
-    v = FeatDirUtils.ArbAxisRotation(360./nSteps*i,delta,normal)
-    cgo.extend([NORMAL,v.x,v.y,v.z])
-    v += startP
-    cgo.extend([VERTEX,v.x,v.y,v.z])
-    base.extend([VERTEX,v.x,v.y,v.z])
-
-  cgo.extend([NORMAL,normal.x,normal.y,normal.z])
-  cgo.extend([VERTEX,startP.x+normal.x,startP.y+normal.y,startP.z+normal.z])
-  base.extend([VERTEX,startP.x+normal.x,startP.y+normal.y,startP.z+normal.z])
-  cgo.append(END)
-  base.append(END)
-  cgo.extend(base)
-
-  #viewer.server.renderCGO(cgo,label)
-  _globalArrowCGO.extend(cgo)
-
 def ShowMolFeats(mol,factory,radius=0.5,confId=-1,showOnly=True,
                  name='',transparency=0.0,colors=None,excludeTypes=[],
                  useFeatDirs=True,featLabel=None,dirLabel=None,includeArrowheads=True,
                  writeFeats=False,showMol=True,featMapFile=False):
-  global _globalSphereCGO
   if not name:
     if mol.HasProp('_Name'):
       name =  mol.GetProp('_Name')
@@ -129,52 +83,9 @@ def ShowMolFeats(mol,factory,radius=0.5,confId=-1,showOnly=True,
     if featMapFile:
       print("  family=%s pos=(%.3f,%.3f,%.3f) weight=1.0"%(family,pos.x,pos.y,pos.z),end='',file=featMapFile)
 
-    if useFeatDirs:
-      ps = []
-      if family=='Aromatic':
-        ps,fType = FeatDirUtils.GetAromaticFeatVects(mol.GetConformer(confId),
-                                                               feat.GetAtomIds(),pos,
-                                                               scale=1.0)
-      elif family=='Donor':
-        aids = feat.GetAtomIds()
-        if len(aids)==1:
-          featAtom=mol.GetAtomWithIdx(aids[0])
-          hvyNbrs=[x for x in featAtom.GetNeighbors() if x.GetAtomicNum()!=1]
-          if len(hvyNbrs)==1:
-            ps,fType = FeatDirUtils.GetDonor1FeatVects(mol.GetConformer(confId),
-                                                       aids,scale=1.0)
-          elif len(hvyNbrs)==2:
-            ps,fType = FeatDirUtils.GetDonor2FeatVects(mol.GetConformer(confId),
-                                                       aids,scale=1.0)
-          elif len(hvyNbrs)==3:
-            ps,fType = FeatDirUtils.GetDonor3FeatVects(mol.GetConformer(confId),
-                                                       aids,scale=1.0)
-      elif family=='Acceptor':
-        aids = feat.GetAtomIds()
-        if len(aids)==1:
-          featAtom=mol.GetAtomWithIdx(aids[0])
-          hvyNbrs=[x for x in featAtom.GetNeighbors() if x.GetAtomicNum()!=1]
-          if len(hvyNbrs)==1:
-            ps,fType = FeatDirUtils.GetAcceptor1FeatVects(mol.GetConformer(confId),
-                                                          aids,scale=1.0)
-          elif len(hvyNbrs)==2:
-            ps,fType = FeatDirUtils.GetAcceptor2FeatVects(mol.GetConformer(confId),
-                                                       aids,scale=1.0)
-          elif len(hvyNbrs)==3:
-            ps,fType = FeatDirUtils.GetAcceptor3FeatVects(mol.GetConformer(confId),
-                                                       aids,scale=1.0)
-
-      for tail,head in ps:
-        if featMapFile:
-          vect = head-tail
-          print('dir=(%.3f,%.3f,%.3f)'%(vect.x,vect.y,vect.z),end='',file=featMapFile)
-
     if featMapFile:
       aidText = ' '.join([str(x+1) for x in feat.GetAtomIds()])
       print('# %s'%(aidText),file=featMapFile)
-
-
-
 
 # --- ----  --- ----  --- ----  --- ----  --- ----  --- ----
 import sys,os,getopt
