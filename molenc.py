@@ -58,9 +58,18 @@ def print_encoded_atoms(atoms):
         else:
             print(a, end='')
 
+def string_contains(super, sub):
+    res = None
+    try:
+        super.index(sub)
+        res = True
+    except ValueError:
+        res = False
+    return res
+
 def main():
     if len(sys.argv) != 2:
-        print("usage: %s input.{smi|sdf}" % sys.argv[0])
+        print("usage: %s input.{smi|sdf} [-ph4]" % sys.argv[0])
         sys.exit(1)
     input = sys.argv[1]
     mol_supplier = None
