@@ -45,10 +45,9 @@ parser.add_option('--verbose',default=False,action='store_true',
 if __name__=='__main__':
   from rdkit import Chem
   from rdkit.Chem import AllChem
-  from rdkit.Chem.PyMol import MolViewer
 
-  options,args = parser.parse_args()
-  if len(args)<1:
+  options, args = parser.parse_args()
+  if len(args) < 1:
     parser.error('please provide either at least one sd or mol file')
 
   fdef_fn = os.path.join(RDConfig.RDDataDir,'BaseFeatures.fdef')
@@ -72,38 +71,38 @@ if __name__=='__main__':
     print("BeginPoints", file=options.featMapFile)
 
   i = 1
-  for midx,molN in enumerate(args):
-    if molN!='-':
-      featLabel='%s_Feats'%molN
+  for midx, molN in enumerate(args):
+    if molN != '-':
+      featLabel = '%s_Feats' % molN
     else:
-      featLabel='Mol%d_Feats'%(midx+1)
+      featLabel='Mol%d_Feats' % (midx + 1)
 
-    dirLabel=featLabel+"-dirs"
+    dirLabel=featLabel + "-dirs"
 
     if molN != '-':
       try:
         ms = Chem.SDMolSupplier(molN)
       except:
-        logger.error('Problems reading input file: %s'%molN)
+        logger.error('Problems reading input file: %s' % molN)
         ms = []
     else:
       ms = Chem.SDMolSupplier()
       ms.SetData(sys.stdin.read())
 
     for m in ms:
-      nm = 'Mol_%d'%(i)
+      nm = 'Mol_%d' % i
       if m.HasProp('_Name'):
-        nm += '_'+m.GetProp('_Name')
+        nm += '_' + m.GetProp('_Name')
       if options.verbose:
         if m.HasProp('_Name'):
-          print("#Molecule: %s"%m.GetProp('_Name'))
+          print("#Molecule: %s" % m.GetProp('_Name'))
         else:
-          print("#Molecule: %s"%nm)
+          print("#Molecule: %s" % nm)
       ShowMolFeats(m, factory, name = nm, writeFeats = options.writeFeats,
                    featMapFile = options.featMapFile)
       i += 1
-      if not i%100:
-        logger.info("Done %d poses"%i)
+      if (i % 100) == 0:
+        logger.info("Done %d poses" % i)
 
   if options.featMapFile:
     print("EndPoints", file = options.featMapFile)
