@@ -75,7 +75,6 @@ if __name__ == '__main__':
     mol_supplier = Chem.SDMolSupplier(sys.argv[1])
     for m in mol_supplier:
         print("#name %s" % m.GetProp('_Name'))
-        print("#atoms")
         ShowMolFeats(m, factory)
         print("#bonds")
         for b in m.GetBonds():
