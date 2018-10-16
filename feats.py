@@ -11,7 +11,8 @@ from rdkit import RDLogger as logging
 logger = logging.logger()
 logger.setLevel(logging.INFO)
 
-def ShowMolFeats(mol, factory, name, confId = -1, writeFeats = False, featMapFile = False):
+def ShowMolFeats(mol, factory, name, confId = -1, writeFeats = False,
+                 featMapFile = False):
   if mol.HasProp('_Name'):
     name =  mol.GetProp('_Name')
   molFeats = factory.GetFeaturesForMol(mol)
@@ -21,9 +22,11 @@ def ShowMolFeats(mol, factory, name, confId = -1, writeFeats = False, featMapFil
     nm = '%s(%d)' % (family, i + 1)
     if writeFeats:
       aidText = ' '.join([str(x + 1) for x in feat.GetAtomIds()])
-      print('%s\t%.3f\t%.3f\t%.3f\t1.0\t# %s' % (family, pos.x, pos.y, pos.z, aidText))
+      print('%s\t%.3f\t%.3f\t%.3f\t1.0\t# %s' %
+            (family, pos.x, pos.y, pos.z, aidText))
     if featMapFile:
-      print("  family=%s pos=(%.3f,%.3f,%.3f) weight=1.0" % (family, pos.x, pos.y, pos.z), end = '', file = featMapFile)
+      print("  family=%s pos=(%.3f,%.3f,%.3f) weight=1.0" %
+            (family, pos.x, pos.y, pos.z), end = '', file = featMapFile)
       aidText = ' '.join([str(x + 1) for x in feat.GetAtomIds()])
       print('# %s' % aidText, file = featMapFile)
 
@@ -33,14 +36,16 @@ from rdkit import RDConfig
 from optparse import OptionParser
 parser = OptionParser(_usage)
 
-parser.add_option('--noDirs','--nodirs',dest='useDirs',default=True,action='store_false',
-                  help='do not draw feature direction indicators')
-parser.add_option('--writeFeats','--write',default=False,action='store_true',
-                  help='print the feature information to the console')
-parser.add_option('--featMapFile','--mapFile',default='',
-                  help='save a feature map definition to the specified file')
-parser.add_option('--verbose',default=False,action='store_true',
-                  help='be verbose')
+parser.add_option('--noDirs', '--nodirs', dest = 'useDirs',
+                  default = True, action = 'store_false',
+                  help = 'do not draw feature direction indicators')
+parser.add_option('--writeFeats', '--write', default = False,
+                  action = 'store_true',
+                  help = 'print the feature information to the console')
+parser.add_option('--featMapFile', '--mapFile', default = '',
+                  help = 'save a feature map definition to the specified file')
+parser.add_option('--verbose', default = False, action = 'store_true',
+                  help = 'be verbose')
 
 if __name__=='__main__':
   from rdkit import Chem
@@ -50,12 +55,12 @@ if __name__=='__main__':
   if len(args) < 1:
     parser.error('please provide either at least one sd or mol file')
 
-  fdef_fn = os.path.join(RDConfig.RDDataDir,'BaseFeatures.fdef')
+  fdef_fn = os.path.join(RDConfig.RDDataDir, 'BaseFeatures.fdef')
   fdef = None
   try:
     fdef = open(fdef_fn, 'r').read()
   except IOError:
-    logger.error('ERROR: Could not open fdef file %s'%options.fdef)
+    logger.error('ERROR: Could not open fdef file %s' % options.fdef)
     sys.exit(1)
 
   factory = AllChem.BuildFeatureFactoryFromString(fdef)
