@@ -74,6 +74,6 @@ if __name__ == '__main__':
     factory = AllChem.BuildFeatureFactoryFromString(fdef_str)
     mol_supplier = Chem.SDMolSupplier(sys.argv[1])
     for m in mol_supplier:
-        print("#Molecule: %s" % m.GetProp('_Name'))
+        print("#%s" % m.GetProp('_Name'))
         ShowMolFeats(m, factory)
     sys.exit(0)
