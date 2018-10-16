@@ -5,11 +5,12 @@
 
 from __future__ import print_function
 
-import rdkit
-import sys
+import os, rdkit, sys
 from rdkit import Chem
+from rdkit import RDConfig
 from rdkit.Chem import AllChem, Descriptors
 from rdkit.Chem.AtomPairs import Pairs
+from rdkit.Chem.Features import FeatDirUtilsRD as FeatDirUtils
 
 PeriodicTable = Chem.GetPeriodicTable()
 
@@ -28,12 +29,10 @@ def SdfMolSupplier(fn):
             yield (name, mol)
 
 def nb_heavy_atom_neighbors(a):
-    neighbors = a.GetNeighbors()
-    res = 0
-    for n in neighbors:
-        if n.GetAtomicNum() != 1:
-            res = res + 1
-    return res
+    all_neighbors = a.GetNeighbors()
+    heavy_atom_neighbors = filter(lambda x: x.GetAtomicNum() != 1,
+                                  all_neighbors)
+    return len(heavy_atom_neighbors)
 
 def type_atom(a):
     nb_pi_electrons = Pairs.Utils.NumPiElectrons(a)
@@ -47,9 +46,14 @@ def type_atom(a):
     return res
 
 def encode_molecule(m):
-    atoms = m.GetAtoms()
-    res = map(type_atom, atoms)
-    return res
+    return map(type_atom, m.GetAtoms())
+
+fdef = os.path.join(RDConfig.RDDataDir, 'BaseFeatures.fdef')
+factory = AllChem.BuildFeatureFactoryFromString(fdef)
+
+def encode_molecule_ph4(mol):
+    features = factory.GetFeaturesForMol(mol)
+    return map(lambda x: x.GetFamily(), features)
 
 def print_encoded_atoms(atoms):
     for i, a in enumerate(atoms):
@@ -58,17 +62,9 @@ def print_encoded_atoms(atoms):
         else:
             print(a, end='')
 
-def string_contains(super, sub):
-    res = None
-    try:
-        super.index(sub)
-        res = True
-    except ValueError:
-        res = False
-    return res
-
 def main():
-    if len(sys.argv) != 2:
+    argc = len(sys.argv)
+    if argc < 2 or argc > 3:
         print("usage: %s input.{smi|sdf} [-ph4]" % sys.argv[0])
         sys.exit(1)
     input = sys.argv[1]
@@ -77,6 +73,7 @@ def main():
         mol_supplier = RobustSmilesMolSupplier
     if input.endswith(".sdf"):
         mol_supplier = SdfMolSupplier
+    ph4_space = (argc == 3) and (sys.argv[2] == "-ph4")
     for name, mol in mol_supplier(input):
         if mol is None:
             continue
