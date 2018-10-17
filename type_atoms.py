@@ -10,16 +10,13 @@ from rdkit import Chem
 from rdkit import RDConfig
 from rdkit.Chem import AllChem, Descriptors
 from rdkit.Chem.AtomPairs import Pairs
-from rdkit.Chem.Features import FeatDirUtilsRD as FeatDirUtils
-
-PeriodicTable = Chem.GetPeriodicTable()
 
 def RobustSmilesMolSupplier(filename):
     with open(filename) as f:
         for line in f:
             words = line.split()
             smile = words[0]
-            name = words[1]
+            name = " ".join(words[1:]) # everything after the SMILES string
             yield (name, Chem.MolFromSmiles(smile))
 
 def SdfMolSupplier(fn):
@@ -34,11 +31,13 @@ def nb_heavy_atom_neighbors(a):
                                   all_neighbors)
     return len(heavy_atom_neighbors)
 
+PeriodicTable = Chem.GetPeriodicTable()
+
 def type_atom(a):
     nb_pi_electrons = Pairs.Utils.NumPiElectrons(a)
     symbol = PeriodicTable.GetElementSymbol(a.GetAtomicNum())
     nbHA = nb_heavy_atom_neighbors(a)
-    res = ""
+    res = None
     if nb_pi_electrons > 0:
         res = "%d%s%d" % (nb_pi_electrons, symbol, nbHA)
     else:
@@ -48,13 +47,6 @@ def type_atom(a):
 def encode_molecule(m):
     return map(type_atom, m.GetAtoms())
 
-fdef = os.path.join(RDConfig.RDDataDir, 'BaseFeatures.fdef')
-factory = AllChem.BuildFeatureFactoryFromString(fdef)
-
-def encode_molecule_ph4(mol):
-    features = factory.GetFeaturesForMol(mol)
-    return map(lambda x: x.GetFamily(), features)
-
 def print_encoded_atoms(atoms):
     for i, a in enumerate(atoms):
         if i > 0:
@@ -62,10 +54,10 @@ def print_encoded_atoms(atoms):
         else:
             print(a, end='')
 
-def main():
+if __name__ == '__main__':
     argc = len(sys.argv)
-    if argc < 2 or argc > 3:
-        print("usage: %s input.{smi|sdf} [-ph4]" % sys.argv[0])
+    if argc != 2:
+        print("usage: %s input.{smi|sdf}" % sys.argv[0])
         sys.exit(1)
     input = sys.argv[1]
     mol_supplier = None
@@ -73,12 +65,8 @@ def main():
         mol_supplier = RobustSmilesMolSupplier
     if input.endswith(".sdf"):
         mol_supplier = SdfMolSupplier
-    ph4_space = (argc == 3) and (sys.argv[2] == "-ph4")
     for name, mol in mol_supplier(input):
         if mol is None:
             continue
         print_encoded_atoms(encode_molecule(mol))
         print('\t%s' % name)
-
-if __name__ == '__main__':
-    main()
