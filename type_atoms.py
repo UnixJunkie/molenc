@@ -5,7 +5,7 @@
 
 from __future__ import print_function
 
-import os, rdkit, sys
+import common, os, rdkit, sys
 from rdkit import Chem
 from rdkit import RDConfig
 from rdkit.Chem import AllChem, Descriptors
@@ -63,12 +63,9 @@ if __name__ == '__main__':
     if input.endswith(".sdf"):
         mol_supplier = SdfMolSupplier
     for name, mol in mol_supplier(input):
-        if mol is None:
-            continue
         print("#mol %s" % name)
         print_encoded_atoms(encode_molecule(mol))
         print("#bonds")
-        for b in mol.GetBonds():
-            begin = b.GetBeginAtomIdx()
-            end = b.GetEndAtomIdx()
-            print("%d %d" % (begin, end))
+        bonds_cano_order = common.order_bonds_canonically(mol.GetBonds())
+        for b in bonds_cano_order:
+            print("%d %d" % b)

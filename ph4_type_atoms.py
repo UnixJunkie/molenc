@@ -4,7 +4,7 @@
 
 from __future__ import print_function
 
-import sys, os
+import common, sys, os
 from sets import Set
 from rdkit import RDConfig
 from rdkit import Chem
@@ -72,11 +72,10 @@ if __name__ == '__main__':
     fdef_str = open_fn(fn).read()
     factory = AllChem.BuildFeatureFactoryFromString(fdef_str)
     mol_supplier = Chem.SDMolSupplier(sys.argv[1])
-    for m in mol_supplier:
-        print("#mol %s" % m.GetProp('_Name'))
-        ShowMolFeats(m, factory)
+    for mol in mol_supplier:
+        print("#mol %s" % mol.GetProp('_Name'))
+        ShowMolFeats(mol, factory)
         print("#bonds")
-        for b in m.GetBonds():
-            begin = b.GetBeginAtomIdx()
-            end = b.GetEndAtomIdx()
-            print("%d %d" % (begin, end))
+        bonds_cano_order = common.order_bonds_canonically(mol.GetBonds())
+        for b in bonds_cano_order:
+            print("%d %d" % b)
