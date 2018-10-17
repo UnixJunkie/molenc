@@ -2,6 +2,9 @@
 
 set -x # DEBUG
 
-diff <(./molenc.py data/caffeine.sdf) <(./molenc.py data/caffeine.smi)
+# encoding an SDF or a SMILES file is the same
+diff <(./type_atoms.py data/caffeine.sdf) <(./type_atoms.py data/caffeine.smi)
 
-./list_features.py data/caffeine.sdf
+# ph4 features are the same than the ones extracted by ShowFeats.py
+# (that were checked by hand and stored in a reference file)
+diff <(./ph4_type_atoms.py data/caffeine.sdf) data/caffeine_feats.ref
