@@ -12,7 +12,6 @@ from rdkit.Chem import AllChem
 
 # we use a set of features so that there are no duplicated features for
 # a given atom
-
 def get_feats(dico, key):
     res = None
     try:
