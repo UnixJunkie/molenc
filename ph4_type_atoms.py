@@ -75,7 +75,4 @@ if __name__ == '__main__':
     for mol in mol_supplier:
         print("#mol %s" % mol.GetProp('_Name'))
         ShowMolFeats(mol, factory)
-        print("#bonds")
-        bonds_cano_order = common.order_bonds_canonically(mol.GetBonds())
-        for b in bonds_cano_order:
-            print("%d %d" % b)
+        common.print_bonds(mol)

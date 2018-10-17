@@ -65,7 +65,4 @@ if __name__ == '__main__':
     for name, mol in mol_supplier(input):
         print("#mol %s" % name)
         print_encoded_atoms(encode_molecule(mol))
-        print("#bonds")
-        bonds_cano_order = common.order_bonds_canonically(mol.GetBonds())
-        for b in bonds_cano_order:
-            print("%d %d" % b)
+        common.print_bonds(mol)
