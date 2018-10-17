@@ -49,10 +49,7 @@ def encode_molecule(m):
 
 def print_encoded_atoms(atoms):
     for i, a in enumerate(atoms):
-        if i > 0:
-            print(' %s' % a, end='')
-        else:
-            print(a, end='')
+        print("%d %s" % (i, a))
 
 if __name__ == '__main__':
     argc = len(sys.argv)
@@ -68,5 +65,10 @@ if __name__ == '__main__':
     for name, mol in mol_supplier(input):
         if mol is None:
             continue
+        print("#mol %s" % name)
         print_encoded_atoms(encode_molecule(mol))
-        print('\t%s' % name)
+        print("#bonds")
+        for b in mol.GetBonds():
+            begin = b.GetBeginAtomIdx()
+            end = b.GetEndAtomIdx()
+            print("%d %d" % (begin, end))
