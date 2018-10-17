@@ -24,15 +24,14 @@ def get_feats(dico, key):
 def set_is_empty(s):
     s == Set([])
 
-# FBR: check this is the complete list in the rdkit configuration file
-#      BaseFeatures.fdef
 feature_family_to_char = { 'Donor': 'D',
                            'Acceptor': 'A',
                            'PosIonizable': 'P',
                            'NegIonizable': 'N',
                            'Aromatic': 'a',
                            'Hydrophobe': 'H',
-                           'LumpedHydrophobe': 'h' }
+                           'LumpedHydrophobe': 'h',
+                           'ZnBinder': 'Z' }
 
 def feat_to_char(feat):
     return feature_family_to_char[feat]
@@ -40,7 +39,7 @@ def feat_to_char(feat):
 def ShowMolFeats(mol, factory):
   feat_map = {}
   molFeats = factory.GetFeaturesForMol(mol)
-  for i, feat in enumerate(molFeats):
+  for feat in molFeats:
     family = feat.GetFamily()
     # pos = feat.GetPos()
     # create atom_id to features set (some atoms don't have any ph4 feature)
@@ -74,7 +73,7 @@ if __name__ == '__main__':
     factory = AllChem.BuildFeatureFactoryFromString(fdef_str)
     mol_supplier = Chem.SDMolSupplier(sys.argv[1])
     for m in mol_supplier:
-        print("#name %s" % m.GetProp('_Name'))
+        print("#mol %s" % m.GetProp('_Name'))
         ShowMolFeats(m, factory)
         print("#bonds")
         for b in m.GetBonds():
