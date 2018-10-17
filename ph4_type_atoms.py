@@ -80,4 +80,3 @@ if __name__ == '__main__':
             begin = b.GetBeginAtomIdx()
             end = b.GetEndAtomIdx()
             print("%d %d" % (begin, end))
-    sys.exit(0)
