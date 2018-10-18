@@ -11,60 +11,64 @@ from rdkit import RDConfig
 from rdkit import Chem
 from rdkit.Chem import AllChem
 
-# we use a set of features so that there are no duplicated features for
-# a given atom
-def get_feats(dico, key):
+def open_fn(fn):
     res = None
     try:
-        res = dico[key]
-    except KeyError:
-        res = Set([])
+        res = open(fn, 'r')
+    except IOError:
+        print('ph4_type_atoms.py: open_fn: could not open file %s' % fn,
+              file = sys.stderr)
+        sys.exit(1)
     return res
+
+# create the features factory
+fn = os.path.join(RDConfig.RDDataDir, 'BaseFeatures.fdef')
+fdef_str = open_fn(fn).read()
+factory = AllChem.BuildFeatureFactoryFromString(fdef_str)
+feature_defs = factory.GetFeatureDefs()
 
 def set_is_empty(s):
     s == Set([])
 
-feature_family_to_char = { 'Donor': 'D',
-                           'Acceptor': 'A',
-                           'PosIonizable': 'P',
-                           'NegIonizable': 'N',
-                           'Aromatic': 'a',
-                           'Hydrophobe': 'H',
-                           'LumpedHydrophobe': 'h',
-                           'ZnBinder': 'Z' }
+## documentation
+# feature_family_to_char = { 'Donor': 'D',
+#                            'Acceptor': 'A',
+#                            'PosIonizable': 'P',
+#                            'NegIonizable': 'N',
+#                            'Aromatic': 'a',
+#                            'Hydrophobe': 'H',
+#                            'LumpedHydrophobe': 'h',
+#                            'ZnBinder': 'Z' }
 
-def feat_to_char(feat):
-    return feature_family_to_char[feat]
-
-# FBR: check against factory.GetFeaturesDef()
-
-acceptor = '[$([O;H1;v2]),$([O;H0;v2;!$(O=N-*),$([O;-;!$(*-N=O)]),$([o;+0])]),$([n;+0;!X3;!$([n;H1](cc)cc),$([$([N;H0]#[C&v4])]),$([N&v3;H0;$(Nc)])]),$([F;$(F-[#6]);!$(FC[F,Cl,Br,I])])]'
-arom4 = '[$([a;r4,!R1&r3])]1:[$([a;r4,!R1&r3])]:[$([a;r4,!R1&r3])]:[$([a;r4,!R1&r3])]:1'
-arom5 = '[$([a;r5,!R1&r4,!R1&r3])]1:[$([a;r5,!R1&r4,!R1&r3])]:[$([a;r5,!R1&r4,!R1&r3])]:[$([a;r5,!R1&r4,!R1&r3])]:[$([a;r5,!R1&r4,!R1&r3])]:1'
-arom6 = '[$([a;r6,!R1&r5,!R1&r4,!R1&r3])]1:[$([a;r6,!R1&r5,!R1&r4,!R1&r3])]:[$([a;r6,!R1&r5,!R1&r4,!R1&r3])]:[$([a;r6,!R1&r5,!R1&r4,!R1&r3])]:[$([a;r6,!R1&r5,!R1&r4,!R1&r3])]:[$([a;r6,!R1&r5,!R1&r4,!R1&r3])]:1'
-arom7 = '[$([a;r7,!R1&r6,!R1&r5,!R1&r4,!R1&r3])]1:[$([a;r7,!R1&r6,!R1&r5,!R1&r4,!R1&r3])]:[$([a;r7,!R1&r6,!R1&r5,!R1&r4,!R1&r3])]:[$([a;r7,!R1&r6,!R1&r5,!R1&r4,!R1&r3])]:[$([a;r7,!R1&r6,!R1&r5,!R1&r4,!R1&r3])]:[$([a;r7,!R1&r6,!R1&r5,!R1&r4,!R1&r3])]:[$([a;r7,!R1&r6,!R1&r5,!R1&r4,!R1&r3])]:1'
-arom8 = '[$([a;r8,!R1&r7,!R1&r6,!R1&r5,!R1&r4,!R1&r3])]1:[$([a;r8,!R1&r7,!R1&r6,!R1&r5,!R1&r4,!R1&r3])]:[$([a;r8,!R1&r7,!R1&r6,!R1&r5,!R1&r4,!R1&r3])]:[$([a;r8,!R1&r7,!R1&r6,!R1&r5,!R1&r4,!R1&r3])]:[$([a;r8,!R1&r7,!R1&r6,!R1&r5,!R1&r4,!R1&r3])]:[$([a;r8,!R1&r7,!R1&r6,!R1&r5,!R1&r4,!R1&r3])]:[$([a;r8,!R1&r7,!R1&r6,!R1&r5,!R1&r4,!R1&r3])]:[$([a;r8,!R1&r7,!R1&r6,!R1&r5,!R1&r4,!R1&r3])]:1'
-donor = '[$([N&!H0&v3,N&!H0&+1&v4,n&H1&+0,$([$([Nv3](-C)(-C)-C)]),$([$(n[n;H1]),$(nc[n;H1])])]),$([O,S;H1;+0])]'
-hydro1 = '[R0;D2;$([#6;+0;!$([#6;$([#6]~[#7,#8,#9])])])]'
-hydro2 = '[D3,D4;$([#6;+0;!$([#6;$([#6]~[#7,#8,#9])])])]'
-lhydro1 = '[N;D3;+](=O)[O-]'
-lhydro2 = '[$([r3]);$([R;$([c,s,S&H0&v2,Br,I,$([#6;+0;!$([#6;$([#6]~[#7,#8,#9])])])])])]1[$([r3]);$([R;$([c,s,S&H0&v2,Br,I,$([#6;+0;!$([#6;$([#6]~[#7,#8,#9])])])])])][$([r3]);$([R;$([c,s,S&H0&v2,Br,I,$([#6;+0;!$([#6;$([#6]~[#7,#8,#9])])])])])]1'
-lhydro3 = '[$([r4,!R1&r3]);$([R;$([c,s,S&H0&v2,Br,I,$([#6;+0;!$([#6;$([#6]~[#7,#8,#9])])])])])]1[$([r4,!R1&r3]);$([R;$([c,s,S&H0&v2,Br,I,$([#6;+0;!$([#6;$([#6]~[#7,#8,#9])])])])])][$([r4,!R1&r3]);$([R;$([c,s,S&H0&v2,Br,I,$([#6;+0;!$([#6;$([#6]~[#7,#8,#9])])])])])][$([r4,!R1&r3]);$([R;$([c,s,S&H0&v2,Br,I,$([#6;+0;!$([#6;$([#6]~[#7,#8,#9])])])])])]1'
-lhydro4 = '[$([r5,!R1&r4,!R1&r3]);$([R;$([c,s,S&H0&v2,Br,I,$([#6;+0;!$([#6;$([#6]~[#7,#8,#9])])])])])]1[$([r5,!R1&r4,!R1&r3]);$([R;$([c,s,S&H0&v2,Br,I,$([#6;+0;!$([#6;$([#6]~[#7,#8,#9])])])])])][$([r5,!R1&r4,!R1&r3]);$([R;$([c,s,S&H0&v2,Br,I,$([#6;+0;!$([#6;$([#6]~[#7,#8,#9])])])])])][$([r5,!R1&r4,!R1&r3]);$([R;$([c,s,S&H0&v2,Br,I,$([#6;+0;!$([#6;$([#6]~[#7,#8,#9])])])])])][$([r5,!R1&r4,!R1&r3]);$([R;$([c,s,S&H0&v2,Br,I,$([#6;+0;!$([#6;$([#6]~[#7,#8,#9])])])])])]1'
-lhydro5 = '[$([r6,!R1&r5,!R1&r4,!R1&r3]);$([R;$([c,s,S&H0&v2,Br,I,$([#6;+0;!$([#6;$([#6]~[#7,#8,#9])])])])])]1[$([r6,!R1&r5,!R1&r4,!R1&r3]);$([R;$([c,s,S&H0&v2,Br,I,$([#6;+0;!$([#6;$([#6]~[#7,#8,#9])])])])])][$([r6,!R1&r5,!R1&r4,!R1&r3]);$([R;$([c,s,S&H0&v2,Br,I,$([#6;+0;!$([#6;$([#6]~[#7,#8,#9])])])])])][$([r6,!R1&r5,!R1&r4,!R1&r3]);$([R;$([c,s,S&H0&v2,Br,I,$([#6;+0;!$([#6;$([#6]~[#7,#8,#9])])])])])][$([r6,!R1&r5,!R1&r4,!R1&r3]);$([R;$([c,s,S&H0&v2,Br,I,$([#6;+0;!$([#6;$([#6]~[#7,#8,#9])])])])])][$([r6,!R1&r5,!R1&r4,!R1&r3]);$([R;$([c,s,S&H0&v2,Br,I,$([#6;+0;!$([#6;$([#6]~[#7,#8,#9])])])])])]1'
-lhydro6 = '[CH;!R](-[CH3])-[CH3]'
-lhydro7 = '[C;!R](-[CH3])(-[CH3])-[CH3]'
-neg = '[C,S](=[O,S,P])-[O;H1,H0&-1]'
-pos1 = '[$([$([N;H2&+0][$([C;!$(C=*)])])]),$([$([N;H1&+0]([$([C;!$(C=*)])])[$([C;!$(C=*)])])]),$([$([N;H0&+0]([$([C;!$(C=*)])])([$([C;!$(C=*)])])[$([C;!$(C=*)])])]);!$(N[a])]'
-pos2 = 'NC(=N)N'
-pos3 = 'c1ncnc1'
-pos4 = '[#7;+;!$([N+]-[O-])]'
-Zn1 = '[S;D1]-[#6]'
-Zn2 = '[#6]-C(=O)-C-[S;D1]'
-Zn3 = '[#6]-C(=O)-C-C-[S;D1]'
-Zn4 = '[#6]-C(=O)-N-[O;D1]'
-Zn5 = '[#6]-C(=O)-[O;D1]'
-Zn6 = '[#6]-P(=O)(-O)-[C,O,N]-[C,H]'
+# feature defs come from factory.GetFeaturesDef()
+# I used all the keys found on 18/10/2018 DD/MM/YYYY
+acceptor = feature_defs['Acceptor.SingleAtomAcceptor']
+arom4 = feature_defs['Aromatic.Arom4']
+arom5 = feature_defs['Aromatic.Arom5']
+arom6 = feature_defs['Aromatic.Arom6']
+arom7 = feature_defs['Aromatic.Arom7']
+arom8 = feature_defs['Aromatic.Arom8']
+donor = feature_defs['Donor.SingleAtomDonor']
+hydro1 = feature_defs['Hydrophobe.ChainTwoWayAttach']
+hydro2 = feature_defs['Hydrophobe.ThreeWayAttach']
+lhydro1 = feature_defs['LumpedHydrophobe.Nitro2']
+lhydro2 = feature_defs['LumpedHydrophobe.RH3_3']
+lhydro3 = feature_defs['LumpedHydrophobe.RH4_4']
+lhydro4 = feature_defs['LumpedHydrophobe.RH5_5']
+lhydro5 = feature_defs['LumpedHydrophobe.RH6_6']
+lhydro6 = feature_defs['LumpedHydrophobe.iPropyl']
+lhydro7 = feature_defs['LumpedHydrophobe.tButyl']
+neg = feature_defs['NegIonizable.AcidicGroup']
+pos1 = feature_defs['PosIonizable.BasicGroup']
+pos2 = feature_defs['PosIonizable.Guanidine']
+pos3 = feature_defs['PosIonizable.Imidazole']
+pos4 = feature_defs['PosIonizable.PosN']
+Zn1 = feature_defs['ZnBinder.ZnBinder1']
+Zn2 = feature_defs['ZnBinder.ZnBinder2']
+Zn3 = feature_defs['ZnBinder.ZnBinder3']
+Zn4 = feature_defs['ZnBinder.ZnBinder4']
+Zn5 = feature_defs['ZnBinder.ZnBinder5']
+Zn6 = feature_defs['ZnBinder.ZnBinder6']
 
 acc_pat = Chem.MolFromSmarts(acceptor)
 arom4_pat = Chem.MolFromSmarts(arom4)
@@ -132,6 +136,8 @@ def get_ph4_feats(mol):
     zn6_match = matching_indexes(mol, Zn6_pat)
     atom_index_to_features = {}
     # create all needed sets, empty for the moment
+    # we use a set of features so that there are no duplicated features for
+    # a given atom
     for a in mol.GetAtoms():
         id = a.GetIdx()
         atom_index_to_features[id] = Set([])
@@ -168,50 +174,17 @@ def get_mol_feats(mol):
       if set_is_empty(features):
           print("%d" % id)
       else:
-          str = " ".join(c for c in features)
+          l = list(features)
+          l.sort() # canonicalize feats list for given atom
+          str = " ".join(c for c in l)
           print("%d %s" % (id, str))
-
-def ShowMolFeats(mol, factory):
-  feat_map = {}
-  molFeats = factory.GetFeaturesForMol(mol)
-  for feat in molFeats:
-    family = feat.GetFamily()
-    # pos = feat.GetPos()
-    # create atom_id to features set (some atoms don't have any ph4 feature)
-    for id in feat.GetAtomIds():
-        prev_feats = get_feats(feat_map, id)
-        prev_feats.add(family)
-        feat_map[id] = prev_feats
-  for a in mol.GetAtoms():
-      id = a.GetIdx()
-      features = get_feats(feat_map, id)
-      if set_is_empty(features):
-          print("%d" % id)
-      else:
-          feat_chars = map(feat_to_char, features)
-          str = " ".join(c for c in feat_chars)
-          print("%d %s" % (id, str))
-
-def open_fn(fn):
-    res = None
-    try:
-        res = open(fn, 'r')
-    except IOError:
-        print('list_features.py: open_fn: could not open file %s' % fn,
-              file = sys.stderr)
-        sys.exit(1)
-    return res
 
 if __name__ == '__main__':
     before = time.time()
-    fn = os.path.join(RDConfig.RDDataDir, 'BaseFeatures.fdef')
-    fdef_str = open_fn(fn).read()
-    factory = AllChem.BuildFeatureFactoryFromString(fdef_str)
     mol_supplier = Chem.SDMolSupplier(sys.argv[1])
     count = 0
     for mol in mol_supplier:
         print("#mol %s" % mol.GetProp('_Name'))
-        # ShowMolFeats(mol, factory)
         get_mol_feats(mol)
         common.print_bonds(mol)
         count += 1
