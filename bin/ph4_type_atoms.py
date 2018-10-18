@@ -27,9 +27,6 @@ fdef_str = open_fn(fn).read()
 factory = AllChem.BuildFeatureFactoryFromString(fdef_str)
 feature_defs = factory.GetFeatureDefs()
 
-def set_is_empty(s):
-    s == Set([])
-
 ## documentation
 # feature_family_to_char = { 'Donor': 'D',
 #                            'Acceptor': 'A',
@@ -142,9 +139,7 @@ def get_ph4_feats(mol):
         id = a.GetIdx()
         atom_index_to_features[id] = Set([])
     for i in acc_match:
-        prev = atom_index_to_features[i]
-        prev.add('A')
-        atom_index_to_features[i] = prev
+        atom_index_to_features[i].add('A')
     for arom in [arom4_match, arom5_match, arom6_match, arom7_match, arom8_match]:
         for i in arom:
             atom_index_to_features[i].add('a')
@@ -165,6 +160,9 @@ def get_ph4_feats(mol):
         for i in zn:
             atom_index_to_features[i].add('Z')
     return atom_index_to_features
+
+def set_is_empty(s):
+    s == Set([])
 
 def get_mol_feats(mol):
     feats = get_ph4_feats(mol)
