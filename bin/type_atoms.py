@@ -5,7 +5,7 @@
 
 from __future__ import print_function
 
-import common, os, rdkit, sys
+import common, os, rdkit, sys, time
 from rdkit import Chem
 from rdkit import RDConfig
 from rdkit.Chem import AllChem, Descriptors
@@ -26,10 +26,11 @@ def SdfMolSupplier(fn):
             yield (name, mol)
 
 def nb_heavy_atom_neighbors(a):
-    all_neighbors = a.GetNeighbors()
-    heavy_atom_neighbors = filter(lambda x: x.GetAtomicNum() != 1,
-                                  all_neighbors)
-    return len(heavy_atom_neighbors)
+    res = 0
+    for neighb in a.GetNeighbors():
+        if neighb.GetAtomicNum() != 1:
+            res += 1
+    return res
 
 PeriodicTable = Chem.GetPeriodicTable()
 
@@ -52,6 +53,7 @@ def print_encoded_atoms(atoms):
         print("%d %s" % (i, a))
 
 if __name__ == '__main__':
+    before = time.time()
     argc = len(sys.argv)
     if argc != 2:
         print("usage: %s input.{smi|sdf}" % sys.argv[0])
@@ -62,7 +64,12 @@ if __name__ == '__main__':
         mol_supplier = RobustSmilesMolSupplier
     if input.endswith(".sdf"):
         mol_supplier = SdfMolSupplier
+    count = 0
     for name, mol in mol_supplier(input):
         print("#mol %s" % name)
         print_encoded_atoms(encode_molecule(mol))
         common.print_bonds(mol)
+        count += 1
+    after = time.time()
+    dt = after - before
+    print("%d molecules at %.2f mol/s" % (count, count / dt), file=sys.stderr)
