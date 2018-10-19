@@ -66,7 +66,7 @@ if __name__ == '__main__':
         mol_supplier = SdfMolSupplier
     count = 0
     for name, mol in mol_supplier(input):
-        print("#mol %s" % name)
+        print("#atoms:%d %s" % (mol.GetNumAtoms(), name))
         print_encoded_atoms(encode_molecule(mol))
         common.print_bonds(mol)
         count += 1
