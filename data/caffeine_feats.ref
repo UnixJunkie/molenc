@@ -1,4 +1,4 @@
-#mol caffeine
+#atoms:14 caffeine
 0 _
 1 a
 2 a
@@ -13,7 +13,7 @@
 11 _
 12 a
 13 A
-#bonds
+#bonds:15
 0 1
 1 2
 1 12
@@ -29,7 +29,7 @@
 10 11
 10 12
 12 13
-#mol cocaine
+#atoms:22 cocaine
 0 _
 1 A
 2 _
@@ -52,7 +52,7 @@
 19 _
 20 D P
 21 _
-#bonds
+#bonds:24
 0 1
 1 2
 2 3
