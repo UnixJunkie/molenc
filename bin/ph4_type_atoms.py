@@ -161,16 +161,13 @@ def get_ph4_feats(mol):
             atom_index_to_features[i].add('Z')
     return atom_index_to_features
 
-def set_is_empty(s):
-    s == Set([])
-
 def get_mol_feats(mol):
     feats = get_ph4_feats(mol)
     for a in mol.GetAtoms():
       id = a.GetIdx()
       features = feats[id]
-      if set_is_empty(features):
-          print("%d" % id)
+      if len(features) == 0:
+          print("%d _" % id) # '_' means no ph4 feat.
       else:
           l = list(features)
           l.sort() # canonicalize feats list for given atom
