@@ -430,3 +430,16 @@ let int_of_digit_char = function
   | '8' -> 8
   | '9' -> 9
   | c -> failwith (sprintf "Utls.int_of_digit_char: not a digit: %c" c)
+
+let char_of_digit = function
+  | 0 -> '0'
+  | 1 -> '1'
+  | 2 -> '2'
+  | 3 -> '3'
+  | 4 -> '4'
+  | 5 -> '5'
+  | 6 -> '6'
+  | 7 -> '7'
+  | 8 -> '8'
+  | 9 -> '9'
+  | d -> failwith (sprintf "Utls.char_of_digit: not a digit: %d" d)
