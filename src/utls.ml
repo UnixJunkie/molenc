@@ -417,3 +417,16 @@ let stddev (l: float list): float =
 
 let fincr_by (xref: float ref) (dx: float): unit =
   xref := !xref +. dx
+
+let int_of_digit_char = function
+  | '0' -> 0
+  | '1' -> 1
+  | '2' -> 2
+  | '3' -> 3
+  | '4' -> 4
+  | '5' -> 5
+  | '6' -> 6
+  | '7' -> 7
+  | '8' -> 8
+  | '9' -> 9
+  | c -> failwith (sprintf "Utls.int_of_digit_char: not a digit: %c" c)
