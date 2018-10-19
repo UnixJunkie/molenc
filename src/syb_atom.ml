@@ -1,5 +1,6 @@
 
-(* very small atom module to help compute atom environments (a la molprint2d) from MOL2 files *)
+(* very small atom module to help compute atom environments (a la molprint2d)
+   from MOL2 files *)
 
 open Printf
 
