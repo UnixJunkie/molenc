@@ -1,5 +1,5 @@
 
-module At = Atom
+module At = Syb_atom
 module IntSet = BatSet.Int
 module S = BatString
 
