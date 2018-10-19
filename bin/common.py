@@ -15,5 +15,5 @@ def print_bond(b):
     print("%d %d" % b)
 
 def print_bonds(mol):
-    print("#bonds")
+    print("#bonds:%d" % mol.GetNumBonds())
     iterate(print_bond, order_bonds_canonically(mol.GetBonds()))
