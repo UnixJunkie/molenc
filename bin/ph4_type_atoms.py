@@ -179,7 +179,7 @@ if __name__ == '__main__':
     mol_supplier = Chem.SDMolSupplier(sys.argv[1])
     count = 0
     for mol in mol_supplier:
-        print("#mol %s" % mol.GetProp('_Name'))
+        print("#atoms:%d %s" % (mol.GetNumAtoms(), mol.GetProp('_Name')))
         get_mol_feats(mol)
         common.print_bonds(mol)
         count += 1
