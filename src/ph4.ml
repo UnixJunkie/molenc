@@ -35,3 +35,6 @@ let to_char = function
   | Lhy -> 'h'
   | Znb -> 'Z'
   | Non -> '_'
+
+let to_string feat =
+  String.make 1 (to_char feat)
