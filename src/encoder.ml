@@ -12,10 +12,11 @@ let main () =
   let argc, args = CLI.init () in
   if argc = 1 then
     (eprintf "usage:\n\
-              %s -i molecules.txt -r max_radius -o output.idx\n"
+              %s -i molecules.{types|ph4} -r max_radius -o output.idx\n"
        Sys.argv.(0);
      exit 1);
   let input_fn = CLI.get_string ["-i"] args in
+  assert(BatString.ends_with input_fn ".types");
   let output_fn = CLI.get_string ["-o"] args in
   let radius = CLI.get_int ["-r"] args in
   Utls.with_infile_outfile input_fn output_fn (fun input output ->
