@@ -454,3 +454,6 @@ let char_of_digit = function
 
 let string_of_digit d =
   String.make 1 (char_of_digit d)
+
+let make_pair x y =
+  (x, y)
