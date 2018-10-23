@@ -1,7 +1,7 @@
 (jbuild_version 1)
 
 (executables
- ((names        (mop2d_indexer))
+ ((names        (encoder))
   (public_names (encoder))
   (libraries (batteries dolog parmap cpm minicli camlzip bitv oc45 orandforest
               bst parany dbm cryptokit orsvm_e1071 ocamlgraph ptmap oranger))))
