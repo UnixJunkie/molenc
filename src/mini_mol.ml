@@ -31,16 +31,11 @@ let to_string (m: t): string =
 let get_typ (m: t) (i: int) =
   Node.get_typ m.graph.(i)
 
-(*
-let get_atomic_number m i =
-  Sybyl.atomic_number (get_typ m i)
-*)
-
 let get_succs (m: t) (i: int) =
   Node.get_succs m.graph.(i)
 
 (* canonicalized count of atom types *)
-let count_typs (typs: Sybyl.t list): (Sybyl.t * int) list =
+let count_typs (typs: PiEltHA.t list): (PiEltHA.t * int) list =
   let typ2count = Hashtbl.create 11 in
   L.iter (fun typ ->
       let prev_count = BatHashtbl.find_default typ2count typ 0 in
