@@ -1,20 +1,22 @@
 (* MOLPRINT 2D atom environment *)
 
+(* FBR: rename to atom_env.ml *)
+
 open Printf
 
 module L = MyList
 
 (* center, neighbors 1 bond away, neighbors 2 bonds away, etc.
    MUST BE CANONICAL (i.e. sorted) *)
-type t = Sybyl.t * (Sybyl.t * int) list list
+type t = PiEltHA.t * (PiEltHA.t * int) list list
 
 let to_string ((center, neighbors): t): string =
   let counted_neighbors_str l =
     L.to_string (fun (typ, count) ->
-        sprintf "(%s,%d)" (Sybyl.to_string typ) count
+        sprintf "(%s,%d)" (PiEltHA.to_string typ) count
       ) l in
   sprintf "%s-%s"
-    (Sybyl.to_string center)
+    (PiEltHA.to_string center)
     (L.to_string counted_neighbors_str neighbors)
 
 let of_string (s: string): t =
@@ -24,7 +26,7 @@ let of_string (s: string): t =
     try Scanf.sscanf s "%s@-%s@ %d" (fun a b _count -> a, b)
     with _ -> failwith ("Mop2d_env.of_string: cannot parse triplet: " ^ s) in
   let of_pair_str s' =
-    try Scanf.sscanf s' "(%s@,%d)" (fun a b -> (Sybyl.of_string a, b))
+    try Scanf.sscanf s' "(%s@,%d)" (fun a b -> (PiEltHA.of_string a, b))
     with _ -> failwith
                 (sprintf "Mop2d_env.of_string: cannot parse pair: %s in %s"
                    s' s) in
@@ -35,7 +37,7 @@ let of_string (s: string): t =
         if BatString.ends_with s "]" then s
         else s ^ "]"
       ) sub_lists in
-  (Sybyl.of_string center,
+  (PiEltHA.of_string center,
    L.map (L.of_string of_pair_str) sub_lists)
 
 (* parse the 1st line of a .idx file *)
