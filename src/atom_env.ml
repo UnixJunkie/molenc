@@ -4,39 +4,41 @@ open Printf
 
 module L = MyList
 
-(* center, neighbors 1 bond away, neighbors 2 bonds away, etc.
-   MUST BE CANONICAL (i.e. sorted) *)
-type t = PiEltHA.t * (PiEltHA.t * int) list list
+(*   layer = (depth, counted-atoms) *)
+type layer = int * ((PiEltHA.t * int) list)
+type t = layer list
 
-let to_string ((center, neighbors): t): string =
-  let counted_neighbors_str l =
-    L.to_string (fun (typ, count) ->
-        sprintf "(%s,%d)" (PiEltHA.to_string typ) count
-      ) l in
-  sprintf "%s-%s"
-    (PiEltHA.to_string center)
-    (L.to_string counted_neighbors_str neighbors)
+let counted_types_to_string (l: (PiEltHA.t * int) list): string =
+  let buff = Buffer.create 80 in
+  L.iteri (fun i (x, count) ->
+      bprintf buff (if i = 0 then "%s:%d" else ",%s:%d")
+        (PiEltHA.to_string x) count
+    ) l;
+  Buffer.contents buff
+
+let counted_types_of_string (s: string): (PiEltHA.t * int) list =
+  let strings = BatString.nsplit s ~by:"," in
+  L.map (fun str -> Scanf.sscanf str "%s:%d" Utls.make_pair) strings
+
+let layer_to_string ((depth, counted_types): layer): string =
+  sprintf "%d-%s" depth (counted_types_to_string counted_types)
+
+let layer_of_string (str: string): layer =
+  Scanf.sscanf str "%d-%s" (fun d s ->
+      (d, counted_types_of_string s)
+    )
+
+let to_string (layers: t): string =
+  let buff = Buffer.create 80 in
+  L.iteri (fun i layer ->
+      bprintf buff (if i = 0 then "%s" else ";%s")
+        (layer_to_string layer)
+    ) layers;
+  Buffer.contents buff
 
 let of_string (s: string): t =
-  let center, neighbors =
-    (* an atom env index has the count of how many times that atom env.
-       was seen (upon creation of the index) but we ignore it *)
-    try Scanf.sscanf s "%s@-%s@ %d" (fun a b _count -> a, b)
-    with _ -> failwith ("Mop2d_env.of_string: cannot parse triplet: " ^ s) in
-  let of_pair_str s' =
-    try Scanf.sscanf s' "(%s@,%d)" (fun a b -> (PiEltHA.of_string a, b))
-    with _ -> failwith
-                (sprintf "Mop2d_env.of_string: cannot parse pair: %s in %s"
-                   s' s) in
-  let neighbors' = BatString.chop ~l:1 ~r:1 neighbors in
-  let sub_lists = BatString.nsplit neighbors' ~by:"];" in
-  let sub_lists =
-    L.map (fun s ->
-        if BatString.ends_with s "]" then s
-        else s ^ "]"
-      ) sub_lists in
-  (PiEltHA.of_string center,
-   L.map (L.of_string of_pair_str) sub_lists)
+  let layer_strings = BatString.nsplit s ~by:";" in
+  L.map layer_of_string layer_strings
 
 (* parse the 1st line of a .idx file *)
 let parse_index_comment fn =

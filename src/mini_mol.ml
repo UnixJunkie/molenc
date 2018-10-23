@@ -44,14 +44,12 @@ let count_typs (typs: PiEltHA.t list): (PiEltHA.t * int) list =
   (* canonicalize the atom env by sorting it *)
   List.sort compare (BatHashtbl.to_list typ2count)
 
-let mop2d_encode (max_blength: int) (mol: t): Atom_env.t list =
+let encode (max_blength: int) (mol: t): Atom_env.t list =
   (* extract the atom env. of given atom, up to maximum bond length *)
   let encode_atom (n_i: int): Atom_env.t =
-    let center_atom = mol.graph.(n_i) in
-    let center_atom_typ = Node.get_typ center_atom in
     let rec loop acc curr_blength to_visit visited =
-      if to_visit = IntSet.empty || curr_blength = max_blength then
-        (center_atom_typ, L.rev acc)
+      if to_visit = IntSet.empty || curr_blength > max_blength then
+        L.rev acc
       else
         let visited' = IntSet.union to_visit visited in
         let to_visit' =
@@ -72,7 +70,7 @@ let mop2d_encode (max_blength: int) (mol: t): Atom_env.t list =
           if counted_succs_typs = [] then
             acc
           else
-            counted_succs_typs :: acc in
+            (curr_blength, counted_succs_typs) :: acc in
         loop acc' curr_blength' to_visit' visited' in
     loop [] 0 (IntSet.singleton n_i) IntSet.empty
   in

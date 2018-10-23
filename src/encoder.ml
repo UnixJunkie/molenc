@@ -27,7 +27,7 @@ let main () =
           let m = Ap_types.read_one counter input in
           if !counter mod 1000 = 0 then
             eprintf "%d molecules seen\r%!" !counter; (* user feedback *)
-          let mop2d = Mini_mol.mop2d_encode radius m in
+          let mop2d = Mini_mol.encode radius m in
           L.iter (fun env ->
               try Ht.modify env ((+) 1) ht
               with Not_found -> Ht.add ht env 1
