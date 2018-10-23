@@ -44,9 +44,9 @@ let count_typs (typs: PiEltHA.t list): (PiEltHA.t * int) list =
   (* canonicalize the atom env by sorting it *)
   List.sort compare (BatHashtbl.to_list typ2count)
 
-let mop2d_encode (max_blength: int) (mol: t): Mop2d_env.t list =
+let mop2d_encode (max_blength: int) (mol: t): Atom_env.t list =
   (* extract the atom env. of given atom, up to maximum bond length *)
-  let encode_atom (n_i: int): Mop2d_env.t =
+  let encode_atom (n_i: int): Atom_env.t =
     let center_atom = mol.graph.(n_i) in
     let center_atom_typ = Node.get_typ center_atom in
     let rec loop acc curr_blength to_visit visited =

@@ -40,7 +40,7 @@ let main () =
             BatInt.compare v2 v1) key_values in
         fprintf output "#radius=%d\n" radius;
         L.iter (fun (k, v) ->
-            fprintf output "%s %d\n" (Mop2d_env.to_string k) v
+            fprintf output "%s %d\n" (Atom_env.to_string k) v
           ) sorted
     )
 
