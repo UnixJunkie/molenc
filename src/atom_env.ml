@@ -1,6 +1,4 @@
-(* MOLPRINT 2D atom environment *)
-
-(* FBR: rename to atom_env.ml *)
+(* atom environment *)
 
 open Printf
 
