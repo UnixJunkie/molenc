@@ -1,6 +1,6 @@
 
-(* output MOP2D atom environments; sorted by decreasing frequency given
-   a database of molecules (a big .mol2 file) *)
+(* output atom environments; sorted by decreasing frequency given
+   a file containing molecules *)
 
 open Printf
 
