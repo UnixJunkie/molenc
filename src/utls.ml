@@ -451,3 +451,6 @@ let char_of_digit = function
   | 8 -> '8'
   | 9 -> '9'
   | d -> failwith (sprintf "Utls.char_of_digit: not a digit: %d" d)
+
+let string_of_digit d =
+  String.make 1 (char_of_digit d)
