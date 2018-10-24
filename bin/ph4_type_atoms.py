@@ -182,6 +182,7 @@ if __name__ == '__main__':
         print("#atoms:%d %s" % (mol.GetNumAtoms(), mol.GetProp('_Name')))
         get_mol_feats(mol)
         common.print_bonds(mol)
+        common.print_distance_matrix(mol)
         count += 1
     after = time.time()
     dt = after - before
