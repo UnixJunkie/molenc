@@ -34,47 +34,37 @@ let get_typ (m: t) (i: int) =
 let get_succs (m: t) (i: int) =
   Node.get_succs m.graph.(i)
 
-(* canonicalized count of atom types *)
-let count_typs (typs: PiEltHA.t list): (PiEltHA.t * int) list =
-  let typ2count = Hashtbl.create 11 in
-  L.iter (fun typ ->
-      let prev_count = BatHashtbl.find_default typ2count typ 0 in
-      BatHashtbl.replace typ2count typ (prev_count + 1)
-    ) typs;
-  (* canonicalize the atom env by sorting it *)
-  List.sort compare (BatHashtbl.to_list typ2count)
-
-let encode (max_blength: int) (mol: t): Atom_env.t list =
-  (* extract the atom env. of given atom, up to maximum bond length *)
+let encode (max_height: int) (mol: t): (Atom_env.t * int) list =
+  (* compute atom env. of given atom up to maximum height allowed *)
   let encode_atom (n_i: int): Atom_env.t =
-    let rec loop acc curr_blength to_visit visited =
-      if to_visit = IntSet.empty || curr_blength > max_blength then
+    let rec loop height acc to_visit visited =
+      if height > max_height || IntSet.is_empty to_visit then
         L.rev acc
       else
+        let height' = height + 1 in
         let visited' = IntSet.union to_visit visited in
-        let to_visit' =
-          let res =
-            IntSet.fold (fun i acc ->
-                let succs = get_succs mol i in
-                IntSet.union succs acc
-              ) to_visit IntSet.empty
-          in
-          IntSet.diff res visited' in
-        let curr_blength' = curr_blength + 1 in
-        let succs_typs =
-          IntSet.fold (fun i acc ->
-              get_typ mol i :: acc
+        let neighbors =
+          IntSet.fold (fun x acc ->
+              let neighbs = get_succs mol x in
+              IntSet.union neighbs acc
+            ) to_visit IntSet.empty in
+        let to_visit' = IntSet.diff neighbors visited in
+        let typs =
+          IntSet.fold (fun x acc ->
+              (get_typ mol x) :: acc
             ) to_visit' [] in
-        let counted_succs_typs = count_typs succs_typs in
-        let acc' =
-          if counted_succs_typs = [] then
-            acc
-          else
-            (curr_blength, counted_succs_typs) :: acc in
-        loop acc' curr_blength' to_visit' visited' in
-    loop [] 0 (IntSet.singleton n_i) IntSet.empty
+        (* canonicalize counted atom types *)
+        let counted = Utls.list_uniq_count typs in
+        let acc' = (height, counted) :: acc in
+        loop height' acc' to_visit' visited'
+    in
+    let neighbors = get_succs mol n_i in
+    let typ = get_typ mol n_i in
+    (typ, loop 1 [] neighbors (IntSet.singleton n_i))
   in
   let nb_atoms = A.length mol.graph in
   let atom_indexes = L.range 0 `To (nb_atoms - 1) in
-  (* canonicalize the encoding of the molecule by sorting its atom envs *)
-  List.sort compare (L.map encode_atom atom_indexes)
+  (* canonicalize the encoding of the molecule by sorting its atom envs
+     and counting duplicates *)
+  let atom_envs = L.map encode_atom atom_indexes in
+  Utls.list_uniq_count atom_envs
