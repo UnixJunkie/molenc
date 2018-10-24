@@ -69,6 +69,7 @@ if __name__ == '__main__':
         print("#atoms:%d %s" % (mol.GetNumAtoms(), name))
         print_encoded_atoms(encode_molecule(mol))
         common.print_bonds(mol)
+        common.print_distance_matrix(mol)
         count += 1
     after = time.time()
     dt = after - before
