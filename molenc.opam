@@ -20,8 +20,5 @@ depends: [
   "batteries"
   "dolog"
   "parmap"
-  "cpm"
   "minicli"
-  "svm"
-  "bst"
 ]
