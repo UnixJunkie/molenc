@@ -74,9 +74,7 @@ let encode (max_blength: int) (mol: t): Atom_env.t list =
         loop acc' curr_blength' to_visit' visited' in
     loop [] 0 (IntSet.singleton n_i) IntSet.empty
   in
-  let unsorted =
-    A.fold_lefti (fun acc i _ ->
-        encode_atom i :: acc
-      ) [] mol.graph in
+  let nb_atoms = A.length mol.graph in
+  let atom_indexes = L.range 0 `To (nb_atoms - 1) in
   (* canonicalize the encoding of the molecule by sorting its atom envs *)
-  List.sort compare unsorted
+  List.sort compare (L.map encode_atom atom_indexes)
