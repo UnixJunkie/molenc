@@ -9,6 +9,8 @@ module Ht = BatHashtbl
 module StringSet = BatSet.String
 
 let main () =
+  Log.(set_log_level INFO);
+  Log.color_on ();
   let argc, args = CLI.init () in
   if argc = 1 then
     (eprintf "usage:\n\
@@ -21,29 +23,20 @@ let main () =
   let output_fn = CLI.get_string ["-o"] args in
   let radius = CLI.get_int ["-r"] args in
   Utls.with_infile_outfile input_fn output_fn (fun input output ->
+      fprintf output "#radius=%d\n" radius;
       let counter = ref 0 in
-      let ht = Ht.create 11 in
       try
         while true do
           let m = Ap_types.read_one counter input in
           if !counter mod 1000 = 0 then
             eprintf "%d molecules seen\r%!" !counter; (* user feedback *)
           let envs = Mini_mol.encode radius m in
-          L.iter (fun env ->
-              try Ht.modify env ((+) 1) ht
-              with Not_found -> Ht.add ht env 1
+          L.iter (fun (env, count) ->
+              fprintf output "%s %d\n" (Atom_env.to_string env) count
             ) envs
         done
       with End_of_file ->
-        let key_values = Ht.to_list ht in
-        Log.info "read %d from %s" !counter input_fn;
-        let sorted = L.sort (fun (_, v1) (_, v2) ->
-            (* most frequent first *)
-            BatInt.compare v2 v1) key_values in
-        fprintf output "#radius=%d\n" radius;
-        L.iter (fun (k, v) ->
-            fprintf output "%s %d\n" (Atom_env.to_string k) v
-          ) sorted
+        Log.info "read %d from %s" !counter input_fn
     )
 
 let () = main ()
