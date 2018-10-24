@@ -28,16 +28,17 @@ let main () =
           let m = Ap_types.read_one counter input in
           if !counter mod 1000 = 0 then
             eprintf "%d molecules seen\r%!" !counter; (* user feedback *)
-          let mop2d = Mini_mol.encode radius m in
+          let envs = Mini_mol.encode radius m in
           L.iter (fun env ->
               try Ht.modify env ((+) 1) ht
               with Not_found -> Ht.add ht env 1
-            ) mop2d
+            ) envs
         done
       with End_of_file ->
         let key_values = Ht.to_list ht in
         Log.info "read %d from %s" !counter input_fn;
         let sorted = L.sort (fun (_, v1) (_, v2) ->
+            (* most frequent first *)
             BatInt.compare v2 v1) key_values in
         fprintf output "#radius=%d\n" radius;
         L.iter (fun (k, v) ->
