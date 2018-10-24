@@ -1,7 +1,5 @@
 (* mini molecule module *)
 
-open Printf
-
 module A = BatArray
 module IntSet = BatSet.Int
 module L = MyList
@@ -9,6 +7,7 @@ module StringMap = BatMap.String
 
 type t = { name: string;
            graph: Node.t array;
+           diameter: int;
            matrix: int array array }
 
 let get_name m = m.name
@@ -18,19 +17,8 @@ let get_graph m = m.graph
 let nb_atoms m =
   A.length m.graph
 
-let create name graph matrix =
-  (* DEBUG *)
-  (* let n = A.length matrix in
-   * for i = 0 to n - 1 do
-   *   for j = 0 to n - 1 do
-   *     if j <> 0 then
-   *       printf " %d" matrix.(i).(j)
-   *     else
-   *       printf "%d" matrix.(i).(j)
-   *   done;
-   *   printf "\n"
-   * done; *)
-  { name; graph; matrix }
+let create name graph diameter matrix =
+  { name; graph; diameter; matrix }
 
 let to_string (m: t): string =
   let buff = Buffer.create 80 in

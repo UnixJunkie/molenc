@@ -38,7 +38,7 @@ let read_one counter input =
   (* read distance matrix *)
   (* matrix header line *)
   let matrix_header = input_line input in
-  let _diameter = Scanf.sscanf matrix_header "#diameter:%d" (fun n -> n) in
+  let diameter = Scanf.sscanf matrix_header "#diameter:%d" (fun n -> n) in
   (* matrix' content *)
   let matrix_lines = Utls.read_n_lines nb_atoms input in
   let matrix = Array.make_matrix nb_atoms nb_atoms 0 in
@@ -54,4 +54,4 @@ let read_one counter input =
         Node.create typ succs_table.(i)
       ) atom_types in
   incr counter;
-  Mini_mol.create mol_name nodes matrix
+  Mini_mol.create mol_name nodes diameter matrix
