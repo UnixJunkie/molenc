@@ -35,9 +35,23 @@ let read_one counter input =
           succs_table.(stop) <- IntSet.add start succs_table.(stop)
         )
     ) bond_lines;
+  (* read distance matrix *)
+  (* matrix header line *)
+  let matrix_header = input_line input in
+  let _diameter = Scanf.sscanf matrix_header "#diameter:%d" (fun n -> n) in
+  (* matrix' content *)
+  let matrix_lines = Utls.read_n_lines nb_atoms input in
+  let matrix = Array.make_matrix nb_atoms nb_atoms 0 in
+  L.iteri (fun i line ->
+      let dist_strings = BatString.nsplit line ~by:" " in
+      L.iteri (fun j str ->
+          let d = int_of_string str in
+          matrix.(i).(j) <- d
+        ) dist_strings
+    ) matrix_lines;
   let nodes =
     A.mapi (fun i typ ->
         Node.create typ succs_table.(i)
       ) atom_types in
   incr counter;
-  Mini_mol.create mol_name nodes
+  Mini_mol.create mol_name nodes matrix
