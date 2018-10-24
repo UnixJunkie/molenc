@@ -16,7 +16,8 @@ let main () =
        Sys.argv.(0);
      exit 1);
   let input_fn = CLI.get_string ["-i"] args in
-  assert(BatString.ends_with input_fn ".types");
+  assert(BatString.ends_with input_fn ".types" ||
+         BatString.ends_with input_fn ".ph4");
   let output_fn = CLI.get_string ["-o"] args in
   let radius = CLI.get_int ["-r"] args in
   Utls.with_infile_outfile input_fn output_fn (fun input output ->
