@@ -36,33 +36,33 @@ let get_typ (m: t) (i: int) =
 let get_succs (m: t) (i: int) =
   Node.get_succs m.graph.(i)
 
+(* list (sorted-uniq-counted) atom types of all atoms
+   at given distance from center atom *)
+let types_at_distance (center: int) (curr_height: int) (mol: t) =
+  let matrix_line = mol.matrix.(center) in
+  let unsorted =
+    A.fold_lefti (fun acc i x ->
+        if x = curr_height then
+          (get_typ mol i) :: acc
+        else
+          acc
+      ) [] matrix_line in
+  (* layer at 'curr_height' *)
+  (curr_height, Utls.list_uniq_count unsorted)
+
 let encode (max_height: int) (mol: t): (Atom_env.t * int) list =
-  (* compute atom env. of given atom up to maximum height allowed *)
+  (* compute atom envs. of given atom up to maximum height allowed *)
+  (* we cannot go deeper than 'maxi' on this molecule *)
+  let maxi = min max_height mol.diameter in
   let encode_atom (n_i: int): Atom_env.t =
-    let rec loop height acc to_visit visited =
-      if height > max_height || IntSet.is_empty to_visit then
-        L.rev acc
-      else
-        let height' = height + 1 in
-        let visited' = IntSet.union to_visit visited in
-        let neighbors =
-          IntSet.fold (fun x acc ->
-              let neighbs = get_succs mol x in
-              IntSet.union neighbs acc
-            ) to_visit IntSet.empty in
-        let to_visit' = IntSet.diff neighbors visited in
-        let typs =
-          IntSet.fold (fun x acc ->
-              (get_typ mol x) :: acc
-            ) to_visit' [] in
-        (* canonicalize counted atom types *)
-        let counted = Utls.list_uniq_count typs in
-        let acc' = (height, counted) :: acc in
-        loop height' acc' to_visit' visited'
-    in
-    let neighbors = get_succs mol n_i in
+    let depths = L.range 0 `To maxi in
     let typ = get_typ mol n_i in
-    (typ, loop 1 [] neighbors (IntSet.singleton n_i))
+    let layers =
+      L.map (fun height ->
+          types_at_distance n_i height mol
+        ) depths in
+    let non_empty_layers = L.filter (fun (_h, typs) -> typs <> []) layers in
+    (typ, non_empty_layers)
   in
   let nb_atoms = A.length mol.graph in
   let atom_indexes = L.range 0 `To (nb_atoms - 1) in
