@@ -1,9 +1,9 @@
 
+from __future__ import print_function
+
 import numpy
 import rdkit
 from rdkit import Chem
-
-from __future__ import print_function
 
 # in a bond: atom with lowest index first
 # in a list of bonds: bond with lowest first atom index first
