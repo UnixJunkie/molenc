@@ -6,7 +6,8 @@ module L = MyList
 
 (*   layer = (depth, counted-atoms) *)
 type layer = int * ((PiEltHA.t * int) list)
-type t = layer list
+(*       center-atom layers *)
+type t = PiEltHA.t * layer list
 
 let counted_types_to_string (l: (PiEltHA.t * int) list): string =
   let buff = Buffer.create 80 in
@@ -21,24 +22,29 @@ let counted_types_of_string (s: string): (PiEltHA.t * int) list =
   L.map (fun str -> Scanf.sscanf str "%s:%d" Utls.make_pair) strings
 
 let layer_to_string ((depth, counted_types): layer): string =
-  sprintf "%d-%s" depth (counted_types_to_string counted_types)
+  sprintf "%d_%s" depth (counted_types_to_string counted_types)
 
 let layer_of_string (str: string): layer =
-  Scanf.sscanf str "%d-%s" (fun d s ->
+  Scanf.sscanf str "%d_%s" (fun d s ->
       (d, counted_types_of_string s)
     )
 
-let to_string (layers: t): string =
+let to_string ((typ, layers): t): string =
   let buff = Buffer.create 80 in
+  bprintf buff "%s=[" typ;
   L.iteri (fun i layer ->
       bprintf buff (if i = 0 then "%s" else ";%s")
         (layer_to_string layer)
     ) layers;
+  Buffer.add_char buff ']';
   Buffer.contents buff
 
 let of_string (s: string): t =
-  let layer_strings = BatString.nsplit s ~by:";" in
-  L.map layer_of_string layer_strings
+  let typ, layers_list = BatString.split s ~by:"=" in
+  let layers_str = BatString.chop ~l:1 ~r:1 layers_list in
+  let layer_strings = BatString.nsplit layers_str ~by:";" in
+  let layers = L.map layer_of_string layer_strings in
+  (typ, layers)
 
 (* parse the 1st line of a .idx file *)
 let parse_index_comment fn =
