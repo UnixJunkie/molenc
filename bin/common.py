@@ -27,7 +27,7 @@ def print_bonds(mol):
 def print_distance_matrix(mol):
     mat = Chem.GetDistanceMatrix(mol)
     diam = numpy.max(mat)
-    print("#diameter=%d" % diam)
+    print("#diameter:%d" % diam)
     nb_atoms = mol.GetNumAtoms()
     for i in range(nb_atoms):
         for j in range(nb_atoms):
