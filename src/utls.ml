@@ -457,3 +457,9 @@ let string_of_digit d =
 
 let make_pair x y =
   (x, y)
+
+(* sort then count duplicates *)
+let list_uniq_count l =
+  let sorted = L.sort compare l in
+  let groups = L.group_consecutive (=) sorted in
+  L.map (fun l -> L.(hd l, length l)) groups
