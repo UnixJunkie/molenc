@@ -1,4 +1,5 @@
-# rd-molenc
+# molenc
+
 Molecular encoder using rdkit and OCaml.
 The implemented fingerprint is J-L Faulon's "Signature Molecular Descriptor".
 This is a counted, unfolded fingerprint of molecules.
