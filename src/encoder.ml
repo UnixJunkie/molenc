@@ -4,6 +4,7 @@
 
 open Printf
 
+module CLI = Minicli.CLI
 module L = MyList
 module Ht = BatHashtbl
 module StringSet = BatSet.String
