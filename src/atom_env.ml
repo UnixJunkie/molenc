@@ -7,7 +7,7 @@ module L = MyList
 (*   layer = (depth, counted-atoms) *)
 type layer = int * ((PiEltHA.t * int) list)
 (*       center-atom layers *)
-type t = PiEltHA.t * layer list
+type t = layer list
 
 let counted_types_to_string (l: (PiEltHA.t * int) list): string =
   let buff = Buffer.create 80 in
@@ -29,7 +29,7 @@ let layer_of_string (str: string): layer =
       (d, counted_types_of_string s)
     )
 
-let to_string ((_typ, layers): t): string =
+let to_string (layers: t): string =
   let buff = Buffer.create 80 in
   L.iteri (fun i layer ->
       bprintf buff (if i = 0 then "%s" else ";%s")
@@ -38,11 +38,8 @@ let to_string ((_typ, layers): t): string =
   Buffer.contents buff
 
 let of_string (s: string): t =
-  let typ, layers_list = BatString.split s ~by:"=" in
-  let layers_str = BatString.chop ~l:1 ~r:1 layers_list in
-  let layer_strings = BatString.nsplit layers_str ~by:";" in
-  let layers = L.map layer_of_string layer_strings in
-  (typ, layers)
+  let layer_strings = BatString.nsplit s ~by:";" in
+  L.map layer_of_string layer_strings
 
 (* parse the 1st line of a .idx file *)
 let parse_index_comment fn =
