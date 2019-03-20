@@ -1,0 +1,5 @@
+
+(executables
+  (names        encoder)
+  (public_names encoder)
+  (libraries batteries dolog parmap minicli camlzip parany))
