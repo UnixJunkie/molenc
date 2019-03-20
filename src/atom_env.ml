@@ -29,14 +29,12 @@ let layer_of_string (str: string): layer =
       (d, counted_types_of_string s)
     )
 
-let to_string ((typ, layers): t): string =
+let to_string ((_typ, layers): t): string =
   let buff = Buffer.create 80 in
-  bprintf buff "%s=[" typ;
   L.iteri (fun i layer ->
       bprintf buff (if i = 0 then "%s" else ";%s")
         (layer_to_string layer)
     ) layers;
-  Buffer.add_char buff ']';
   Buffer.contents buff
 
 let of_string (s: string): t =
