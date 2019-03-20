@@ -56,13 +56,12 @@ let encode (max_height: int) (mol: t): (Atom_env.t * int) list =
   let maxi = min max_height mol.diameter in
   let encode_atom (n_i: int): Atom_env.t =
     let depths = L.range 0 `To maxi in
-    let typ = get_typ mol n_i in
     let layers =
       L.map (fun height ->
           types_at_distance n_i height mol
         ) depths in
-    let non_empty_layers = L.filter (fun (_h, typs) -> typs <> []) layers in
-    (typ, non_empty_layers)
+    (* non empty layers *)
+    L.filter (fun (_h, typs) -> typs <> []) layers
   in
   let nb_atoms = A.length mol.graph in
   let atom_indexes = L.range 0 `To (nb_atoms - 1) in
