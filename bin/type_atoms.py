@@ -2,6 +2,8 @@
 
 # type atoms of a molecule a la atom pairs
 # (nb. pi electrons if > 0, elt. symbol, nbHA neighbors)
+# formal charges are ignored, as was the case in the seminal implementation
+# of atom pairs, not sure this is very smart though
 
 from __future__ import print_function
 
