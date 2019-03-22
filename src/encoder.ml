@@ -35,14 +35,19 @@ let main () =
       try
         while true do
           let m = Ap_types.read_one counter input in
-          let name = Mini_mol.get_name m in
           if !counter mod 1000 = 0 then
-            eprintf "%d molecules seen\r%!" !counter; (* user feedback *)
+            eprintf "molecules seen: %d\r%!" !counter; (* user feedback *)
+          let name = Mini_mol.get_name m in
+          let seen_envs = Ht.create 11 in
           fprintf output "#%s\n" name;
           L.iter (fun radius ->
               let envs = Mini_mol.encode radius m in
               L.iter (fun (env, count) ->
-                  fprintf output "%s %d\n" (Atom_env.to_string env) count
+                  (* only output envs that were not already encountered
+                     at lower radius *)
+                  if not (Ht.mem seen_envs env) then
+                    (fprintf output "%s %d\n" (Atom_env.to_string env) count;
+                     Ht.add seen_envs env ())
                 ) envs
             ) radii
         done
