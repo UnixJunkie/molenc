@@ -36,15 +36,22 @@ def nb_heavy_atom_neighbors(a):
 
 PeriodicTable = Chem.GetPeriodicTable()
 
+def string_of_charge(charge):
+    if charge == 0: return ""
+    elif charge == -1: return "-"
+    elif charge == 1: return "+"
+    else: return ("%+d" % charge)
+
 def type_atom(a):
+    res = None
     nb_pi_electrons = Pairs.Utils.NumPiElectrons(a)
     symbol = PeriodicTable.GetElementSymbol(a.GetAtomicNum())
     nbHA = nb_heavy_atom_neighbors(a)
-    res = None
+    formal_charge = string_of_charge(a.GetFormalCharge())
     if nb_pi_electrons > 0:
-        res = "%d%s%d" % (nb_pi_electrons, symbol, nbHA)
+        res = "%d%s%d%s" % (nb_pi_electrons, symbol, nbHA, formal_charge)
     else:
-        res = "%s%d" % (symbol, nbHA)
+        res = "%s%d%s" % (symbol, nbHA, formal_charge)
     return res
 
 def encode_molecule(m):
