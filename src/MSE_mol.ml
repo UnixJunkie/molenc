@@ -34,7 +34,8 @@ let read_one = function
           let feat, count = feat_count_of_string line in
           (* feature cannot already be here; otherwise,
              there was a problem during encoding of the molecule *)
-          assert(not (StringMap.mem feat acc));
+          if StringMap.mem feat acc then
+            Log.warn "mol: %s dup feat: %s" name feat;
           StringMap.add feat count acc
         ) StringMap.empty feat_count_strs in
     create name map
