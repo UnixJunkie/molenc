@@ -1,5 +1,5 @@
 
 (executables
-  (names        encoder)
-  (public_names encoder)
+  (names        encoder decoder)
+  (public_names lbvs_msenc lbvs_msdec)
   (libraries batteries dolog parmap minicli camlzip parany))
