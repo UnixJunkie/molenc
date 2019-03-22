@@ -101,7 +101,7 @@ let lines_of_file (fn: filename): string list =
 
 (* read 'nlines' from 'input' in_channel *)
 let read_n_lines nlines input =
-  assert(nlines > 0);
+  assert(nlines >= 0);
   let rec loop n acc =
     if n = 0 then L.rev acc
     else loop (n - 1) (input_line input :: acc) in
