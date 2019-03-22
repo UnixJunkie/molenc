@@ -144,3 +144,12 @@ let filter_mask m l =
     | (p, x) :: rest -> loop (if p then x :: acc else acc) rest
   in
   loop [] (rev_combine m l)
+
+(* should be in batteries soon *)
+let fold_while p f init li =
+  let rec loop acc = function
+    | [] -> (acc, [])
+    | (x :: xs) as l ->
+      if p x then loop (f acc x) xs
+      else (acc, l) in
+  loop init li
