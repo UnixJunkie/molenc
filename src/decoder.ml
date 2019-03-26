@@ -96,7 +96,8 @@ let main () =
                   end
                 else
                   printf "%s,0.0,[%s]\n" name (mop2d_line_of_int_map feat_counts)
-              ) all_mols
+              ) all_mols;
+            fprintf labels_out "\n"
           )
       );
     Log.info "read %d molecules from %s (%d features)"
