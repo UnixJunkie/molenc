@@ -27,7 +27,10 @@ let mop2d_line_of_int_map map =
 let csv_line_of_int_map max_feat map =
   let buff = Buffer.create 11 in
   let max_key, _v = IntMap.max_binding map in
-  assert(max_key <= max_feat);
+  if max_key > max_feat then
+    failwith (sprintf
+                "Decoder.csv_line_of_int_map: max_key (%d) > max_feat (%d)"
+                max_key max_feat);
   for k = 0 to max_feat do
     let v = IntMap.find_default 0 k map in
     bprintf buff (if k > 0 then "\t%d" else "%d") v
@@ -53,7 +56,13 @@ let main () =
     if r_output_mode then CLI.get_int ["--max-feat"] args
     else -1 in
   let r_data_fn, r_labels_fn =
-    if r_output_mode then (db_fn ^ ".data.csv", db_fn ^ ".labels.csv")
+    if r_output_mode then
+      let out_prfx = Filename.remove_extension db_fn in
+      let data_fn, labels_fn =
+        (out_prfx ^ "_data.csv", out_prfx ^ "_labels.csv") in
+      Log.info "creating %s" data_fn;
+      Log.info "creating %s" labels_fn;
+      (data_fn, labels_fn)
     else ("/dev/null", "/dev/null") in
   CLI.finalize ();
   let all_lines = Utls.lines_of_file db_fn in
