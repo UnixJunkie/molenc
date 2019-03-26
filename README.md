@@ -1,11 +1,14 @@
 # molenc
 
 Molecular encoder using rdkit and OCaml.
+
+OUTDATED DESCRIPTION
 The implemented fingerprint is J-L Faulon's "Signature Molecular Descriptor".
 This is a counted, unfolded fingerprint of molecules.
 
 The fingerprint can be run using atom types
-(#pi-electrons, element, #HA neighbors) or rdkit pharmacophore features (TODO)
+(#pi-electrons, element symbol, #HA neighbors, formal charge) or rdkit
+pharmacophore features (TODO)
 (Donor, Acceptor, PosIonizable, NegIonizable, Aromatic, Hydrophobe),
 if you want a fuzzier description of your molecules.
 
