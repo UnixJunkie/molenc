@@ -1,3 +1,9 @@
+# Source:
+# Supplementary data from the article
+# "All in One: Cavity Detection, Druggability Estimate,
+# Cavity-Based Pharmacophore Perception, and Virtual Screening"
+# https://pubs.acs.org/doi/suppl/10.1021/acs.jcim.8b00684
+
 #########################################
 # DEFINE #
 #########################################
@@ -19,12 +25,10 @@ DEFINE ACwater [OH2]
 DEFINE AChet6N [nH0;X2;$(n1aaaaa1)]
 DEFINE ACphosphinyl [O;$(O=P);!$(O=P~O)]
 DEFINE ACsulphoxide [O;$(O=[S;!$(S(~O)~O);$(S([#6])[#6])])]
-#DEFINE ACprimaryAmine [$ACamine;$hd1;!X4] #leave off for implict charge
 DEFINE AChet5N [nH0;X2;$(n1aaaa1)]
 DEFINE ACthiocarbonyl [S;X1;$(S=[#6])]
 DEFINE AChydroxyl [O;$hd1;$(O‐[C;!$(C=*)])]
 DEFINE ACsulphate [O;$hd1;$(O~S(~O)~O)]
-#DEFINE ACtertiaryAmine [$ACamine;$hd3] #leave off for implict charge
 DEFINE ACamide [O;$(O=[#6][#7]);!$(O=[#6]([#7])[#7,#8,#16])]
 DEFINE ACcarbamate [O;$(O=[#6]([#7])[#8])]
 DEFINE ACurea [O;$(O=[#6]([#7])[#7])]
@@ -32,7 +36,6 @@ DEFINE ACester [O;$(O=[#6][#8]*);!$(O=[#6]([#7,#8,#16])[#8]*)]
 DEFINE ACnitrile [N;$hd1;$(N#C)]
 DEFINE ACimine [N;!$hd3;$(N(=C)C),$(N=[#6]);!$(N=[#6][#7,#8;!$(*S=O)])]
 DEFINE ACketone [O;$hd1;$(O=[#6;$([H2]),$([H1]‐[#6]),$(*([#6])[#6])])]
-#DEFINE ACsecondaryAmine [$ACamine;$hd2;!X4] #leave off for implict charge
 DEFINE ACphenol [O;$hd1;$(Oa)]
 DEFINE ACether [O;$(*([#6;!$(*=[O,S,N])])[#6;!$(*=[O,S,N])])]
 DEFINE ACprimaryAniline [N;$(Na);$hd1]
@@ -42,9 +45,6 @@ DEFINE ACsulphone [O;$(O=[S;$(S(~O)(~O)([#6,#7])[#6])])]
 ### strong acceptors
 DEFINE strongAcceptor [$ACphosphate,$ACcarboxylate,$ACwater,$AChet6N,$ACphosphinyl]
 ### moderate acceptors
-#DEFINE moderateAcceptor
-[$ACsulphoxide,$ACprimaryAmine,$AChet5N,$ACthiocarbonyl,$AChydroxyl,$ACsulphate,$ACtertiary
-Amine,$ACamide,$ACcarbamate,$ACurea]
 DEFINE moderateAcceptor
 [$ACsulphoxide,$AChet5N,$ACthiocarbonyl,$AChydroxyl,$ACsulphate,$ACamide,$ACcarbamate,$AC
 urea]
@@ -58,7 +58,6 @@ DEFINE weakAcceptor
 DEFINE Damine [N;!$(N*=[!#6]);!$(N~[!#6;!#1]);!$(Na);!$(N#*);!$(N=*)]
 DEFINE Dhet5NH [nH;$(n1aaaa1),$(n1aaaaa1)]
 DEFINE DNpH [NH,H2,H3;+]
-#DEFINE DacidOH [OH1;$(O‐[C,S,P]=[O,S])] #leave off for implict protonation
 DEFINE Dhydroxyl [OH1;$hd1;$(O‐C);!$(OC=[O,N,S])]
 DEFINE Dwater [OH2]
 DEFINE DprimaryAmide [N;$hd1;$(NC=O),$(NS=O)]
@@ -72,7 +71,6 @@ DEFINE DphenylOH [OH1;$(Oc)]
 DEFINE DprimaryAmine [$Damine;$hd1]
 DEFINE DsecondaryAmine [$Damine;$hd2]
 ### strong donors
-#DEFINE strongDonor [$Dhet5NH,$DNpH,$DacidOH,$Dhydroxyl]
 DEFINE strongDonor [$Dhet5NH,$DNpH,$Dhydroxyl]
 ### moderate donors
 DEFINE moderateDonor
@@ -98,9 +96,7 @@ DEFINE reverseHydrox O=[CH][NX3][O‐]
 #
 #
 #########################################
-#
-TYPES
-#
+# TYPES #
 #########################################TYPE donor
 TYPE acceptor
 TYPE cation
@@ -112,9 +108,7 @@ TYPE donac
 #
 #
 #########################################
-#
-PATTERNS
-#
+# PATTERNS #
 #########################################
 ###### rings
 PATTERN rings [R]~1~[R]~[R]~[R]1
@@ -156,9 +150,7 @@ PATTERN anion [n;$hd2]1[n;$hd2][n;$hd2][n;$hd2]c1
 #tetrazole
 PATTERN anion [$ANarylsulfonamide,$ANmalonic,$ANarylthiol,$ANhalideion,$ANhydroxylamine]
 #########################################
-#
-Type Patterns
-#
+# Type Patterns #
 #########################################
 ############ metal binders ##############
 #### Pattern Ca_Mg & ZN
