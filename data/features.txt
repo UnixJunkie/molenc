@@ -4,19 +4,20 @@
 # Cavity-Based Pharmacophore Perception, and Virtual Screening"
 # https://pubs.acs.org/doi/suppl/10.1021/acs.jcim.8b00684
 
-#########################################
-# DEFINE #
-#########################################
+# DEFINITIONS #################################################################
+
 ###### define degree (independent of explicit/implicit)
 DEFINE hd1 [X1H0,X2H1,X3H2,X4H3,X5H4,X6H5]
 DEFINE hd2 [X2H0,X3H1,X4H2,X5H3,X6H4]
 DEFINE hd3 [X3H0,X4H1,X5H2,X6H3]
 DEFINE hd4 [X4H0,X5H1,X6H2]
+
 ###### hydrophobic
 DEFINE php [#6,#16&$hd2&!$(S=*),#35,#53;R0;!$(*~[!#1;!#6;!$([#16;$hd2])])]
 DEFINE thp [$php;$hd1]
 DEFINE hp [$php;!$hd1]
 DEFINE ehp [$hp;!$(*([$hp])[$hp])]
+
 ###### acceptors
 DEFINE ACamine [N;!$(N*=[!#6]);!$(N~[!#6;!#1]);!$(Na);!$(N#*);!$(N=*)]
 DEFINE ACphosphate [O;$hd1;$(O~P(~O)~O)]
@@ -42,18 +43,16 @@ DEFINE ACprimaryAniline [N;$(Na);$hd1]
 DEFINE ACnitro [O;$hd1;$(O~N~[O;$hd1])]
 DEFINE AChet5O [o;X2;$(o1cccc1),$(o1ccccc1);!$(*[#6]=O)]
 DEFINE ACsulphone [O;$(O=[S;$(S(~O)(~O)([#6,#7])[#6])])]
-### strong acceptors
+
+###### strong acceptors
 DEFINE strongAcceptor [$ACphosphate,$ACcarboxylate,$ACwater,$AChet6N,$ACphosphinyl]
-### moderate acceptors
-DEFINE moderateAcceptor
-[$ACsulphoxide,$AChet5N,$ACthiocarbonyl,$AChydroxyl,$ACsulphate,$ACamide,$ACcarbamate,$AC
-urea]
-### weak acceptors#DEFINE weakAcceptor
-[$ACnitrile,$ACimine,$ACketone,$ACsecondaryAmine,$ACester,$ACphenol,$ACether,$ACprimaryAnil
-ine,$ACnitro,$AChet5O,$ACsulphone]
-DEFINE weakAcceptor
-[$ACnitrile,$ACimine,$ACketone,$ACester,$ACphenol,$ACether,$ACprimaryAniline,$ACnitro,$AChet
-5O,$ACsulphone]
+
+###### moderate acceptors
+DEFINE moderateAcceptor [$ACsulphoxide,$AChet5N,$ACthiocarbonyl,$AChydroxyl,$ACsulphate,$ACamide,$ACcarbamate,$ACurea]
+
+###### weak acceptors
+DEFINE weakAcceptor [$ACnitrile,$ACimine,$ACketone,$ACester,$ACphenol,$ACether,$ACprimaryAniline,$ACnitro,$AChet5O,$ACsulphone]
+
 ###### donors
 DEFINE Damine [N;!$(N*=[!#6]);!$(N~[!#6;!#1]);!$(Na);!$(N#*);!$(N=*)]
 DEFINE Dhet5NH [nH;$(n1aaaa1),$(n1aaaaa1)]
@@ -70,13 +69,16 @@ DEFINE DimineNH [NH1;$(N=C)]
 DEFINE DphenylOH [OH1;$(Oc)]
 DEFINE DprimaryAmine [$Damine;$hd1]
 DEFINE DsecondaryAmine [$Damine;$hd2]
+
 ### strong donors
 DEFINE strongDonor [$Dhet5NH,$DNpH,$Dhydroxyl]
+
 ### moderate donors
-DEFINE moderateDonor
-[$Dwater,$DprimaryAmide,$DanilineNH,$DamidineNH,$DsecondaryAmide,$DanilineNH2]
+DEFINE moderateDonor [$Dwater,$DprimaryAmide,$DanilineNH,$DamidineNH,$DsecondaryAmide,$DanilineNH2]
+
 ### weak donors
 DEFINE weakDonor [$DhydraN,$DimineNH,$DphenylOH,$DprimaryAmine,$DsecondaryAmine]
+
 ###### anion intermediate
 DEFINE negHet [#8,#16;$hd1]
 DEFINE terminalHet [#7,#8,#16;$hd1]
@@ -85,19 +87,19 @@ DEFINE ANmalonic [C;!$hd4;$(C(C=[O,S])C=[O,S])]
 DEFINE ANarylthiol [S;$hd1;$(Sa)]
 DEFINE ANhalideion [I,Br,Cl,F;!H0,‐]
 DEFINE ANhydroxylamine [O;$hd1;$(ON~C),$(O[n+]),$(O=n);!$(ONC=[S,O,N])]
+
 ###### cation intermediate
 DEFINE CATnonewN [#7;!$(NC=O);!$(NS(=O)=O)]
 DEFINE CATguanidine [$CATnonewN]!:[#6](!:[$CATnonewN])!:[$CATnonewN]
 DEFINE CATguanidineC [#6]~[$CATguanidine]
 DEFINE CATamine [N;!$(N*=[!#6]);!$(N~[!#6;!#1]);!$(Na);!$(N=*);!$(N#*);!$([#7;X0])]
+
 ###### Zn intermediates
 DEFINE hydroxamate O=[CX3]N[O‐]
 DEFINE reverseHydrox O=[CH][NX3][O‐]
-#
-#
-#########################################
-# TYPES #
-#########################################TYPE donor
+
+# TYPES #######################################################################
+TYPE donor
 TYPE acceptor
 TYPE cation
 TYPE anion
@@ -105,58 +107,53 @@ TYPE rings
 TYPE hydrophobe
 TYPE metal
 TYPE donac
-#
-#
-#########################################
-# PATTERNS #
-#########################################
+
+# PATTERNS ####################################################################
+
 ###### rings
 PATTERN rings [R]~1~[R]~[R]~[R]1
 PATTERN rings [R]~1~[R]~[R]~[R]~[R]1
 PATTERN rings [R]~1~[R]~[R]~[R]~[R]~[R]1
 PATTERN rings [R]~1~[R]~[R]~[R]~[R]~[R]~[R]1
+
 ### hydrophobic
 # terminal hp
 PATTERN hydrophobe [$thp]~*(~[$thp])~[$thp]
-#triple
-PATTERN hydrophobe [$thp][!$(*(~[$thp])(~[$thp])~[$thp]);!$(*=[N,S,O])][$thp] #double
+PATTERN hydrophobe [$thp][!$(*(~[$thp])(~[$thp])~[$thp]);!$(*=[N,S,O])][$thp]
 PATTERN hydrophobe [$thp;!$(*~*~[$thp]);$(*~[$php])]
-#single
 PATTERN hydrophobe [$thp;#35,#53]
-#large
 # non‐terminal hp
 PATTERN hydrophobe [$ehp][$hp][$hp][$ehp]
 PATTERN hydrophobe [$ehp]([$ehp])[$hp][$ehp]
 PATTERN hydrophobe [$hp]([$ehp])([$ehp])[$ehp]
 PATTERN hydrophobe [$ehp][$hp][$hp][$hp][$ehp]
 PATTERN hydrophobe [$ehp][$hp][$hp;$(*[$hp][$hp][$ehp])]
+
 ### donor/acceptor patterns
 PATTERN acceptor [$strongAcceptor,$moderateAcceptor,$weakAcceptor]
 PATTERN donor [$strongDonor,$moderateDonor,$weakDonor]
+
 ### anion/cation patterns
 # cations
-PATTERN cation [$CATnonewN]!:[#6;!$(C(N)(N)N)](!:[$CATnonewN])!:[$CATnonewN] #guanidine
-PATTERN cation [$CATnonewN]!:[#6;!$([$CATguanidineC]);!$(C(N)N)]!:[$CATnonewN] #amidine
+PATTERN cation [$CATnonewN]!:[#6;!$(C(N)(N)N)](!:[$CATnonewN])!:[$CATnonewN]
+PATTERN cation [$CATnonewN]!:[#6;!$([$CATguanidineC]);!$(C(N)N)]!:[$CATnonewN]
 PATTERN cation n:1cncc1
-#azole
 PATTERN cation [$CATamine]
+
 # anions
 PATTERN anion [$negHet][#6X3]~[$terminalHet]
-#carboxylate
-PATTERN anion [$negHet][#16X4](~[$terminalHet])~[$terminalHet] #sulfonate
+PATTERN anion [$negHet][#16X4](~[$terminalHet])~[$terminalHet]
 PATTERN anion [$negHet][#15X4](=O)[$negHet,$terminalHet]
-#phosphonate
 PATTERN anion [n;$hd2]1[n;$hd2][n;$hd2][n;$hd2]c1
-#tetrazole
 PATTERN anion [$ANarylsulfonamide,$ANmalonic,$ANarylthiol,$ANhalideion,$ANhydroxylamine]
-#########################################
-# Type Patterns #
-#########################################
-############ metal binders ##############
+
+# Type Patterns ###############################################################
+############ metal binders
+
 #### Pattern Ca_Mg & ZN
 PATTERN metal [#8;‐]
-PATTERN metal [#16;‐]#### Pattern Ca_Mg
-# PATTERN metal [nh0]1aaaa1
+PATTERN metal [#16;‐]
+
 ##### Pattern Zn
 PATTERN metal [nh0;‐]
 PATTERN metal [#7;‐]
