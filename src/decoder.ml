@@ -77,12 +77,13 @@ let main () =
             L.iteri (fun i mol ->
                 let name = MSE_mol.get_name mol in
                 let map = MSE_mol.get_map mol in
-                (* feature values _MUST_ be printed out in increasing order of feature
-                   ids; hence the IntMap we create *)
+                (* feature values _MUST_ be printed out in increasing order
+                   of feature ids; hence the IntMap we create *)
                 let feat_counts =
                   StringMap.fold (fun feat count acc ->
                       let feat_id =
-                        Ht.(find_default features_seen feat (length features_seen)) in
+                        Ht.(find_default
+                              features_seen feat (length features_seen)) in
                       Ht.replace features_seen feat feat_id;
                       IntMap.add feat_id count acc
                     ) map IntMap.empty in
