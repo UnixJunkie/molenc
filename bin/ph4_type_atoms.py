@@ -1,12 +1,9 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # usage: list_features.py molecules.sdf
 
-from __future__ import print_function
-
 import common
 import os, sys, time
-from sets import Set
 from rdkit import RDConfig
 from rdkit import Chem
 from rdkit.Chem import AllChem
@@ -137,7 +134,7 @@ def get_ph4_feats(mol):
     # a given atom
     for a in mol.GetAtoms():
         id = a.GetIdx()
-        atom_index_to_features[id] = Set([])
+        atom_index_to_features[id] = set([])
     for i in acc_match:
         atom_index_to_features[i].add('A')
     for arom in [arom4_match, arom5_match, arom6_match, arom7_match, arom8_match]:
