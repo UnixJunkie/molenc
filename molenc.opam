@@ -19,7 +19,7 @@ depends: [
 ]
 synopsis: "Molecular encoder/featurizer using rdkit and OCaml"
 description: """Chemical fingerprints are lossy encodings of molecules.
-Molenc allows to encode molecules using unfolded and counted fingerprints
+molenc allows to encode molecules using unfolded and counted fingerprints
 (i.e. potentially very long, but sparse, integer vectors).
 
 Currently, Faulon fingerprints are supported.
