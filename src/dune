@@ -2,4 +2,4 @@
 (executables
   (names        encoder decoder)
   (public_names lbvs_msenc lbvs_msdec)
-  (libraries batteries dolog parmap minicli camlzip))
+  (libraries batteries dolog parmap minicli))

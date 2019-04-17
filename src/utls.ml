@@ -75,21 +75,21 @@ let with_infile_outfile (in_fn: filename) (out_fn: filename) (f: in_channel -> o
   close_out output;
   res
 
-let with_gzip_in_file (fn: string) (f: Gzip.in_channel -> 'a): 'a =
-  let input = Gzip.open_in fn in
-  let res = f input in
-  Gzip.close_in input;
-  res
-
-let with_gzip_out_file
-    (level: int) (fn: string) (f: Gzip.out_channel -> 'a): 'a =
-  let output = Gzip.open_out ~level fn in
-  let res = f output in
-  Gzip.close_out output;
-  res
-
-let gzip_output_string (chan: Gzip.out_channel) (s: string): unit =
-  Gzip.output_substring chan s 0 (String.length s)
+(* let with_gzip_in_file (fn: string) (f: Gzip.in_channel -> 'a): 'a =
+ *   let input = Gzip.open_in fn in
+ *   let res = f input in
+ *   Gzip.close_in input;
+ *   res
+ * 
+ * let with_gzip_out_file
+ *     (level: int) (fn: string) (f: Gzip.out_channel -> 'a): 'a =
+ *   let output = Gzip.open_out ~level fn in
+ *   let res = f output in
+ *   Gzip.close_out output;
+ *   res
+ * 
+ * let gzip_output_string (chan: Gzip.out_channel) (s: string): unit =
+ *   Gzip.output_substring chan s 0 (String.length s) *)
 
 let lines_of_file (fn: filename): string list =
   with_in_file fn (fun input ->
