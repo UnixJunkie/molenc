@@ -46,28 +46,12 @@ let main () =
               %s -i db\n\
               -i <filename>: encoded molecules database\n\
               -o <filename>: where to write decoded molecules\n\
-              --r-mode: create data and labels files for R\n\
-              --bitstring <filename>: output FPs as bitstrings\n\
-              --max-feat <int>: maximum possible feature index\
-                                (needed if --r-mode)\n"
+              --bitstring <filename>: output FPs as bitstrings\n"
        Sys.argv.(0);
      exit 1);
   let db_fn = CLI.get_string ["-i"] args in
   let output_fn = CLI.get_string ["-o"] args in
-  let r_output_mode = CLI.get_set_bool ["--r-mode"] args in
   let maybe_bin_fn = CLI.get_string_opt ["--bitstring"] args in
-  let max_feat =
-    if r_output_mode then CLI.get_int ["--max-feat"] args
-    else -1 in
-  let r_data_fn, r_labels_fn =
-    if r_output_mode then
-      let out_prfx = Filename.remove_extension db_fn in
-      let data_fn, labels_fn =
-        (out_prfx ^ "_data.csv", out_prfx ^ "_labels.csv") in
-      Log.info "creating %s" data_fn;
-      Log.info "creating %s" labels_fn;
-      (data_fn, labels_fn)
-    else ("/dev/null", "/dev/null") in
   CLI.finalize ();
   let all_lines = Utls.lines_of_file db_fn in
   match all_lines with
@@ -80,44 +64,28 @@ let main () =
     let feat_id_to_max_count = Ht.create nb_mols in
     let mol_name_idx_to_feat_counts = Ht.create nb_mols in
     Utls.with_out_file output_fn (fun out ->
-        Utls.with_out_file r_data_fn (fun data_out ->
-            Utls.with_out_file r_labels_fn (fun labels_out ->
-                L.iteri (fun i mol ->
-                    let name = MSE_mol.get_name mol in
-                    let map = MSE_mol.get_map mol in
-                    (* feature values _MUST_ be printed out in increasing
+        L.iteri (fun i mol ->
+            let name = MSE_mol.get_name mol in
+            let map = MSE_mol.get_map mol in
+            (* feature values _MUST_ be printed out in increasing
                        order of feature ids; hence the IntMap we create *)
-                    let feat_counts =
-                      StringMap.fold (fun feat count acc ->
-                          let curr_nb_feats = Ht.length feat_to_id in
-                          let feat_id =
-                            Ht.find_default
-                              feat_to_id feat curr_nb_feats in
-                          Ht.replace feat_to_id feat feat_id;
-                          let prev_max_count =
-                            Ht.find_default feat_id_to_max_count feat_id 0 in
-                          Ht.replace feat_id_to_max_count
-                            feat_id (max prev_max_count count);
-                          IntMap.add feat_id count acc
-                        ) map IntMap.empty in
-                    Ht.add mol_name_idx_to_feat_counts (name, i) feat_counts;
-                    (* FBR: kill r_output_mode *)
-                    if r_output_mode then
-                      begin
-                        let line = csv_line_of_int_map max_feat feat_counts in
-                        fprintf data_out "%s\n" line;
-                        let label_int =
-                          if String.starts_with name "active" then 1 else -1 in
-                        fprintf labels_out
-                          (if i > 0 then "\t%d" else "%d") label_int
-                      end
-                    else
-                      fprintf out "%s,0.0,[%s]\n"
-                        name (mop2d_line_of_int_map feat_counts)
-                  ) all_mols;
-                fprintf labels_out "\n";
-              )
-          )
+            let feat_counts =
+              StringMap.fold (fun feat count acc ->
+                  let curr_nb_feats = Ht.length feat_to_id in
+                  let feat_id =
+                    Ht.find_default
+                      feat_to_id feat curr_nb_feats in
+                  Ht.replace feat_to_id feat feat_id;
+                  let prev_max_count =
+                    Ht.find_default feat_id_to_max_count feat_id 0 in
+                  Ht.replace feat_id_to_max_count
+                    feat_id (max prev_max_count count);
+                  IntMap.add feat_id count acc
+                ) map IntMap.empty in
+            Ht.add mol_name_idx_to_feat_counts (name, i) feat_counts;
+            fprintf out "%s,0.0,[%s]\n"
+              name (mop2d_line_of_int_map feat_counts)
+          ) all_mols;
       );
     (* FBR: the dictionary should go in its own file; or at least as comment
      * lines in the output file *)
