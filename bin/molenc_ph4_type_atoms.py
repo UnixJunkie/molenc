@@ -2,7 +2,7 @@
 
 # usage: list_features.py molecules.sdf
 
-import common
+import molenc_common
 import os, sys, time
 from rdkit import RDConfig
 from rdkit import Chem
@@ -178,8 +178,8 @@ if __name__ == '__main__':
     for mol in mol_supplier:
         print("#atoms:%d %s" % (mol.GetNumAtoms(), mol.GetProp('_Name')))
         get_mol_feats(mol)
-        common.print_bonds(mol)
-        common.print_distance_matrix(mol)
+        molenc_common.print_bonds(mol)
+        molenc_common.print_distance_matrix(mol)
         count += 1
     after = time.time()
     dt = after - before

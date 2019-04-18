@@ -5,7 +5,7 @@
 # formal charges are ignored, as was the case in the seminal implementation
 # of atom pairs, not sure this is very smart though
 
-import common, os, rdkit, sys, time
+import molenc_common, os, rdkit, sys, time
 from rdkit import Chem
 from rdkit import RDConfig
 from rdkit.Chem import AllChem, Descriptors
@@ -75,8 +75,8 @@ if __name__ == '__main__':
     for name, mol in mol_supplier(input):
         print("#atoms:%d %s" % (mol.GetNumAtoms(), name))
         print_encoded_atoms(encode_molecule(mol))
-        common.print_bonds(mol)
-        common.print_distance_matrix(mol)
+        molenc_common.print_bonds(mol)
+        molenc_common.print_distance_matrix(mol)
         count += 1
     after = time.time()
     dt = after - before
