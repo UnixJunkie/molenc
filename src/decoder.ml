@@ -24,6 +24,20 @@ let mop2d_line_of_int_map map =
     ) map;
   Buffer.contents buff
 
+let iwn_line_of_int_map map =
+  let buff = Buffer.create 11 in
+  let start = ref true in
+  let total = float (IntMap.fold (fun _k v acc -> acc + v) map 0) in
+  IntMap.iter (fun k v ->
+      let scaled = (float v) /. total in
+      if !start then
+        (bprintf buff "%d:%f" k scaled;
+         start := false)
+      else
+        bprintf buff " %d:%f" k scaled
+    ) map;
+  Buffer.contents buff
+
 let csv_line_of_int_map max_feat map =
   let buff = Buffer.create 11 in
   let max_key, _v = IntMap.max_binding map in
@@ -46,12 +60,14 @@ let main () =
               %s -i db\n\
               -i <filename>: encoded molecules database\n\
               -o <filename>: where to write decoded molecules\n\
+              --iwn: perform Instance-Wise Normalisation\n\
               --bitstring <filename>: output FPs as bitstrings\n"
        Sys.argv.(0);
      exit 1);
   let db_fn = CLI.get_string ["-i"] args in
   let output_fn = CLI.get_string ["-o"] args in
   let maybe_bin_fn = CLI.get_string_opt ["--bitstring"] args in
+  let normalize = CLI.get_set_bool ["--iwn"] args in
   CLI.finalize ();
   let all_lines = Utls.lines_of_file db_fn in
   match all_lines with
@@ -83,8 +99,14 @@ let main () =
                   IntMap.add feat_id count acc
                 ) map IntMap.empty in
             Ht.add mol_name_idx_to_feat_counts (name, i) feat_counts;
-            fprintf out "%s,0.0,[%s]\n"
-              name (mop2d_line_of_int_map feat_counts)
+            if normalize then
+              let label =
+                if BatString.starts_with name "active" then 1 else -1 in
+              let line = iwn_line_of_int_map feat_counts in
+              fprintf out "%+d %s\n" label line
+            else
+              let line = mop2d_line_of_int_map feat_counts in
+              fprintf out "%s,0.0,[%s]\n" name line
           ) all_mols;
       );
     (* FBR: the dictionary should go in its own file; or at least as comment
