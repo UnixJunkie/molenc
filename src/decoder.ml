@@ -28,7 +28,8 @@ let iwn_line_of_int_map map =
   let buff = Buffer.create 11 in
   let start = ref true in
   let total = float (IntMap.fold (fun _k v acc -> acc + v) map 0) in
-  IntMap.iter (fun k v ->
+  IntMap.iter (fun k' v ->
+      let k = k' + 1 in
       let scaled = (float v) /. total in
       if !start then
         (bprintf buff "%d:%f" k scaled;
