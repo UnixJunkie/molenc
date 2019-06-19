@@ -11,6 +11,7 @@ install: [
   ["cp" "bin/molenc_type_atoms.py" "%{bin}%/molenc_type_atoms.py"]
   ["cp" "bin/molenc_ph4_type_atoms.py" "%{bin}%/molenc_ph4_type_atoms.py"]
   ["cp" "bin/molenc_common.py" "%{bin}%/molenc_common.py"]
+  ["cp" "bin/molenc.sh" "%{bin}%/molenc.sh"]
 ]
 depends: [
   "dune" {build}
