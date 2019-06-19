@@ -17,6 +17,10 @@ tmp_smi=$tmp'_std.smi'
 tmp_types=$tmp'_std.types'
 tmp_enc=$tmp'_std.enc'
 
+# tell user how to install standardiser if not here
+which standardiser 2>&1 > /dev/null || \
+    echo 'ERROR: type: pip3 install chemo-standardizer'
+
 (standardiser -i $input -o $tmp_smi 2>&1) > $std_log
 molenc_type_atoms.py $tmp_smi > $tmp_types
 molenc_e -i $tmp_types -r 0:1 -o $tmp_enc
