@@ -39,19 +39,6 @@ let iwn_line_of_int_map map =
     ) map;
   Buffer.contents buff
 
-let csv_line_of_int_map max_feat map =
-  let buff = Buffer.create 11 in
-  let max_key, _v = IntMap.max_binding map in
-  if max_key > max_feat then
-    failwith (sprintf
-                "Decoder.csv_line_of_int_map: max_key (%d) > max_feat (%d)"
-                max_key max_feat);
-  for k = 0 to max_feat do
-    let v = IntMap.find_default 0 k map in
-    bprintf buff (if k > 0 then "\t%d" else "%d") v
-  done;
-  Buffer.contents buff
-
 let main () =
   Log.(set_log_level INFO);
   Log.color_on ();
@@ -61,14 +48,12 @@ let main () =
               %s -i db\n\
               -i <filename>: encoded molecules database\n\
               -o <filename>: where to write decoded molecules\n\
-              --iwn: perform Instance-Wise Normalisation\n\
-              --bitstring <filename>: output FPs as bitstrings\n"
+              --iwn: perform Instance-Wise Normalisation\n"
        Sys.argv.(0);
      exit 1);
   let db_fn = CLI.get_string ["-i"] args in
   let output_fn = CLI.get_string ["-o"] args in
   let dico_fn = output_fn ^ ".dix" in
-  let maybe_bin_fn = CLI.get_string_opt ["--bitstring"] args in
   let normalize = CLI.get_set_bool ["--iwn"] args in
   CLI.finalize ();
   let all_lines = Utls.lines_of_file db_fn in
@@ -85,7 +70,7 @@ let main () =
             let name = MSE_mol.get_name mol in
             let map = MSE_mol.get_map mol in
             (* feature values _MUST_ be printed out in increasing
-                       order of feature ids; hence the IntMap we create *)
+               order of feature ids; hence the IntMap we create *)
             let feat_counts =
               StringMap.fold (fun feat count acc ->
                   let curr_nb_feats = Ht.length feat_to_id in
@@ -126,33 +111,10 @@ let main () =
               fprintf out "%d %d %s\n" id max_count feature;
               acc + max_count
             ) 0 incr_feat_ids
-      ) in
+        ) in
     let nb_features = Ht.length feat_to_id in
     Log.info "read %d molecules from %s" nb_mols db_fn;
     Log.info "#features: %d largest_field: %d #bits/ligand: %d"
-      nb_features !max_bitwidth total_bits_required;
-    (* output in binary strings format *)
-    match maybe_bin_fn with
-    | None -> ()
-    | Some bin_fn ->
-      Utls.with_out_file bin_fn (fun bin_out ->
-          L.iteri (fun i mol ->
-              (* molecule name *)
-              let name = MSE_mol.get_name mol in
-              fprintf bin_out "%s,0.0," name;
-              let feat_counts =
-                Ht.find mol_name_idx_to_feat_counts (name, i) in
-              (* bitstring representation *)
-              for feat_id = 0 to nb_features - 1 do
-                let nb_bits = Ht.find feat_id_to_max_count feat_id in
-                let count = IntMap.find_default 0 feat_id feat_counts in
-                let ones = String.make count '1' in
-                let zeroes = String.make (nb_bits - count) '0' in
-                fprintf bin_out "%s%s" ones zeroes
-              done;
-              (* terminate line *)
-              fprintf bin_out "\n"
-            ) all_mols;
-        )
+      nb_features !max_bitwidth total_bits_required
 
 let () = main ()
