@@ -146,7 +146,8 @@ let main () =
                let max_count = Ht.find feat_id_to_max_count id in
                fprintf out "%d %d %s\n" id max_count feature
              ) incr_feat_ids
-         )
+         );
+       Log.info "dictionary written to %s" dico_fn
     );
     let nb_features = Ht.length feat_to_id in
     Log.info "read %d molecules from %s" nb_mols db_fn;
