@@ -39,6 +39,19 @@ let iwn_line_of_int_map map =
     ) map;
   Buffer.contents buff
 
+(* reconstruct map/dico feat->featId from given file *)
+let dico_of_file fn =
+  let feat_to_id = Ht.create 10_000 in
+  Utls.iter_on_lines_of_file fn (fun line ->
+      if not (BatString.starts_with line "#") then
+        Scanf.sscanf line "%d %d %s" (fun id _max_count feat ->
+            (* the binding defined in the dictionary should be unique *)
+            assert(not (Ht.mem feat_to_id feat));
+            Ht.add feat_to_id feat id
+          )
+    );
+  feat_to_id
+
 let main () =
   Log.(set_log_level INFO);
   Log.color_on ();
