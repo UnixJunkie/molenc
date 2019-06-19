@@ -67,6 +67,7 @@ let main () =
      exit 1);
   let db_fn = CLI.get_string ["-i"] args in
   let output_fn = CLI.get_string ["-o"] args in
+  let dico_fn = output_fn ^ ".dix" in
   let maybe_bin_fn = CLI.get_string_opt ["--bitstring"] args in
   let normalize = CLI.get_set_bool ["--iwn"] args in
   CLI.finalize ();
@@ -76,7 +77,6 @@ let main () =
   | db_rad :: rest ->
     let all_mols = MSE_mol.of_lines rest in
     let nb_mols = L.length all_mols in
-    Log.info "%s" db_rad;
     let feat_to_id = Ht.create nb_mols in
     let feat_id_to_max_count = Ht.create nb_mols in
     let mol_name_idx_to_feat_counts = Ht.create nb_mols in
@@ -110,23 +110,23 @@ let main () =
               fprintf out "%s,0.0,[%s]\n" name line
           ) all_mols;
       );
-    (* FBR: the dictionary should go in its own file; or at least as comment
-     * lines in the output file *)
-    (* output dictionary and max_counts *)
     let incr_feat_ids =
       let feat_ids' = Ht.to_list feat_to_id in
       L.sort (fun (_feat1, id1) (_feat2, id2) ->
           BatInt.compare id1 id2
         ) feat_ids' in
-    printf "#DICTIONARY:\n";
+    (* output dictionary and max_counts *)
     let max_bitwidth = ref 0 in
     let total_bits_required =
-      L.fold_left (fun acc (feature, id) ->
-          let max_count = Ht.find feat_id_to_max_count id in
-          max_bitwidth := max !max_bitwidth max_count;
-          printf "#%d:%d:%s\n" id max_count feature;
-          acc + max_count
-        ) 0 incr_feat_ids in
+      Utls.with_out_file dico_fn (fun out ->
+          fprintf out "%s\n#featId maxCount featStr\n" db_rad;
+          L.fold_left (fun acc (feature, id) ->
+              let max_count = Ht.find feat_id_to_max_count id in
+              max_bitwidth := max !max_bitwidth max_count;
+              fprintf out "%d %d %s\n" id max_count feature;
+              acc + max_count
+            ) 0 incr_feat_ids
+      ) in
     let nb_features = Ht.length feat_to_id in
     Log.info "read %d molecules from %s" nb_mols db_fn;
     Log.info "#features: %d largest_field: %d #bits/ligand: %d"
