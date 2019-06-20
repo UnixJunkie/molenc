@@ -9,7 +9,7 @@ license: "BSD-3"
 build: ["dune" "build" "-p" name "-j" jobs]
 install: [
   ["cp" "bin/molenc_type_atoms.py" "%{bin}%/molenc_type_atoms.py"]
-  ["cp" "bin/molenc_ph4_type_atoms.py" "%{bin}%/molenc_ph4_type_atoms.py"]
+  # ["cp" "bin/molenc_ph4_type_atoms.py" "%{bin}%/molenc_ph4_type_atoms.py"]
   ["cp" "bin/molenc_common.py" "%{bin}%/molenc_common.py"]
   ["cp" "bin/molenc.sh" "%{bin}%/molenc.sh"]
 ]
@@ -17,14 +17,13 @@ depends: [
   "dune" {build}
   "batteries"
   "dolog"
-  "parmap"
   "minicli"
   "conf-rdkit"
 ]
 synopsis: "Molecular encoder/featurizer using rdkit and OCaml"
 description: """Chemical fingerprints are lossy encodings of molecules.
-molenc allows to encode molecules using unfolded and counted fingerprints
-(i.e. potentially very long, but sparse, integer vectors).
+molenc allows to encode molecules using unfolded-counted fingerprints
+(i.e. a potentially very long but sparse vector of positive integers).
 
 Currently, Faulon fingerprints are supported.
 In the future, atom pair fingerprints might be added.
@@ -32,8 +31,6 @@ Currently, atom types are the quadruplet
 (#pi-electrons, element symbol, #HA neighbors, formal charge).
 In the future, pharmacophore features might be supported (a more abstract/fuzzy
 atom typing scheme).
-In the future, the stereo-chemistry information that can be encoded
-into SMILES strings might be taken into account.
 
 Bibliography:
 

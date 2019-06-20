@@ -2,4 +2,4 @@
 (executables
   (names        encoder decoder)
   (public_names molenc_e molenc_d)
-  (libraries batteries dolog parmap minicli))
+  (libraries batteries dolog minicli))
