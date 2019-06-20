@@ -2,9 +2,16 @@
 
 Molecular encoder using rdkit and OCaml.
 
-OUTDATED DESCRIPTION
 The implemented fingerprint is J-L Faulon's "Signature Molecular Descriptor".
-This is a counted, unfolded fingerprint of molecules.
+This is an unfolded-counted chemical fingerprint.
+Such fingerprints are less lossy than most well-known chemical fingerprints
+like ECFP4.
+
+Some advantages: such fingerprints don't create feature collisions upon encoding.
+Also, upon encoding, a feature dictionary is created. It can be used
+later on to map a given feature index to an atom environment.
+
+We recommend using a radius of zero to one (molenc_d -r 0:1 ...).
 
 The fingerprint can be run using atom types
 (#pi-electrons, element symbol, #HA neighbors, formal charge) or rdkit
