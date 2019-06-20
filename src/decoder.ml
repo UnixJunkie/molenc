@@ -100,6 +100,7 @@ let main () =
     | Some fn -> Read_from fn in
   let normalize = CLI.get_set_bool ["--iwn"] args in
   CLI.finalize ();
+  Log.info "reading molecules...";
   let all_lines = Utls.lines_of_file db_fn in
   match all_lines with
   | [] -> assert(false)
@@ -111,7 +112,7 @@ let main () =
       | Write_to _fn -> Ht.create nb_mols in
     let feat_id_to_max_count = Ht.create nb_mols in
     Utls.with_out_file output_fn (fun out ->
-        L.iter (fun mol ->
+        L.iteri (fun mol_count mol ->
             let name = MSE_mol.get_name mol in
             let map = MSE_mol.get_map mol in
             (* feature values _MUST_ be printed out in increasing
@@ -121,14 +122,17 @@ let main () =
                 feat_counts_dico_RW feat_to_id feat_id_to_max_count map
               | Read_from _ ->
                 feat_counts_dico_RO feat_to_id map in
-            if normalize then
-              let label =
-                if BatString.starts_with name "active" then 1 else -1 in
+            (if normalize then
+               let label =
+                 if BatString.starts_with name "active" then 1 else -1 in
               let line = iwn_line_of_int_map feat_counts in
-              fprintf out "%+d %s\n" label line
-            else
-              let line = mop2d_line_of_int_map feat_counts in
-              fprintf out "%s,0.0,[%s]\n" name line
+               fprintf out "%+d %s\n" label line
+             else
+               let line = mop2d_line_of_int_map feat_counts in
+               fprintf out "%s,0.0,[%s]\n" name line
+            );
+            if (mol_count mod 1000) = 0 then
+              printf "done: %d/%d\r%!" (mol_count + 1) nb_mols
           ) all_mols
       );
     let incr_feat_ids =
