@@ -24,8 +24,8 @@ let main () =
        Sys.argv.(0);
      exit 1);
   let input_fn = CLI.get_string ["-i"] args in
-  assert(BatString.ends_with input_fn ".types" ||
-         BatString.ends_with input_fn ".ph4");
+  (* assert(BatString.ends_with input_fn ".types" ||
+   *        BatString.ends_with input_fn ".ph4"); *)
   let output_fn = CLI.get_string ["-o"] args in
   let scale = Scale.of_string (CLI.get_string ["-r"] args) in
   let radii = Scale.to_list scale in
