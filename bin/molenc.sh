@@ -21,8 +21,11 @@ tmp_enc=$tmp'_std.enc'
 which standardiser 2>&1 > /dev/null || \
     echo 'ERROR: type: pip3 install chemo-standardizer'
 
+echo standardizing molecules...
 (standardiser -i $input -o $tmp_smi 2>&1) > $std_log
+echo typing atoms...
 molenc_type_atoms.py $tmp_smi > $tmp_types
+echo encoding molecules...
 molenc_e -i $tmp_types -r 0:1 -o $tmp_enc
 molenc_d -i $tmp_enc -o $output
 
