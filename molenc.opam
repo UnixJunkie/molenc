@@ -7,10 +7,12 @@ dev-repo: "git+https://github.com/UnixJunkie/molenc.git"
 license: "BSD-3"
 build: ["dune" "build" "-p" name "-j" jobs]
 install: [
-  ["cp" "bin/molenc_type_atoms.py" "%{bin}%/molenc_type_atoms.py"]
   # ["cp" "bin/molenc_ph4_type_atoms.py" "%{bin}%/molenc_ph4_type_atoms.py"]
   ["cp" "bin/molenc_common.py" "%{bin}%/molenc_common.py"]
+  ["cp" "bin/molenc_type_atoms.py" "%{bin}%/molenc_type_atoms.py"]
+  ["cp" "bin/molenc_scan.py" "%{bin}%/molenc_scan.py"]
   ["cp" "bin/molenc.sh" "%{bin}%/molenc.sh"]
+  ["cp" "bin/molenc_scan.sh" "%{bin}%/molenc_scan.sh"]
 ]
 depends: [
   "dune" {build}
