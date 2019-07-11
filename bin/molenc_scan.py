@@ -25,7 +25,10 @@ if __name__ == '__main__':
     count = 0
     wildcard = Chem.Atom(0)
     for name, mol in RobustSmilesMolSupplier(input):
+        # output original molecule first
+        print("%s\t%s" % (smi, name))
         num_atoms = mol.GetNumAtoms()
+        # then output its variants
         for i in range(num_atoms):
             editable = Chem.EditableMol(mol)
             editable.ReplaceAtom(i, wildcard, preserveProps=True)
