@@ -13,7 +13,7 @@ def RobustSmilesMolSupplier(filename):
             words = line.split()
             smile = words[0]
             name = " ".join(words[1:]) # everything after the SMILES string
-            yield (name, Chem.MolFromSmiles(smile))
+            yield (name, smile)
 
 if __name__ == '__main__':
     before = time.time()
@@ -24,9 +24,10 @@ if __name__ == '__main__':
     input = sys.argv[1]
     count = 0
     wildcard = Chem.Atom(0)
-    for name, mol in RobustSmilesMolSupplier(input):
+    for name, orig_smile in RobustSmilesMolSupplier(input):
+        mol = Chem.MolFromSmiles(orig_smile)
         # output original molecule first
-        print("%s\t%s" % (smi, name))
+        print("%s\t%s" % (orig_smile, name))
         num_atoms = mol.GetNumAtoms()
         # then output its variants
         for i in range(num_atoms):
