@@ -17,8 +17,6 @@ def RobustSmilesMolSupplier(filename):
             name = " ".join(words[1:]) # everything after the SMILES string
             yield (name, Chem.MolFromSmiles(smile))
 
-# FBR: check params and print usage if necessary
-
 # draw all atoms in black
 drawOptions = Draw.DrawingOptions()
 drawOptions.elemDict = {}
