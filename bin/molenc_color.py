@@ -19,6 +19,11 @@ def RobustSmilesMolSupplier(filename):
 
 # FBR: check params and print usage if necessary
 
+# draw all atoms in black
+drawOptions = Draw.DrawingOptions()
+drawOptions.elemDict = {}
+drawOptions.bgColor = None
+
 if __name__ == '__main__':
     smiles_fn = sys.argv[1]
     deltas_fn = sys.argv[2]
@@ -49,10 +54,12 @@ if __name__ == '__main__':
             weight = delta / delta_max
             weights.append(weight)
         sim_map = Draw.SimilarityMaps.\
-                  GetSimilarityMapFromWeights(mol, weights, size = (200,200))
+                  GetSimilarityMapFromWeights(mol, weights, size = (200,200),
+                                              options=drawOptions)
         # the bbox param forces centering the molecule in the figure
         sim_map.savefig(name + '.svg', bbox_inches = 'tight')
         plot.close(sim_map)
         count += 1
+        print('processed: %d\r' % count, end='')
     print('processed: %d' % count)
     delta_file.close()
