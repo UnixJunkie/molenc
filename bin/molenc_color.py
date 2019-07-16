@@ -25,6 +25,9 @@ drawOptions.elemDict = {}
 drawOptions.bgColor = None
 
 if __name__ == '__main__':
+    if len(sys.argv) != 3:
+        print("usage: %s molecules.smi molecules.delta" % sys.argv[0])
+        exit(1)
     smiles_fn = sys.argv[1]
     deltas_fn = sys.argv[2]
     delta_max = 0.1 # arbitrary, to normalize deltas and color-scale them
