@@ -55,7 +55,8 @@ if __name__ == '__main__':
             weights.append(weight)
         sim_map = Draw.SimilarityMaps.\
                   GetSimilarityMapFromWeights(mol, weights, size = (200,200),
-                                              options=drawOptions)
+                                              options=drawOptions,
+                                              scale=50.0)
         # the bbox param forces centering the molecule in the figure
         sim_map.savefig(name + '.svg', bbox_inches = 'tight')
         plot.close(sim_map)
