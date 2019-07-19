@@ -1,5 +1,5 @@
 
 (executables
-  (names        encoder decoder)
-  (public_names molenc_e molenc_d)
+  (names        encoder  decoder filter)
+  (public_names molenc_e molenc_d molenc_f)
   (libraries batteries dolog minicli))
