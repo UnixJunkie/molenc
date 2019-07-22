@@ -1,5 +1,19 @@
 
+(library
+  (name molenc)
+  (public_name molenc)
+  (modules ap_types atom_env mini_mol MSE_mol myList node piEltHA scale utls)
+  (libraries batteries dolog))
+
+;; installed executables / public targets
 (executables
-  (names        encoder  decoder filter)
+  (names encoder decoder filter)
   (public_names molenc_e molenc_d molenc_f)
-  (libraries batteries dolog minicli))
+  (modules encoder decoder filter)
+  (libraries molenc batteries dolog minicli))
+
+;; never installed executables
+(executables
+  (names fp_test)
+  (modules fp_test)
+  (libraries molenc batteries dolog))
