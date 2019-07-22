@@ -137,6 +137,19 @@ let map_on_lines_of_file (fn: filename) (f: string -> 'a): 'a list =
       else raise exn
     )
 
+let mapi_on_lines_of_file (fn: filename) (f: int -> string -> 'a): 'a list =
+  with_in_file fn (fun input ->
+      let i = ref 0 in
+      let res, exn =
+        L.unfold_exc (fun () ->
+            let curr = f !i (input_line input) in
+            incr i;
+            curr
+          ) in
+      if exn = End_of_file then res
+      else raise exn
+    )
+
 (* skip 'nb' blocks from file being read *)
 let skip_blocks nb read_one input =
   if nb = 0 then ()
