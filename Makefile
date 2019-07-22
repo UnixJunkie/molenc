@@ -1,4 +1,4 @@
-.PHONY: build install uninstall reinstall
+.PHONY: build install uninstall reinstall test
 
 build:
 	dune build @install -j 16
@@ -16,3 +16,8 @@ uninstall:
 	dune uninstall
 
 reinstall: uninstall install
+
+test:
+	rm -f _build/default/src/fp_test.exe
+	dune build src/fp_test.exe
+	_build/default/src/fp_test.exe
