@@ -60,9 +60,12 @@ let main () =
         Utls.with_out_file filtered_out_fn (fun err_out ->
             Utls.iteri_on_lines_of_file input_fn (fun i line ->
                 let mol = FpMol.parse_one i line in
-                let _nearest_train_mol, nearest_d =
+                let nearest_train_mol, nearest_d =
                   Bstree.nearest_neighbor mol exclude_set in
-                if verbose then Log.info "d: %f" nearest_d;
+                if verbose then
+                  let curr_name = FpMol.get_name mol in
+                  let nearest_name = FpMol.get_name nearest_train_mol in
+                  printf "%s %s %.2f\n" curr_name nearest_name nearest_d;
                 if nearest_d > threshold_distance then
                   fprintf out "%s\n" line (* keep it *)
                 else
