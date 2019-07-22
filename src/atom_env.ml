@@ -2,7 +2,7 @@
 
 open Printf
 
-module L = MyList
+module L = BatList
 
 (*   layer = (depth, counted-atoms) *)
 type layer = int * ((PiEltHA.t * int) list)

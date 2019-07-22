@@ -8,6 +8,7 @@
 open Printf
 
 module CLI = Minicli.CLI
+module Utls = Molenc.Utls
 
 type mode = Filter of string (* file from where to read molecules to exclude *)
           | Diversify

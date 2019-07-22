@@ -2,6 +2,7 @@
 (* read files output by ./bin/type_atoms.py *)
 
 module A = Array
+module IntSet = BatSet.Int
 module L = BatList
 
 let read_one counter input =

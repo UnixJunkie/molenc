@@ -6,10 +6,15 @@
 
 open Printf
 
+module Ap_types = Molenc.Ap_types
+module Atom_env = Molenc.Atom_env
 module CLI = Minicli.CLI
-module L = MyList
+module L = BatList
+module Mini_mol = Molenc.Mini_mol
 module Ht = BatHashtbl
+module Scale = Molenc.Scale
 module StringSet = BatSet.String
+module Utls = Molenc.Utls
 
 let main () =
   Log.(set_log_level INFO);

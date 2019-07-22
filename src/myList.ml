@@ -77,34 +77,6 @@ let to_file (fn: string) (to_string: 'a -> string) (l: 'a list): unit =
       iter (fun x -> fprintf out "%s\n" (to_string x)) l
     )
 
-(* (\* factorize code using parmap *\)
- * let parmap ?init:(init = fun _ -> ()) (ncores: int) (f: 'a -> 'b) (l: 'a list)
- *   : 'b list =
- *   if ncores <= 1 then map f l (\* don't invoke parmap in vain *\)
- *   else
- *     (Parmap.disable_core_pinning ();
- *      Parmap.parmap ~ncores ~init ~chunksize:1 f (Parmap.L l))
- * 
- * let pariter ?init:(init = fun _ -> ())
- *     (ncores: int) (f: 'a -> unit) (l: 'a list): unit =
- *   if ncores <= 1 then iter f l (\* don't invoke parmap in vain *\)
- *   else
- *     (Parmap.disable_core_pinning ();
- *      Parmap.pariter ~ncores ~init ~chunksize:1 f (Parmap.L l))
- * 
- * (\* parallel List.filter; elements satisfying p will be disordered *\)
- * let parfilter (ncores: int) (p: 'a -> bool) (l: 'a list): 'a list =
- *   if ncores <= 1 then filter p l (\* don't invoke parmap in vain *\)
- *   else
- *     let () = Parmap.disable_core_pinning () in
- *     let f x =
- *       (p x, x) in
- *     let l' = Parmap.parmap ~ncores ~chunksize:1 f (Parmap.L l) in
- *     fold_left (fun acc (p_x, x) ->
- *         if p_x then x :: acc
- *         else acc
- *       ) [] l' *)
-
 (* List.combine for 4 lists *)
 let combine4 l1 l2 l3 l4 =
   let rec loop acc = function

@@ -1,4 +1,5 @@
-open Printf
+
+module IntSet = BatSet.Int
 
 type t = { typ: PiEltHA.t ; (* atom type *)
            succs: IntSet.t } (* indexes of its direct successors
@@ -11,11 +12,6 @@ let dummy = create PiEltHA.dummy IntSet.empty
 
 let add_succ (n: t) (succ: int): t =
   create n.typ (IntSet.add succ n.succs)
-
-let to_string (n: t): string =
-  sprintf "%s %s"
-    (PiEltHA.to_string n.typ)
-    (IntSet.to_string n.succs)
 
 let get_succs (n: t): IntSet.t =
   n.succs

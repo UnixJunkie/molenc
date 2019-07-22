@@ -2,7 +2,7 @@
 
 module A = BatArray
 module IntSet = BatSet.Int
-module L = MyList
+module L = BatList
 module StringMap = BatMap.String
 
 type t = { name: string;
@@ -19,16 +19,6 @@ let nb_atoms m =
 
 let create name graph diameter matrix =
   { name; graph; diameter; matrix }
-
-let to_string (m: t): string =
-  let buff = Buffer.create 80 in
-  Buffer.add_string buff m.name;
-  Buffer.add_char buff '\n';
-  A.iter (fun n ->
-      Buffer.add_string buff (Node.to_string n);
-      Buffer.add_char buff '\n';
-    ) m.graph;
-  Buffer.contents buff
 
 let get_typ (m: t) (i: int) =
   Node.get_typ m.graph.(i)
