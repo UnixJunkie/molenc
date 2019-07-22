@@ -9,6 +9,7 @@ open Printf
 
 module CLI = Minicli.CLI
 module FpMol = Molenc.FpMol
+module L = BatList
 module Utls = Molenc.Utls
 
 module Bstree = struct
@@ -21,6 +22,14 @@ end
 
 type mode = Filter of string (* file from where to read molecules to exclude *)
           | Diversify
+
+let diversity_filter distance_threshold lst =
+  let rec loop acc = function
+    | [] -> L.rev acc
+    | x :: xs ->
+      let ok_mols = L.filter (fun y -> FpMol.dist x y > distance_threshold) xs in
+      loop (x :: acc) ok_mols in
+  loop [] lst
 
 let main () =
   Log.(set_log_level INFO);
@@ -52,7 +61,19 @@ let main () =
   let read_count = ref 0 in
   let filtered_count = ref 0 in
   match mode with
-  | Diversify -> assert(false)
+  | Diversify ->
+    let mols_to_filter = FpMol.molecules_of_file input_fn in
+    let total = L.length mols_to_filter in
+    let ok_mols = diversity_filter threshold_distance mols_to_filter in
+    let kept = L.length ok_mols in
+    Utls.with_out_file output_fn (fun out ->
+        L.iter (fun mol ->
+            let name = FpMol.get_name mol in
+            fprintf out "%s\n" name
+          ) ok_mols
+      );
+    Log.info "read %d from %s" total input_fn;
+    Log.info "kept %d in %s" kept output_fn
   | Filter train_fn ->
     let mols_to_exclude = FpMol.molecules_of_file train_fn in
     let exclude_set = Bstree.of_list mols_to_exclude in
