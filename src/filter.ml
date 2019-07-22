@@ -29,18 +29,21 @@ let main () =
   if argc = 1 then
     begin
       eprintf "usage:\n\
-               %s\n \
-               -i <filename>: molecules to filter (database)\n  \
+               %s\n  \
+               -i <filename>: molecules to filter (\"database\")\n  \
                -o <filename>: output file\n  \
                [-t <float>]: Tanimoto threshold (default=1.0)\n  \
-               [-e <filename>]: molecules to exclude from the ones to filter\n"
+               [-e <filename>]: molecules to exclude from the ones to filter\n  \
+               [-v]: verbose mode\n"
         Sys.argv.(0);
       exit 1
     end;
   let input_fn = CLI.get_string ["-i"] args in
   let output_fn = CLI.get_string ["-o"] args in
+  let filtered_out_fn = output_fn ^ ".discarded" in
   let threshold = CLI.get_float_def ["-t"] args 1.0 in
   assert(threshold >= 0.0 && threshold <= 1.0);
+  let verbose = CLI.get_set_bool ["-v"] args in
   let mode = match CLI.get_string_opt ["-e"] args with
     | None -> Diversify
     | Some fn -> Filter fn in
@@ -54,17 +57,24 @@ let main () =
     let mols_to_exclude = FpMol.molecules_of_file train_fn in
     let exclude_set = Bstree.of_list mols_to_exclude in
     Utls.with_out_file output_fn (fun out ->
-          Utls.iteri_on_lines_of_file input_fn (fun i line ->
-            let mol = FpMol.parse_one i line in
-            let _nearest_train_mol, nearest_d =
-              Bstree.nearest_neighbor mol exclude_set in
-            if nearest_d > threshold_distance then (* keep it *)
-              fprintf out "%s\n" line
-            else
-              incr filtered_count;
-            incr read_count
+        Utls.with_out_file filtered_out_fn (fun err_out ->
+            Utls.iteri_on_lines_of_file input_fn (fun i line ->
+                let mol = FpMol.parse_one i line in
+                let _nearest_train_mol, nearest_d =
+                  Bstree.nearest_neighbor mol exclude_set in
+                if verbose then Log.info "d: %f" nearest_d;
+                if nearest_d > threshold_distance then
+                  fprintf out "%s\n" line (* keep it *)
+                else
+                  begin
+                    fprintf err_out "%s\n" line; (* discard it *)
+                    incr filtered_count
+                  end;
+                incr read_count
+              )
           )
       );
-    Log.info "read: %d discarded: %d fn: %s" !filtered_count !read_count input_fn
+    Log.info "read %d from %s" !read_count input_fn;
+    Log.info "discarded %d in %s" !filtered_count filtered_out_fn
 
 let () = main ()
