@@ -1,9 +1,9 @@
 (* Encoded molecules filtering and diversity selection.
    Functionalities:
    - remove training set molecules (or anything too near) from a
-     database of molecules
+     "database" of molecules
      _OR_
-   - enforce diversity in a database of molecules *)
+   - enforce diversity in a "database" of molecules *)
 
 open Printf
 
@@ -30,19 +30,19 @@ let main () =
     end;
   let input_fn = CLI.get_string ["-i"] args in
   let output_fn = CLI.get_string ["-o"] args in
-  let threshold = CLI.get_float_def ["-t"] args 1.0 in
+  let _threshold = CLI.get_float_def ["-t"] args 1.0 in
   let mode = match CLI.get_string_opt ["-e"] args with
     | None -> Diversify
     | Some fn -> Filter fn in
   CLI.finalize ();
-  Utls.with_infile_outfile input_fn output_fn (fun input output ->
+  Utls.with_infile_outfile input_fn output_fn (fun _input _output ->
       let counter = ref 0 in
       try
         begin match mode with
         | Diversify -> assert(false)
-        | Filter train_fn ->
+        | Filter _train_fn ->
           while true do
-            failwith "not implemented yet"
+            ()
           done
         end
       with End_of_file ->
