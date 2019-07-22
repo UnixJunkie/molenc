@@ -34,6 +34,9 @@ let parse_one index line =
   let name, bitstring = read_one_mol line in
   create name index bitstring
 
+let molecules_of_file fn =
+  Utls.mapi_on_lines_of_file fn parse_one
+
 let dist m1 m2 =
   Fp.distance m1.fp m2.fp
 
