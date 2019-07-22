@@ -11,7 +11,7 @@
   (names encoder decoder filter)
   (public_names molenc_e molenc_d molenc_f)
   (modules encoder decoder filter)
-  (libraries molenc batteries dolog minicli))
+  (libraries molenc bst batteries dolog minicli))
 
 ;; never installed executables
 (executables
