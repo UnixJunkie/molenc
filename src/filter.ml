@@ -8,7 +8,16 @@
 open Printf
 
 module CLI = Minicli.CLI
+module FpMol = Molenc.FpMol
 module Utls = Molenc.Utls
+
+module Bstree = struct
+
+  include Bst.Bisec_tree.Make (FpMol)
+
+  let of_list mols =
+    create 1 Two_bands (Array.of_list mols)
+end
 
 type mode = Filter of string (* file from where to read molecules to exclude *)
           | Diversify
@@ -30,23 +39,32 @@ let main () =
     end;
   let input_fn = CLI.get_string ["-i"] args in
   let output_fn = CLI.get_string ["-o"] args in
-  let _threshold = CLI.get_float_def ["-t"] args 1.0 in
+  let threshold = CLI.get_float_def ["-t"] args 1.0 in
+  assert(threshold >= 0.0 && threshold <= 1.0);
   let mode = match CLI.get_string_opt ["-e"] args with
     | None -> Diversify
     | Some fn -> Filter fn in
   CLI.finalize ();
-  Utls.with_infile_outfile input_fn output_fn (fun _input _output ->
-      let counter = ref 0 in
-      try
-        begin match mode with
-        | Diversify -> assert(false)
-        | Filter _train_fn ->
-          while true do
-            ()
-          done
-        end
-      with End_of_file ->
-        Log.info "read %d from %s" !counter input_fn
-    )
+  let threshold_distance = 1.0 -. threshold in
+  let read_count = ref 0 in
+  let filtered_count = ref 0 in
+  match mode with
+  | Diversify -> assert(false)
+  | Filter train_fn ->
+    let mols_to_exclude = FpMol.molecules_of_file train_fn in
+    let exclude_set = Bstree.of_list mols_to_exclude in
+    Utls.with_out_file output_fn (fun out ->
+          Utls.iteri_on_lines_of_file input_fn (fun i line ->
+            let mol = FpMol.parse_one i line in
+            let _nearest_train_mol, nearest_d =
+              Bstree.nearest_neighbor mol exclude_set in
+            if nearest_d > threshold_distance then (* keep it *)
+              fprintf out "%s\n" line
+            else
+              incr filtered_count;
+            incr read_count
+          )
+      );
+    Log.info "read: %d discarded: %d fn: %s" !filtered_count !read_count input_fn
 
 let () = main ()
