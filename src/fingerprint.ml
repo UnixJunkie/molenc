@@ -1,4 +1,4 @@
-(* Copyright (C) 2018, Francois Berenger
+(* Copyright (C) 2019, Francois Berenger
 
    Yamanishi laboratory,
    Department of Bioscience and Bioinformatics,

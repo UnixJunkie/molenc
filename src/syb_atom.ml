@@ -1,3 +1,10 @@
+(* Copyright (C) 2019, Francois Berenger
+
+   Yamanishi laboratory,
+   Department of Bioscience and Bioinformatics,
+   Faculty of Computer Science and Systems Engineering,
+   Kyushu Institute of Technology,
+   680-4 Kawazu, Iizuka, Fukuoka, 820-8502, Japan. *)
 
 (* very small atom module to help compute atom environments (a la molprint2d)
    from MOL2 files *)

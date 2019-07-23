@@ -1,12 +1,12 @@
-(* not using Batteries !!! Dont! I want fast IOs.
-   Or we have to prefix many things with Legacy.XXX *)
+(* Copyright (C) 2019, Francois Berenger
+
+   Yamanishi laboratory,
+   Department of Bioscience and Bioinformatics,
+   Faculty of Computer Science and Systems Engineering,
+   Kyushu Institute of Technology,
+   680-4 Kawazu, Iizuka, Fukuoka, 820-8502, Japan. *)
 
 open Printf
-
-(* #require "batteries";; *)
-(* #require "dolog";; *)
-(* #require "camlzip";; *)
-(* #require "bitv";; *)
 
 module L = BatList
 

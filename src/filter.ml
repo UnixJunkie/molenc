@@ -1,3 +1,11 @@
+(* Copyright (C) 2019, Francois Berenger
+
+   Yamanishi laboratory,
+   Department of Bioscience and Bioinformatics,
+   Faculty of Computer Science and Systems Engineering,
+   Kyushu Institute of Technology,
+   680-4 Kawazu, Iizuka, Fukuoka, 820-8502, Japan. *)
+
 (* Encoded molecules filtering and diversity selection.
    Functionalities:
    - remove training set molecules (or anything too near) from a
@@ -27,7 +35,17 @@ let diversity_filter distance_threshold lst =
   let rec loop acc = function
     | [] -> L.rev acc
     | x :: xs ->
-      let ok_mols = L.filter (fun y -> FpMol.dist x y > distance_threshold) xs in
+      let ok_mols =
+        L.filter (fun y ->
+            let d = FpMol.dist x y in
+            if d <= distance_threshold then
+              (* FBR: log the ones filtered out and why so that they can be
+                 inspected later *)
+              let () = printf "%s %.2f\n" (FpMol.get_name y) d in
+              false
+            else
+              true
+          ) xs in
       loop (x :: acc) ok_mols in
   loop [] lst
 
