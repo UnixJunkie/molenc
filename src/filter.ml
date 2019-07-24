@@ -28,6 +28,8 @@ module Bstree = struct
     create 1 Two_bands (Array.of_list mols)
 end
 
+let verbose = ref false
+
 type mode = Filter of string (* file from where to read molecules to exclude *)
           | Diversify
 
@@ -35,13 +37,16 @@ let diversity_filter distance_threshold lst =
   let rec loop acc = function
     | [] -> L.rev acc
     | x :: xs ->
+      let name = FpMol.get_name x in
       let ok_mols =
         L.filter (fun y ->
             let d = FpMol.dist x y in
             if d <= distance_threshold then
-              (* FBR: log the ones filtered out and why so that they can be
-                 inspected later *)
-              let () = printf "%s %.2f\n" (FpMol.get_name y) d in
+              let () =
+                if !verbose then
+                  (* log the ones filtered out and why (the previous molecule which
+                     is too near) so that we can be inspect them later on *)
+                  printf "%s %s %.2f\n" name (FpMol.get_name y) d in
               false
             else
               true
@@ -70,7 +75,7 @@ let main () =
   let filtered_out_fn = output_fn ^ ".discarded" in
   let threshold = CLI.get_float_def ["-t"] args 1.0 in
   assert(threshold >= 0.0 && threshold <= 1.0);
-  let verbose = CLI.get_set_bool ["-v"] args in
+  verbose := CLI.get_set_bool ["-v"] args;
   let mode = match CLI.get_string_opt ["-e"] args with
     | None -> Diversify
     | Some fn -> Filter fn in
@@ -101,7 +106,7 @@ let main () =
                 let mol = FpMol.parse_one i line in
                 let nearest_train_mol, nearest_d =
                   Bstree.nearest_neighbor mol exclude_set in
-                if verbose then
+                if !verbose then
                   let curr_name = FpMol.get_name mol in
                   let nearest_name = FpMol.get_name nearest_train_mol in
                   printf "%s %s %.2f\n" curr_name nearest_name nearest_d;
