@@ -141,11 +141,12 @@ let main () =
     Utls.with_out_file output_fn (fun out ->
         Utls.iteri_on_lines_of_file input_fn (fun i line ->
             let mol = FpMol.parse_one i line in
+            let curr_name = FpMol.get_name mol in
             let nearest_train_mol, nearest_d =
               Bstree.nearest_neighbor mol annot_set in
-            let curr_name = FpMol.get_name mol in
             let nearest_name = FpMol.get_name nearest_train_mol in
-            fprintf out "%s %s %.2f\n" curr_name nearest_name nearest_d;
+            let nearest_tani = 1.0 -. nearest_d in
+            fprintf out "%s %s %.2f\n" curr_name nearest_name nearest_tani;
             incr read_count
           )
       );
