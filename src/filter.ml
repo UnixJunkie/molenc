@@ -30,8 +30,15 @@ end
 
 let verbose = ref false
 
-type mode = Filter of string (* file from where to read molecules to exclude *)
-          | Diversify
+type mode = Filter of string (* file from where to read molecules to exclude;
+                                usually, we don't want to order and test
+                                molecules which were part of the training set *)
+          | Annotate of string (* annotate predicted molecule with nearest
+                                  from training set; en easy to understand
+                                  explanation for some end users of computer
+                                  predictions *)
+          | Diversify (* enforce diversity among predicted molecules;
+                         might remove some SAR info but OK for lead finding *)
 
 let diversity_filter distance_threshold lst =
   let rec loop acc = function
@@ -44,8 +51,8 @@ let diversity_filter distance_threshold lst =
             if d <= distance_threshold then
               let () =
                 if !verbose then
-                  (* log the ones filtered out and why (the previous molecule which
-                     is too near) so that we can be inspect them later on *)
+                  (* log the ones filtered out and why (the previous molecule
+                     which is too near) so that we can inspect them later on *)
                   printf "%s %s %.2f\n" name (FpMol.get_name y) d in
               false
             else
@@ -66,6 +73,7 @@ let main () =
                -o <filename>: output file\n  \
                [-t <float>]: Tanimoto threshold (default=1.0)\n  \
                [-e <filename>]: molecules to exclude from the ones to filter\n  \
+               [-a <filename>]: molecules to annotate the ones to filter\n  \
                [-v]: verbose mode\n"
         Sys.argv.(0);
       exit 1
@@ -76,8 +84,14 @@ let main () =
   let threshold = CLI.get_float_def ["-t"] args 1.0 in
   assert(threshold >= 0.0 && threshold <= 1.0);
   verbose := CLI.get_set_bool ["-v"] args;
+  (* -a and -e are mutually exclusive options *)
+  assert(not (List.mem "-a" args && List.mem "-e" args));
   let mode = match CLI.get_string_opt ["-e"] args with
-    | None -> Diversify
+    | None ->
+      begin match CLI.get_string_opt ["-a"] args with
+        | None -> Diversify
+        | Some fn -> Annotate fn
+      end
     | Some fn -> Filter fn in
   CLI.finalize ();
   let threshold_distance = 1.0 -. threshold in
@@ -119,6 +133,20 @@ let main () =
                   end;
                 incr read_count
               )
+          )
+      )
+  | Annotate train_fn ->
+    let annot_mols = FpMol.molecules_of_file train_fn in
+    let annot_set = Bstree.of_list annot_mols in
+    Utls.with_out_file output_fn (fun out ->
+        Utls.iteri_on_lines_of_file input_fn (fun i line ->
+            let mol = FpMol.parse_one i line in
+            let nearest_train_mol, nearest_d =
+              Bstree.nearest_neighbor mol annot_set in
+            let curr_name = FpMol.get_name mol in
+            let nearest_name = FpMol.get_name nearest_train_mol in
+            fprintf out "%s %s %.2f\n" curr_name nearest_name nearest_d;
+            incr read_count
           )
       );
     Log.info "read %d from %s" !read_count input_fn;
