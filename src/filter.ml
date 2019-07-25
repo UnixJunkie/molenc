@@ -99,58 +99,68 @@ let main () =
   let filtered_count = ref 0 in
   match mode with
   | Diversify ->
-    let mols_to_filter = FpMol.molecules_of_file input_fn in
-    let total = L.length mols_to_filter in
-    let ok_mols = diversity_filter threshold_distance mols_to_filter in
-    let kept = L.length ok_mols in
-    Utls.with_out_file output_fn (fun out ->
-        L.iter (fun mol ->
-            let name = FpMol.get_name mol in
-            fprintf out "%s\n" name
-          ) ok_mols
-      );
-    Log.info "read %d from %s" total input_fn;
-    Log.info "kept %d in %s" kept output_fn
+    begin
+      let mols_to_filter = FpMol.molecules_of_file input_fn in
+      let total = L.length mols_to_filter in
+      let ok_mols = diversity_filter threshold_distance mols_to_filter in
+      let kept = L.length ok_mols in
+      Utls.with_out_file output_fn (fun out ->
+          L.iter (fun mol ->
+              let name = FpMol.get_name mol in
+              fprintf out "%s\n" name
+            ) ok_mols
+        );
+      Log.info "read %d from %s" total input_fn;
+      Log.info "kept %d in %s" kept output_fn
+    end
   | Filter train_fn ->
-    let mols_to_exclude = FpMol.molecules_of_file train_fn in
-    let exclude_set = Bstree.of_list mols_to_exclude in
-    Utls.with_out_file output_fn (fun out ->
-        Utls.with_out_file filtered_out_fn (fun err_out ->
-            Utls.iteri_on_lines_of_file input_fn (fun i line ->
-                let mol = FpMol.parse_one i line in
-                let nearest_train_mol, nearest_d =
-                  Bstree.nearest_neighbor mol exclude_set in
-                if !verbose then
-                  let curr_name = FpMol.get_name mol in
-                  let nearest_name = FpMol.get_name nearest_train_mol in
-                  printf "%s %s %.2f\n" curr_name nearest_name nearest_d;
-                if nearest_d > threshold_distance then
-                  fprintf out "%s\n" line (* keep it *)
-                else
-                  begin
-                    fprintf err_out "%s\n" line; (* discard it *)
-                    incr filtered_count
-                  end;
-                incr read_count
-              )
-          )
-      )
+    begin
+      let mols_to_exclude = FpMol.molecules_of_file train_fn in
+      let exclude_set = Bstree.of_list mols_to_exclude in
+      Utls.with_out_file output_fn (fun out ->
+          Utls.with_out_file filtered_out_fn (fun err_out ->
+              Utls.iteri_on_lines_of_file input_fn (fun i line ->
+                  let mol = FpMol.parse_one i line in
+                  let nearest_train_mol, nearest_d =
+                    Bstree.nearest_neighbor mol exclude_set in
+                  if !verbose then
+                    begin
+                      let curr_name = FpMol.get_name mol in
+                      let nearest_name = FpMol.get_name nearest_train_mol in
+                      printf "%s %s %.2f\n" curr_name nearest_name nearest_d
+                    end;
+                  if nearest_d > threshold_distance then
+                    fprintf out "%s\n" line (* keep it *)
+                  else
+                    begin
+                      fprintf err_out "%s\n" line; (* discard it *)
+                      incr filtered_count
+                    end;
+                  incr read_count
+                )
+            )
+        );
+      Log.info "read %d from %s" !read_count input_fn;
+      Log.info "discarded %d in %s" !filtered_count filtered_out_fn
+    end
   | Annotate train_fn ->
-    let annot_mols = FpMol.molecules_of_file train_fn in
-    let annot_set = Bstree.of_list annot_mols in
-    Utls.with_out_file output_fn (fun out ->
-        Utls.iteri_on_lines_of_file input_fn (fun i line ->
-            let mol = FpMol.parse_one i line in
-            let curr_name = FpMol.get_name mol in
-            let nearest_train_mol, nearest_d =
-              Bstree.nearest_neighbor mol annot_set in
-            let nearest_name = FpMol.get_name nearest_train_mol in
-            let nearest_tani = 1.0 -. nearest_d in
-            fprintf out "%s %s %.2f\n" curr_name nearest_name nearest_tani;
-            incr read_count
-          )
-      );
-    Log.info "read %d from %s" !read_count input_fn;
-    Log.info "discarded %d in %s" !filtered_count filtered_out_fn
+    begin
+      let annot_mols = FpMol.molecules_of_file train_fn in
+      let annot_set = Bstree.of_list annot_mols in
+      Utls.with_out_file output_fn (fun out ->
+          Utls.iteri_on_lines_of_file input_fn (fun i line ->
+              let mol = FpMol.parse_one i line in
+              let curr_name = FpMol.get_name mol in
+              let nearest_train_mol, nearest_d =
+                Bstree.nearest_neighbor mol annot_set in
+              let nearest_name = FpMol.get_name nearest_train_mol in
+              let nearest_tani = 1.0 -. nearest_d in
+              fprintf out "%s %s %.2f\n" curr_name nearest_name nearest_tani;
+              incr read_count
+            )
+        );
+      Log.info "read %d from %s" !read_count input_fn;
+      Log.info "discarded %d in %s" !filtered_count filtered_out_fn
+    end
 
 let () = main ()
