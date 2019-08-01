@@ -14,8 +14,8 @@ type dense = (int, BA.int8_unsigned_elt, BA.c_layout) BA1.t
 
 type hashed = dense (* but the array will be shorter *)
 
-let max_feat_val = 255
-let feat_val_bound = max_feat_val + 1
+(* any feature value [x] must satisfy [x < feat_val_bound] *)
+let feat_val_bound = 256
 let k = 50 (* number of hashes we want *)
 
 let seeds =
@@ -34,7 +34,7 @@ let to_dense feat_id_bound fp =
     (* unsafe *)
     let k = BA1.unsafe_get fp !i in
     let v = BA1.unsafe_get fp (!i + 1) in
-    assert(k < feat_id_bound && v <= max_feat_val);
+    assert(k < feat_id_bound && v < feat_val_bound);
     BA1.unsafe_set res k v;
     i := !i + 2
   done;
@@ -44,13 +44,16 @@ let is_red a test_feat_id test_feat_val =
   let feat_val = BA1.unsafe_get a test_feat_id in
   (feat_val = 0) || (test_feat_val > feat_val)
 
+(* compute k hashes *)
 let hash dense_fp =
-  let feat_id_bound = 1 + (BA1.dim dense_fp) in
+  let feat_id_bound = BA1.dim dense_fp in
   let res = BA1.create BA.int8_unsigned BA.C_layout k in
   BA1.fill res 0;
   for i = 0 to k - 1 do
     let seed = A.unsafe_get seeds i in
     let rng = Random.State.make [|seed|] in
+    (* FBR: we could use a single rand then modulo,
+            if performance in here really matters *)
     let test_feat_id = ref (Random.State.int rng feat_id_bound) in
     let test_feat_val = ref (Random.State.int rng feat_val_bound) in
     while is_red dense_fp !test_feat_id !test_feat_val do
