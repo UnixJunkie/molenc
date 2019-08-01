@@ -60,3 +60,14 @@ let hash dense_fp =
     done
   done;
   res
+
+let estimate_jaccard hash1 hash2 =
+  let res = ref 0 in
+  for i = 0 to k - 1 do
+    if (BA1.unsafe_get hash1 i) = (BA1.unsafe_get hash2 i) then
+      incr res
+  done;
+  (float !res) /. (float k)
+
+let estimate_distance h1 h2 =
+  1.0 -. (estimate_jaccard h1 h2)
