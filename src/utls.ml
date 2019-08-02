@@ -460,3 +460,10 @@ let list_uniq_count l =
   let sorted = L.sort compare l in
   let groups = L.group_consecutive (=) sorted in
   L.map (fun l -> L.(hd l, length l)) groups
+
+(* coarse grain chronometer *)
+let time_it f =
+  let start = Unix.gettimeofday () in
+  let res = f () in
+  let stop = Unix.gettimeofday () in
+  (stop -. start, res)
