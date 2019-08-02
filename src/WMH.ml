@@ -18,14 +18,16 @@ let max_int16_unsigned = (BatInt.pow 2 16) - 1
 
 (* any feature value [x] must satisfy [x < feat_val_bound] *)
 let feat_val_bound = 256
-(* FBR: adjust [k] given the precision we want *)
-let k = 50 (* number of hashes we want *)
+(* FBR: compute [k] in as a function of the precision we want
+        (there is a formula in some papers) *)
 
-let seeds =
+let get_seeds k =
   let global_seed = 12345 in
   let rng = Random.State.make [|global_seed|] in
   let bound = (BatInt.pow 2 30) - 1 in
   Array.init k (fun _ -> Random.State.int rng bound)
+
+(* FBR: put back unsafe where possible in whole file *)
 
 (* convert the sparse Fp.t type into a dense array of small positive ints *)
 let to_dense (feat_id_bound: int) (fp: Fp.t): dense =
@@ -34,27 +36,27 @@ let to_dense (feat_id_bound: int) (fp: Fp.t): dense =
   let n = BA1.dim fp in
   let i = ref 0 in
   while !i < n do
-    (* unsafe *)
-    let k = BA1.unsafe_get fp !i in
-    let v = BA1.unsafe_get fp (!i + 1) in
+    let k = BA1.get fp !i in
+    let v = BA1.get fp (!i + 1) in
     assert(k < feat_id_bound && v < feat_val_bound);
-    BA1.unsafe_set res k v;
+    BA1.set res k v;
     i := !i + 2
   done;
   res
 
 let is_red (arr: dense) (test_feat_id: int) (test_feat_val: int): bool =
-  let feat_val = BA1.unsafe_get arr test_feat_id in
+  let feat_val = BA1.get arr test_feat_id in
   (feat_val = 0) || (test_feat_val > feat_val)
 
 (* compute k hashes *)
-let hash (dense_fp: dense): hashed =
+let hash seeds (dense_fp: dense): hashed =
+  let k = A.length seeds in
   let feat_id_bound = BA1.dim dense_fp in
   let res = BA1.create BA.int16_unsigned BA.C_layout k in
   BA1.fill res 0;
   for i = 0 to k - 1 do
     let misses = ref 0 in
-    let seed = A.unsafe_get seeds i in
+    let seed = A.get seeds i in
     let rng = Random.State.make [|seed|] in
     (* FBR: we could generate a single rand then modulo,
             if hashing speed really matters *)
@@ -67,14 +69,16 @@ let hash (dense_fp: dense): hashed =
       test_feat_val := Random.State.int rng feat_val_bound
     done;
     assert(!misses <= max_int16_unsigned); (* overflow? *)
-    BA1.unsafe_set res i !misses
+    BA1.set res i !misses
   done;
   res
 
 let estimate_jaccard (hash1: hashed) (hash2: hashed): float =
   let res = ref 0 in
+  let k = BA1.dim hash1 in
+  assert(BA1.dim hash2 = k);
   for i = 0 to k - 1 do
-    if (BA1.unsafe_get hash1 i) = (BA1.unsafe_get hash2 i) then
+    if (BA1.get hash1 i) = (BA1.get hash2 i) then
       incr res
   done;
   (float !res) /. (float k)
