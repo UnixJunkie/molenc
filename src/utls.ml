@@ -292,14 +292,6 @@ let n_times n f =
         res
     )
 
-(* measure time spent in f (seconds) *)
-let wall_clock_time f =
-  let start = Unix.gettimeofday () in
-  let res = f () in
-  let stop = Unix.gettimeofday () in
-  let delta_t = stop -. start in
-  (delta_t, res)
-
 let push (x: 'a) (l: 'a list ref): unit =
   l := x :: !l
 
