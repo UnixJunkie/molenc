@@ -33,10 +33,26 @@ let mop2d_line_of_int_map map =
     ) map;
   Buffer.contents buff
 
-let iwn_line_of_int_map map =
+(* max norm is probably to be preferred if we are going to minwise hash
+ * the fingerprints later on *)
+type norm = Max_norm (* max feature value in current instance *)
+          | L1_norm (* Manhatan distance *)
+
+let norm_of_string = function
+  | "l1" -> L1_norm
+  | "max" -> Max_norm
+  | other -> failwith (sprintf "Decoder: unknown norm: %s" other)
+
+let map_norm style map =
+  float
+    (match style with
+     | L1_norm -> IntMap.fold (fun _k v acc -> v + acc) map 0
+     | Max_norm -> IntMap.fold (fun _k v acc -> max v acc) map 0)
+
+let iwn_line_of_int_map style map =
   let buff = Buffer.create 11 in
   let start = ref true in
-  let total = float (IntMap.fold (fun _k v acc -> acc + v) map 0) in
+  let total = map_norm style map in
   IntMap.iter (fun k' v ->
       let k = k' + 1 in
       let scaled = (float v) /. total in
@@ -95,10 +111,10 @@ let main () =
   let argc, args = CLI.init () in
   if argc = 1 then
     (eprintf "usage:\n\
-              %s -i db\n\
-              -i <filename>: encoded molecules database\n\
-              -o <filename>: where to write decoded molecules\n\
-              --iwn: perform Instance-Wise Normalisation\n\
+              %s -i db\n  \
+              -i <filename>: encoded molecules database\n  \
+              -o <filename>: where to write decoded molecules\n  \
+              [--norm {l1|max}]: perform Instance-Wise Normalisation\n  \
               [-d <filename>]: read feature dictionary from file\n"
        Sys.argv.(0);
      exit 1);
@@ -107,7 +123,8 @@ let main () =
   let dico = match CLI.get_string_opt ["-d"] args with
     | None -> Write_to (output_fn ^ ".dix")
     | Some fn -> Read_from fn in
-  let normalize = CLI.get_set_bool ["--iwn"] args in
+  let maybe_norm =
+    Utls.may_apply norm_of_string (CLI.get_string_opt ["--norm"] args) in
   CLI.finalize ();
   Log.info "reading molecules...";
   let all_lines = Utls.lines_of_file db_fn in
@@ -131,12 +148,13 @@ let main () =
                 feat_counts_dico_RW feat_to_id feat_id_to_max_count map
               | Read_from _ ->
                 feat_counts_dico_RO feat_to_id map in
-            (if normalize then
+            (match maybe_norm with
+             | Some norm ->
                let label =
                  if BatString.starts_with name "active" then 1 else -1 in
-              let line = iwn_line_of_int_map feat_counts in
+               let line = iwn_line_of_int_map norm feat_counts in
                fprintf out "%+d %s\n" label line
-             else
+             | None ->
                let line = mop2d_line_of_int_map feat_counts in
                fprintf out "%s,0.0,[%s]\n" name line
             );
