@@ -254,8 +254,8 @@ let string_is_a_list_of_integers (s: string): bool =
   not (Str.string_match string_contains_non_digits_non_sep chopped 0)
 
 let may_apply f = function
-  | Some x -> f x
-  | None -> ()
+  | Some x -> Some (f x)
+  | None -> None
 
 (* returns true if we could create the file; false else (already there) *)
 let lock_file_for_writing (fn: filename): bool =
