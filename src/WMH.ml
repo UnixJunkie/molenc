@@ -5,7 +5,7 @@
    Simple and efficient weighted minwise hashing.
    In Advances in Neural Information Processing Systems (pp. 1498-1506). *)
 
-module A = Array
+module A = BatArray
 module BA = Bigarray
 module BA1 = BA.Array1
 module Fp = Fingerprint
@@ -60,6 +60,20 @@ let update_bounds (bounds: int array) (fp: Fp.t): unit =
     (* assert(v < feat_val_bound); *)
     i := !i + 2
   done
+
+(* create a lookup table from the bounds (max feature values) so that we
+   can draw a single rand but still know which feature id. it corresponds to *)
+let bounds_to_LUT (bounds: int array): int array =
+  let total = A.sum bounds in
+  let res = A.create total 0 in
+  let j = ref 0 in
+  A.iteri (fun i bound ->
+      for _ = 1 to bound do
+        res.(!j) <- i;
+        incr j
+      done
+    ) bounds;
+  res
 
 (* compute the max value for each feature. *)
 (* I.e. the columns' maximum if we put observations as rows
