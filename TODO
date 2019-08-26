@@ -5,3 +5,10 @@
 
 - use a single rand per feature test instead of two currently
   should accelerate the hashing rate
+
+- pre-generate rands at init in a table
+  - use a non repeating sequence of random integers
+    i.e. a random permutation of all possible integers
+  in case green is not reached after all possible rands, use -1
+  as the number of rand trials before green (instead of an
+  infinite hashing function)
