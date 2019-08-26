@@ -24,6 +24,7 @@ let main () =
   let molecules = FpMol.molecules_of_file input_fn in
   let sparse_fingerprints = A.of_list (L.map FpMol.get_fp molecules) in
   (* 749: max feature index in test data file data/100k_mols_std_01.txt *)
+  let bounds = WMH.bounds 749 sparse_fingerprints in
   let dense_fingerprints = A.map (WMH.to_dense 749) sparse_fingerprints in
   let n = A.length sparse_fingerprints in
   Log.info "read %d molecules" n;
@@ -39,10 +40,10 @@ let main () =
         let tani = Fp.tanimoto m1 m2 in
         A.set res i tani
       done;
-      res
-    ) in
-  Log.info "Tani-rate: %.3f" (float n /. dt1);
-  let ks = [10; 20; 50; 100; 200; 500] in
+      res) in
+  let tani_rate = (float n) /. dt1 in
+  Log.info "Tani-rate: %.2f" tani_rate;
+  let ks = [1; 2; 5; 10; 20; 50; 100; 200; 500; 1000] in
   (* test the correctness and bench hashing and scoring speeds
      as a function of k (the number of hashes) *)
   L.iter (fun k ->
@@ -50,9 +51,9 @@ let main () =
       let seeds = WMH.get_seeds k in
       Gc.full_major ();
       let dt0, hashes = Utls.time_it (fun () ->
-          A.map (WMH.hash seeds) dense_fingerprints
+          A.map (WMH.hash seeds bounds) dense_fingerprints
         ) in
-      Log.info "k: %d hashing-rate: %.3f" k (float n /. dt0);
+      Log.info "k: %d hashing-rate: %.2f" k (float n /. dt0);
       (* compute estimated tani for the same pairs (and compute scoring rate) *)
       Gc.full_major ();
       Random.init 12345; (* seed PRNG *)
@@ -66,13 +67,15 @@ let main () =
             let tani = WMH.estimate_jaccard m1 m2 in
             A.set res i tani
           done;
-          res
-        ) in
-      Log.info "k: %d est-Tani-rate: %.3f" k (float n /. dt2);
+          res) in
+      let est_tani_rate = (float n) /. dt2 in
+      (if est_tani_rate <= tani_rate then Log.warn
+      else Log.info) "k: %d est-Tani-rate: %.2f" k est_tani_rate;
       (* output maximum Tani error *)
       let diffs = A.map2 (fun d1 d2 -> abs_float (d1 -. d2)) dists est_dists in
       let max_abs_error = A.max diffs in
-      Log.info "k: %d max-abs-error: %f" k max_abs_error
+      let avg_abs_error = A.favg diffs in
+      Log.info "k: %d max-abs-error: %.2f avg-abs-error: %.2f" k max_abs_error avg_abs_error
     ) ks
 
 let () = main ()

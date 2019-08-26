@@ -64,9 +64,9 @@ let update_bounds (bounds: int array) (fp: Fp.t): unit =
 (* compute the max value for each feature. *)
 (* I.e. the columns' maximum if we put observations as rows
  * and features as columns in a data matrix *)
-let bounds (max_feat_id: int) (train: Fp.t list): int array =
+let bounds (max_feat_id: int) (train: Fp.t array): int array =
   let bounds = A.make max_feat_id 0 in
-  L.iter (update_bounds bounds) train;
+  A.iter (update_bounds bounds) train;
   bounds
 
 (* in the paper, he defines is_green; but he samples until is_green becomes
