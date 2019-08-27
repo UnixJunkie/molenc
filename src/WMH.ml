@@ -54,9 +54,17 @@ let update_bounds (bounds: int array) (fp: Fp.t): unit =
     i := !i + 2
   done
 
+(* compute the max value for each feature. *)
+(* I.e. the columns' maximum if we put observations as rows
+ * and features as columns in a data matrix *)
+let bounds (max_feat_id: int) (train: Fp.t array): int array =
+  let bounds = A.make max_feat_id 0 in
+  A.iter (update_bounds bounds) train;
+  bounds
+
 (* create a lookup table from the bounds (max feature values) so that we
    can draw a single rand but still know which feature id. it corresponds to *)
-let bounds_to_LUT (bounds: int array): int array =
+let lookup_table (bounds: int array): int array =
   let total = A.sum bounds in
   let res = A.create total 0 in
   let j = ref 0 in
@@ -67,14 +75,6 @@ let bounds_to_LUT (bounds: int array): int array =
       done
     ) bounds;
   res
-
-(* compute the max value for each feature. *)
-(* I.e. the columns' maximum if we put observations as rows
- * and features as columns in a data matrix *)
-let bounds (max_feat_id: int) (train: Fp.t array): int array =
-  let bounds = A.make max_feat_id 0 in
-  A.iter (update_bounds bounds) train;
-  bounds
 
 (* in the paper, he defines is_green; but he samples until is_green becomes
  * true. It is more natural to sample while is_red *)
