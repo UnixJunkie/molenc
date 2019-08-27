@@ -1,8 +1,4 @@
 
-- test wmh_test.exe with molecules encoded with more features
-  i.e. from another dataset with more molecules having
-  been used to create the encoding dictionary
-
 - use a single rand per feature test instead of two currently
   should accelerate the hashing rate
 
