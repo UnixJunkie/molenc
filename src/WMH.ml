@@ -13,13 +13,8 @@ module L = BatList
 
 type dense = (int, BA.int8_unsigned_elt, BA.c_layout) BA1.t
 
-(* type hashed = (int, BA.int16_unsigned_elt, BA.c_layout) BA1.t *)
+(* FBR: later on, try using a BA for the hashed FP too *)
 type hashed = int array
-
-(* let max_int16_unsigned = (BatInt.pow 2 16) - 1 *)
-
-(* any feature value [x] must satisfy [x < feat_val_bound] *)
-(* let feat_val_bound = 256 *)
 
 (* FBR: compute [k] in as a function of the precision we want
         (there is a formula in some papers) *)
@@ -42,7 +37,6 @@ let to_dense (feat_id_bound: int) (fp: Fp.t): dense =
     let k = BA1.get fp !i in
     let v = BA1.get fp (!i + 1) in
     assert(k < feat_id_bound);
-    (* assert(v < feat_val_bound); *)
     BA1.set res k v;
     i := !i + 2
   done;
@@ -57,7 +51,6 @@ let update_bounds (bounds: int array) (fp: Fp.t): unit =
     let k = BA1.get fp !i in
     let v = BA1.get fp (!i + 1) in
     bounds.(k) <- max (bounds.(k)) v;
-    (* assert(v < feat_val_bound); *)
     i := !i + 2
   done
 
@@ -93,8 +86,6 @@ let is_red (arr: dense) (test_feat_id: int) (test_feat_val: int): bool =
 let hash seeds bounds (dense_fp: dense): hashed =
   let k = A.length seeds in
   let feat_id_bound = BA1.dim dense_fp in
-  (* let res = BA1.create BA.int16_unsigned BA.C_layout k in
-   * BA1.fill res 0; *)
   let res = A.make k 0 in
   for i = 0 to k - 1 do
     let misses = ref 0 in
@@ -107,29 +98,22 @@ let hash seeds bounds (dense_fp: dense): hashed =
     let test_feat_val =
       let bound = 1 + bounds.(!test_feat_id) in
       ref (Random.State.int rng bound) in
-    (* let test_feat_val = ref (Random.State.int rng feat_val_bound) in *)
     while is_red dense_fp !test_feat_id !test_feat_val do
       incr misses; (* Hashes[i]++ *)
       test_feat_id := Random.State.int rng feat_id_bound;
       test_feat_val :=
         let bound = 1 + bounds.(!test_feat_id) in
         Random.State.int rng bound
-      (* test_feat_val := Random.State.int rng feat_val_bound *)
     done;
-    (* assert(!misses <= max_int16_unsigned); (\* overflow? *\) *)
-    (* BA1.set res i !misses *)
     res.(i) <- !misses
   done;
   res
 
 let estimate_jaccard (hash1: hashed) (hash2: hashed): float =
   let res = ref 0 in
-  (* let k = BA1.dim hash1 in
-   * assert(BA1.dim hash2 = k); *)
   let k = A.length hash1 in
   assert(A.length hash2 = k);
   for i = 0 to k - 1 do
-    (* if (BA1.get hash1 i) = (BA1.get hash2 i) then *)
     if hash1.(i) = hash2.(i) then
       incr res
   done;

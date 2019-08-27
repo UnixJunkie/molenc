@@ -9,8 +9,6 @@ module L = BatList
 module Utls = Molenc.Utls
 module WMH = Molenc.WMH
 
-(* FBR: put a file of 100_000 encoded molecules in data/ *)
-
 let main () =
   Log.color_on ();
   Log.set_log_level Log.INFO;
