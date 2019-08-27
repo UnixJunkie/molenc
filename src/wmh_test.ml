@@ -22,10 +22,10 @@ let main () =
   let input_fn = CLI.get_string ["-i"] args in
   (* read all molecules *)
   let molecules = FpMol.molecules_of_file input_fn in
+  let nb_features = 1 + (L.max (L.map FpMol.max_feature_index molecules)) in
   let sparse_fingerprints = A.of_list (L.map FpMol.get_fp molecules) in
-  (* 749: max feature index in test data file data/100k_mols_std_01.txt *)
-  let bounds = WMH.bounds 749 sparse_fingerprints in
-  let dense_fingerprints = A.map (WMH.to_dense 749) sparse_fingerprints in
+  let bounds = WMH.bounds nb_features sparse_fingerprints in
+  let dense_fingerprints = A.map (WMH.to_dense nb_features) sparse_fingerprints in
   let n = A.length sparse_fingerprints in
   Log.info "read %d molecules" n;
   (* compute Tani for many pairs (and compute scoring rate) *)
