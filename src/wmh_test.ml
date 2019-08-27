@@ -24,6 +24,7 @@ let main () =
   let sparse_fingerprints = A.of_list (L.map FpMol.get_fp molecules) in
   let bounds = WMH.bounds nb_features sparse_fingerprints in
   let idx2feat = WMH.lookup_table bounds in
+  let rand_bound = A.length idx2feat in
   let feat2acc_bound = WMH.acc_bounds_table bounds in
   let dense_fingerprints = A.map (WMH.to_dense nb_features) sparse_fingerprints in
   let n = A.length sparse_fingerprints in
@@ -43,15 +44,16 @@ let main () =
       res) in
   let tani_rate = (float n) /. dt1 in
   Log.info "Tani-rate: %.2f" tani_rate;
-  let ks = [1; 2; 5; 10; 20; 50; 100; 200; 500; 1000] in
+  let ks = [1; 2; 5; 10; 20; 30; 40; 50; 100; 200; 500; 1000] in
   (* test the correctness and bench hashing and scoring speeds
      as a function of k (the number of hashes) *)
   L.iter (fun k ->
       (* hash them (and compute hashing rate) *)
       let seeds = WMH.get_seeds k in
+      let rands = WMH.gen_rands seeds rand_bound in
       Gc.full_major ();
       let dt0, hashes = Utls.time_it (fun () ->
-          A.map (WMH.hash seeds idx2feat feat2acc_bound) dense_fingerprints
+          A.map (WMH.hash rands idx2feat feat2acc_bound) dense_fingerprints
         ) in
       Log.info "k: %d hashing-rate: %.2f" k (float n /. dt0);
       (* compute estimated tani for the same pairs (and compute scoring rate) *)

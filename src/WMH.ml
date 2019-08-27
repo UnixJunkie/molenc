@@ -20,7 +20,7 @@ type hashed = int array
         (there is a formula in some papers) *)
 
 let get_seeds k =
-  let global_seed = 12345 in
+  let global_seed = 314159265 in
   let rng = Random.State.make [|global_seed|] in
   let bound = (BatInt.pow 2 30) - 1 in
   Array.init k (fun _ -> Random.State.int rng bound)
@@ -103,20 +103,20 @@ let gen_rands seeds rand_bound =
     ) seeds
 
 (* compute k hashes *)
-let hash seeds idx2feat feat2acc_bound (dense_fp: dense): hashed =
-  let k = A.length seeds in
-  let rand_bound = A.length idx2feat in
+let hash pregen_rands idx2feat feat2acc_bound (dense_fp: dense): hashed =
+  let k = A.length pregen_rands in
   let res = A.make k 0 in
   for i = 0 to k - 1 do
     let misses = ref 0 in
-    let seed = A.get seeds i in
-    let rng = Random.State.make [|seed|] in
-    let rand' = Random.State.int rng rand_bound in
+    let j = ref 0 in
+    let rands = pregen_rands.(i) in
+    let rand' = rands.(!j) in
     let test_feat_id = ref (idx2feat.(rand')) in
     let test_feat_val = ref (rand' - feat2acc_bound.(!test_feat_id)) in
     while is_red dense_fp !test_feat_id !test_feat_val do
       incr misses; (* in the paper: Hashes[i]++ *)
-      let rand = Random.State.int rng rand_bound in
+      incr j;
+      let rand = rands.(!j) in
       test_feat_id := idx2feat.(rand);
       test_feat_val := rand - feat2acc_bound.(!test_feat_id)
     done;
