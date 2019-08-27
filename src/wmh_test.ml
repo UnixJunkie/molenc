@@ -23,6 +23,8 @@ let main () =
   let nb_features = 1 + (L.max (L.map FpMol.max_feature_index molecules)) in
   let sparse_fingerprints = A.of_list (L.map FpMol.get_fp molecules) in
   let bounds = WMH.bounds nb_features sparse_fingerprints in
+  let idx2feat = WMH.lookup_table bounds in
+  let feat2acc_bound = WMH.acc_bounds_table bounds in
   let dense_fingerprints = A.map (WMH.to_dense nb_features) sparse_fingerprints in
   let n = A.length sparse_fingerprints in
   Log.info "read %d molecules" n;
@@ -49,7 +51,7 @@ let main () =
       let seeds = WMH.get_seeds k in
       Gc.full_major ();
       let dt0, hashes = Utls.time_it (fun () ->
-          A.map (WMH.hash seeds bounds) dense_fingerprints
+          A.map (WMH.hash seeds idx2feat feat2acc_bound) dense_fingerprints
         ) in
       Log.info "k: %d hashing-rate: %.2f" k (float n /. dt0);
       (* compute estimated tani for the same pairs (and compute scoring rate) *)

@@ -1,7 +1,4 @@
 
-- use a single rand per feature test instead of two currently
-  should accelerate the hashing rate
-
 - pre-generate rands at init in a table
   - use a non repeating sequence of random integers
     i.e. a random permutation of all possible integers
