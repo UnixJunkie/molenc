@@ -75,7 +75,8 @@ let main () =
       let diffs = A.map2 (fun d1 d2 -> abs_float (d1 -. d2)) dists est_dists in
       let max_abs_error = A.max diffs in
       let avg_abs_error = A.favg diffs in
-      Log.info "k: %d max-abs-error: %.2f avg-abs-error: %.2f" k max_abs_error avg_abs_error
+      Log.info "k: %d max-abs-error: %.2f avg-abs-error: %.2f"
+        k max_abs_error avg_abs_error
     ) ks
 
 let () = main ()
