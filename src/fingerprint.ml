@@ -48,6 +48,10 @@ let of_string s: t =
     ) kvs;
   res
 
+let max_feature_index x =
+  let n = BA1.dim x in
+  BA1.get x (n - 2)
+
 (* tani(A,B) = |inter(A,B)| / |union(A,B)|
              = sum(min_i) / sum(max_i) *)
 let tanimoto (m1: t) (m2: t): float =
