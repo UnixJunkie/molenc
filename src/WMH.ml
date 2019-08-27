@@ -76,6 +76,16 @@ let lookup_table (bounds: int array): int array =
     ) bounds;
   res
 
+let acc_bounds_table (bounds: int array): int array =
+  let n = A.length bounds in
+  let res = A.create n 0 in
+  let acc = ref 0 in
+  A.iteri (fun i bound ->
+      res.(i) <- !acc;
+      acc := !acc + bound
+    ) bounds;
+  res
+
 (* in the paper, he defines is_green; but he samples until is_green becomes
  * true. It is more natural to sample while is_red *)
 let is_red (arr: dense) (test_feat_id: int) (test_feat_val: int): bool =
@@ -83,27 +93,22 @@ let is_red (arr: dense) (test_feat_id: int) (test_feat_val: int): bool =
   (feat_val = 0) || (test_feat_val > feat_val)
 
 (* compute k hashes *)
-let hash seeds bounds (dense_fp: dense): hashed =
+let hash seeds idx2feat feat2acc_bound (dense_fp: dense): hashed =
   let k = A.length seeds in
-  let feat_id_bound = BA1.dim dense_fp in
+  let rand_bound = A.length idx2feat in
   let res = A.make k 0 in
   for i = 0 to k - 1 do
     let misses = ref 0 in
     let seed = A.get seeds i in
     let rng = Random.State.make [|seed|] in
-    (* FBR: we could generate a single rand then modulo,
-            if hashing speed really matters *)
-    (* FBR: we could also generate enough rands in advance... *)
-    let test_feat_id = ref (Random.State.int rng feat_id_bound) in
-    let test_feat_val =
-      let bound = 1 + bounds.(!test_feat_id) in
-      ref (Random.State.int rng bound) in
+    let rand' = Random.State.int rng rand_bound in
+    let test_feat_id = ref (idx2feat.(rand')) in
+    let test_feat_val = ref (rand' - feat2acc_bound.(!test_feat_id)) in
     while is_red dense_fp !test_feat_id !test_feat_val do
-      incr misses; (* Hashes[i]++ *)
-      test_feat_id := Random.State.int rng feat_id_bound;
-      test_feat_val :=
-        let bound = 1 + bounds.(!test_feat_id) in
-        Random.State.int rng bound
+      incr misses; (* in the paper: Hashes[i]++ *)
+      let rand = Random.State.int rng rand_bound in
+      test_feat_id := idx2feat.(rand);
+      test_feat_val := rand - feat2acc_bound.(!test_feat_id)
     done;
     res.(i) <- !misses
   done;
