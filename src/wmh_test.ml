@@ -44,7 +44,7 @@ let main () =
       res) in
   let tani_rate = (float n) /. dt1 in
   Log.info "Tani-rate: %.2f" tani_rate;
-  let ks = [1; 2; 5; 10; 15; 20; 30; 40; 50; 100; 200] in
+  let ks = [1; 2; 5; 10; 15; 20; 30; 40; 50; 100] in
   (* test the correctness and bench hashing and scoring speeds
      as a function of k (the number of hashes) *)
   L.iter (fun k ->
