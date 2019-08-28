@@ -127,9 +127,9 @@ let hash pregen_rands idx2feat feat2acc_bound (dense_fp: dense): hashed =
 let estimate_jaccard (hash1: hashed) (hash2: hashed): float =
   let res = ref 0 in
   let k = A.length hash1 in
-  assert(A.length hash2 = k);
+  assert(k = A.length hash2);
   for i = 0 to k - 1 do
-    if hash1.(i) = hash2.(i) then
+    if (A.unsafe_get hash1 i) = (A.unsafe_get hash2 i) then
       incr res
   done;
   (float !res) /. (float k)
