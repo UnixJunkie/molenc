@@ -44,10 +44,12 @@ let main () =
       res) in
   let tani_rate = (float n) /. dt1 in
   Log.info "Tani-rate: %.2f" tani_rate;
-  let ks = [1; 2; 5; 10; 20; 30; 40; 50; 100; 200; 500; 1000] in
+  let ks = [1; 2; 5; 10; 20; 30; 40; 50] in
   (* test the correctness and bench hashing and scoring speeds
      as a function of k (the number of hashes) *)
   L.iter (fun k ->
+      let data_fn = sprintf "k_%02d.data" k in
+      Utls.with_out_file data_fn (fun out ->
       (* hash them (and compute hashing rate) *)
       let seeds = WMH.get_seeds k in
       let rands = WMH.gen_rands seeds rand_bound in
@@ -70,6 +72,9 @@ let main () =
             A.set res i tani
           done;
           res) in
+      A.iteri (fun i exact_dist ->
+          fprintf out "%f %f\n" exact_dist est_dists.(i)
+        ) dists;
       let est_tani_rate = (float n) /. dt2 in
       (if est_tani_rate <= tani_rate then Log.warn
       else Log.info) "k: %d est-Tani-rate: %.2f" k est_tani_rate;
@@ -79,6 +84,7 @@ let main () =
       let avg_abs_error = A.favg diffs in
       Log.info "k: %d max-abs-error: %.2f avg-abs-error: %.2f"
         k max_abs_error avg_abs_error
+        )
     ) ks
 
 let () = main ()
