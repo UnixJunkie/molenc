@@ -1,0 +1,25 @@
+
+set xrange [0:1]
+set yrange [0:1]
+
+set size square
+
+set xlabel 'Exact Tanimoto'
+set ylabel 'Estimated Tanimoto'
+
+set term postscript eps enhanced
+
+set output 'pix/k_005.eps'
+plot 'data/k_005.data' u 1:2 w d not
+
+set output 'pix/k_010.eps'
+plot 'data/k_010.data' u 1:2 w d not
+
+set output 'pix/k_020.eps'
+plot 'data/k_020.data' u 1:2 w d not
+
+set output 'pix/k_050.eps'
+plot 'data/k_050.data' u 1:2 w d not
+
+set output 'pix/k_100.eps'
+plot 'data/k_100.data' u 1:2 w d not
