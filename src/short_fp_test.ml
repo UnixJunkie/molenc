@@ -12,7 +12,7 @@ module Sfp = Molenc.Short_fingerprint
 
 let main () =
   Log.color_on ();
-  Log.set_log_level Log.INFO;
+  Log.set_log_level Log.DEBUG;
   let argc, args = CLI.init () in
   if argc = 1 then
     (eprintf "usage:\n\
