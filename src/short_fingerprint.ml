@@ -2,6 +2,7 @@
 (* Very short fingerprints, to encode an uncounted-unfolded FP into
    a bit vector (this gives a condensed/lower resolution version of the FP). *)
 
+module A = Array
 module BA = Bigarray
 module BA1 = BA.Array1
 
@@ -11,7 +12,10 @@ type t = Bitv.t
 (* low resolution FP from an exact one *)
 let of_dense nbits idx2feat feat2acc_bound (dense_fp: dense): t =
   let bits = Bitv.create nbits false in
-  let step_size = (BA1.dim dense_fp) / nbits in
+  (* Log.debug "total length: %d" (A.length idx2feat);
+   * Log.debug "nbits: %d" nbits; *)
+  let step_size = (A.length idx2feat) / nbits in
+  (* Log.debug "step size: %d" step_size; *)
   let i = ref 0 in
   for j = 0 to nbits - 1 do
     let feat_id = idx2feat.(!i) in
