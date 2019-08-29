@@ -10,12 +10,12 @@ type dense = WMH.dense
 type t = Bitv.t
 
 (* low resolution FP from an exact one *)
+(* FBR: WARNING this doesn't sample the input vector uniformly
+        we will correct this later *)
 let of_dense nbits idx2feat feat2acc_bound (dense_fp: dense): t =
   let bits = Bitv.create nbits false in
-  (* Log.debug "total length: %d" (A.length idx2feat);
-   * Log.debug "nbits: %d" nbits; *)
-  let step_size = (A.length idx2feat) / nbits in
-  (* Log.debug "step size: %d" step_size; *)
+  let total_length = A.length idx2feat in
+  let step_size = total_length / nbits in
   let i = ref 0 in
   for j = 0 to nbits - 1 do
     let feat_id = idx2feat.(!i) in
@@ -34,10 +34,9 @@ let to_string x =
     ) x;
   Bytes.to_string res
 
-(* |AnB| / |AuB| *)
-let jaccard (hash1: t) (hash2: t): float =
+let estimate_jaccard (hash1: t) (hash2: t): float =
   (float (Bitv.pop (Bitv.bw_and hash1 hash2))) /.
-  (float (Bitv.pop (Bitv.bw_or hash1 hash2)))
+  (float (Bitv.length hash1))
 
-let distance (h1: t) (h2: t): float =
-  1.0 -. (jaccard h1 h2)
+let estimate_distance (h1: t) (h2: t): float =
+  1.0 -. (estimate_jaccard h1 h2)
