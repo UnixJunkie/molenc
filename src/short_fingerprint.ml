@@ -22,10 +22,18 @@ let of_dense nbits idx2feat feat2acc_bound (dense_fp: dense): t =
   done;
   bits
 
+(* string of 0s and 1s *)
+let to_string x =
+  let res = Bytes.create (Bitv.length x) in
+  Bitv.iteri (fun i b ->
+      Bytes.set res i (if b then '1' else '0')
+    ) x;
+  Bytes.to_string res
+
 (* |AnB| / |AuB| *)
 let jaccard (hash1: t) (hash2: t): float =
-  (float (Bitv.pop (Bitv.inter hash1 hash2))) /.
-  (float (Bitv.pop (Bitv.union hash1 hash2)))
+  (float (Bitv.pop (Bitv.bw_and hash1 hash2))) /.
+  (float (Bitv.pop (Bitv.bw_or hash1 hash2)))
 
 let distance (h1: t) (h2: t): float =
-  1.0 -. (estimate_jaccard h1 h2)
+  1.0 -. (jaccard h1 h2)
