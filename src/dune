@@ -3,8 +3,8 @@
   (name molenc)
   (public_name molenc)
   (modules ap_types atom_env fingerprint fpMol mini_mol MSE_mol myList
-           node piEltHA scale utls WMH)
-  (libraries batteries dolog))
+           node piEltHA scale utls WMH short_fingerprint)
+  (libraries batteries dolog bitv))
 
 ;; installed executables / public targets
 (executables
@@ -15,6 +15,6 @@
 
 ;; never installed executables
 (executables
-  (names fp_test wmh_test wmh_bench)
-  (modules fp_test wmh_test wmh_bench)
+  (names fp_test wmh_test wmh_bench short_fp_test)
+  (modules fp_test wmh_test wmh_bench short_fp_test)
   (libraries molenc batteries dolog minicli))
