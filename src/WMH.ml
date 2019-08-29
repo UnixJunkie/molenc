@@ -49,8 +49,7 @@ let string_of_dense x =
   let buff = Buffer.create 80 in
   for i = 0 to n - 1 do
     let j = BA1.get x i in
-    if i = 0 then bprintf buff "%d:%d" i j
-    else bprintf buff " %d:%d" i j
+    bprintf buff " %d" j
   done;
   Buffer.contents buff
 
@@ -101,12 +100,10 @@ let acc_bounds_table (bounds: int array): int array =
 (* in the paper, he defines is_green; but he samples until is_green becomes
  * true. It is more natural to sample while is_red *)
 let is_red (arr: dense) (test_feat_id: int) (test_feat_val: int): bool =
-  let feat_val = BA1.get arr test_feat_id in
-  (feat_val = 0) || (test_feat_val >= feat_val)
+  test_feat_val >= (BA1.unsafe_get arr test_feat_id)
 
 let is_green (arr: dense) (test_feat_id: int) (test_feat_val: int): bool =
-  let feat_val = BA1.get arr test_feat_id in
-  (feat_val <> 0) && (test_feat_val < feat_val)
+  test_feat_val < BA1.unsafe_get arr test_feat_id
 
 (* pre-generate non-repeating random number sequences for later *)
 let gen_rands seeds rand_bound =
