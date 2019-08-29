@@ -26,7 +26,7 @@ let main () =
   let sparse_fingerprints = A.of_list (L.map FpMol.get_fp molecules) in
   let bounds = WMH.bounds nb_features sparse_fingerprints in
   printf "bounds:\n";
-  A.iteri (printf "%d:%d ") bounds;
+  A.iter (printf " %d ") bounds;
   printf "\nEND\n";
   let idx2feat = WMH.lookup_table bounds in
   printf "idx2feat:\n";
