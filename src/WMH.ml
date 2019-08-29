@@ -102,11 +102,11 @@ let acc_bounds_table (bounds: int array): int array =
  * true. It is more natural to sample while is_red *)
 let is_red (arr: dense) (test_feat_id: int) (test_feat_val: int): bool =
   let feat_val = BA1.get arr test_feat_id in
-  (feat_val = 0) || (test_feat_val > feat_val)
+  (feat_val = 0) || (test_feat_val >= feat_val)
 
 let is_green (arr: dense) (test_feat_id: int) (test_feat_val: int): bool =
   let feat_val = BA1.get arr test_feat_id in
-  (feat_val <> 0) && (test_feat_val <= feat_val)
+  (feat_val <> 0) && (test_feat_val < feat_val)
 
 (* pre-generate non-repeating random number sequences for later *)
 let gen_rands seeds rand_bound =
