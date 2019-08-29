@@ -5,6 +5,8 @@
    Simple and efficient weighted minwise hashing.
    In Advances in Neural Information Processing Systems (pp. 1498-1506). *)
 
+open Printf
+
 module A = BatArray
 module BA = Bigarray
 module BA1 = BA.Array1
@@ -41,6 +43,16 @@ let to_dense (feat_id_bound: int) (fp: Fp.t): dense =
     i := !i + 2
   done;
   res
+
+let string_of_dense x =
+  let n = BA1.dim x in
+  let buff = Buffer.create 80 in
+  for i = 0 to n - 1 do
+    let j = BA1.get x i in
+    if i = 0 then bprintf buff "%d:%d" i j
+    else bprintf buff " %d:%d" i j
+  done;
+  Buffer.contents buff
 
 (* read the sparse fingerprints, update feat. val. bounds
  * if necessary *)
