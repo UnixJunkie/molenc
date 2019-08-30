@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -x
+
 ~/src/molenc/kbe -i all_uniq_std.txt -k 64 > test_64_1xCPU.txt
 sort test_64_1xCPU.txt -o test_64_1xCPU.txt
 
