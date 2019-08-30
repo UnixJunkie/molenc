@@ -81,12 +81,12 @@ let main () =
       L.really_take k
         (L.shuffle ~state:(BatRandom.State.make_self_init ()) all_lines) in
     L.mapi FpMol.parse_one rand_k_lines in
-  let ht, thresholds, bst = KBE.init vmols in
+  let mols, thresholds = KBE.init vmols in
   let dt, () =
     Utls.time_it (fun () ->
         Parany.run ~verbose:false ~csize:100 ~nprocs
           ~demux:(read_one (ref all_lines))
-          ~work:(KBE.encode ht thresholds bst)
+          ~work:(KBE.encode mols thresholds)
           ~mux:write_one
       ) in
   let rate = (float !total) /. dt in

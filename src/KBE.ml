@@ -14,32 +14,24 @@ let init mols =
   let thresholds =
     let rng = Random.State.make_self_init () in
     A.init k (fun _ -> Random.State.float rng 1.0) in
-  L.iteri (fun i mol ->
-      (* vantage molecules must be unique *)
-      assert(not (Ht.mem ht mol));
-      Ht.add ht mol i
+  (* to guarantee each bit adds some information:
+     vantage molecules must be unique *)
+  L.iter (fun mol ->
+      let fp = FpMol.get_fp mol in
+      assert(not (Ht.mem ht fp));
+      Ht.add ht fp ()
     ) mols;
-  (* index them *)
-  let bst = Bst.(create 1 Two_bands (A.of_list mols)) in
-  (ht, thresholds, bst)
+  (A.of_list mols, thresholds)
 
-let encode vmol2idx thresholds bst mol =
-  let k = Ht.length vmol2idx in
+let encode vmols thresholds mol =
+  let k = A.length vmols in
   let bits = Bitv.create k false in
   for i = 0 to k - 1 do
     let t = thresholds.(i) in
-    let nearby_mols = Bst.neighbors mol t bst in
-    L.iter (fun vmol ->
-        let j = Ht.find vmol2idx vmol in
-        if j = i then
-          Bitv.set bits i true
-      ) nearby_mols
+    let vmol = vmols.(i) in
+    if FpMol.dist mol vmol <= t then
+      Bitv.set bits i true
   done;
-  (* let nearby_mols = Bst.neighbors mol 0.5 bst in
-   * L.iter (fun vmol ->
-   *     let i = Ht.find vmol2idx vmol in
-   *     Bitv.set bits i true
-   *   ) nearby_mols; *)
   (FpMol.get_name mol, bits)
 
 let to_string x =
