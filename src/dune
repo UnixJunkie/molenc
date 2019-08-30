@@ -8,9 +8,9 @@
 
 ;; installed executables / public targets
 (executables
-  (names encoder decoder filter)
-  (public_names molenc_e molenc_d molenc_f)
-  (modules encoder decoder filter)
+  (names encoder decoder filter kb_encode)
+  (public_names molenc_e molenc_d molenc_f molenc_kbe)
+  (modules encoder decoder filter kb_encode)
   (libraries molenc bst batteries dolog minicli))
 
 ;; never installed executables

@@ -18,12 +18,12 @@ let init mols =
     ) mols;
   (* index them *)
   let bst = Bst.(create 1 Two_bands (A.of_list mols)) in
-  (k, ht, bst)
+  (ht, bst)
 
-let encode vmol2idx vpt mol =
+let encode vmol2idx bst mol =
   let k = Ht.length vmol2idx in
   let bits = Bitv.create k false in
-  let nearby_mols = Bst.neighbors vpt 0.5 mol in
+  let nearby_mols = Bst.neighbors mol 0.5 bst in
   L.iter (fun vmol ->
       let i = Ht.find vmol2idx vmol in
       Bitv.set bits i true
