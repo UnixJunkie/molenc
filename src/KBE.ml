@@ -8,12 +8,10 @@ module L = List
 
 type t = Bitv.t
 
-let init mols =
+let init rng mols =
   let k = L.length mols in
   let ht = Ht.create k in
-  let thresholds =
-    let rng = Random.State.make_self_init () in
-    A.init k (fun _ -> Random.State.float rng 1.0) in
+  let thresholds = A.init k (fun _ -> Random.State.float rng 1.0) in
   (* to guarantee each bit adds some information:
      vantage molecules must be unique *)
   L.iter (fun mol ->
@@ -27,9 +25,7 @@ let encode vmols thresholds mol =
   let k = A.length vmols in
   let bits = Bitv.create k false in
   for i = 0 to k - 1 do
-    let t = thresholds.(i) in
-    let vmol = vmols.(i) in
-    if FpMol.dist mol vmol <= t then
+    if FpMol.dist mol (A.unsafe_get vmols i) <= (A.unsafe_get thresholds i) then
       Bitv.set bits i true
   done;
   (FpMol.get_name mol, bits)

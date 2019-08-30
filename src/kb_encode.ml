@@ -8,6 +8,8 @@
    - add --test option
      - draw 1000 molecule pairs randomly
      - output true Vs predicted Jaccard
+   - would a loop unrolled version of KBE.encode would go faster?
+     - encode_8, encode_16, encode_32, encode_64, encode_128
    - assess estimated distance precision as a function of the number of bits k
    - compare performance to WMH
    - output a dictionary file at the end:
@@ -70,6 +72,9 @@ let main () =
   let input_fn = CLI.get_string ["-i"] args in
   let k = CLI.get_int ["-k"] args in
   let nprocs = CLI.get_int_def ["-np"] args 1 in
+  let seed = CLI.get_int_def ["-s"] args 3141592 in
+  CLI.finalize ();
+  let rng = Random.State.make [|seed|] in
   (* read all molecules *)
   Log.info "reading molecules...";
   let all_lines = Utls.lines_of_file input_fn in
@@ -79,9 +84,9 @@ let main () =
   let vmols =
     let rand_k_lines =
       L.really_take k
-        (L.shuffle ~state:(BatRandom.State.make_self_init ()) all_lines) in
+        (L.shuffle ~state:rng all_lines) in
     L.mapi FpMol.parse_one rand_k_lines in
-  let mols, thresholds = KBE.init vmols in
+  let mols, thresholds = KBE.init rng vmols in
   let dt, () =
     Utls.time_it (fun () ->
         Parany.run ~verbose:false ~csize:100 ~nprocs
