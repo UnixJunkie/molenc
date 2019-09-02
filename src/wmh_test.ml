@@ -74,15 +74,17 @@ let main () =
            else Log.info) "k: %d est-Tani-rate: %.2f accel: %.2f"
             k est_tani_rate (est_tani_rate /. tani_rate);
           A.iteri (fun i exact_dist ->
-              fprintf out "%f %f\n" exact_dist est_dists.(i)
+              let abs_error = abs_float (exact_dist -. est_dists.(i)) in
+              fprintf out "%f %f %f\n" exact_dist est_dists.(i) abs_error
             ) dists;
           (* output maximum Tani error *)
           let diffs =
             A.map2 (fun d1 d2 -> abs_float (d1 -. d2)) dists est_dists in
-          let max_abs_error = A.max diffs in
-          let avg_abs_error = A.favg diffs in
-          Log.info "k: %d max-error: %.2f avg-error: %.2f"
-            k max_abs_error avg_abs_error
+          let max_error = A.max diffs in
+          let avg_error = A.favg diffs in
+          let med_error = Utls.list_medianf (A.to_list diffs) in
+          Log.info "k: %d error(max, avg, med): %.2f %.2f %.2f"
+            k max_error avg_error med_error
         )
     ) ks
 
