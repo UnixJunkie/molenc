@@ -3,14 +3,14 @@
   (name molenc)
   (public_name molenc)
   (modules ap_types atom_env fingerprint fpMol mini_mol MSE_mol myList
-           node piEltHA scale utls WMH KBE)
+           node piEltHA scale utls WMH)
   (libraries batteries dolog bitv bst parany))
 
 ;; installed executables / public targets
 (executables
-  (names encoder decoder filter kb_encode)
-  (public_names molenc_e molenc_d molenc_f molenc_kbe)
-  (modules encoder decoder filter kb_encode)
+  (names encoder decoder filter)
+  (public_names molenc_e molenc_d molenc_f)
+  (modules encoder decoder filter)
   (libraries molenc bst batteries dolog minicli))
 
 ;; never installed executables
