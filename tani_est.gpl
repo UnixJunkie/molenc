@@ -7,27 +7,17 @@ set size square
 set xlabel 'Exact Tanimoto'
 set ylabel 'Estimated Tanimoto'
 
-# set term postscript eps enhanced
-# set output 'pix/k_005.eps'
-# plot 'data/k_005.data' u 1:2 w d not
-# set output 'pix/k_010.eps'
-# plot 'data/k_010.data' u 1:2 w d not
-# set output 'pix/k_020.eps'
-# plot 'data/k_020.data' u 1:2 w d not
-# set output 'pix/k_050.eps'
-# plot 'data/k_050.data' u 1:2 w d not
-# set output 'pix/k_100.eps'
-# plot 'data/k_100.data' u 1:2 w d not
-
 set key outside
 
 f(x) = x
 
 plot f(x) not, \
-     'k_005.data' u 1:2, \
-     'k_010.data' u 1:2, \
-     'k_020.data' u 1:2, \
-     'k_050.data' u 1:2, \
-     'k_100.data' u 1:2, \
-     'k_200.data' u 1:2, \
-     'k_500.data' u 1:2
+     'k_010.data' u 1:2 t 'k=10' , \
+     'k_020.data' u 1:2 t 'k=20' , \
+     'k_030.data' u 1:2 t 'k=30' , \
+     'k_040.data' u 1:2 t 'k=40' , \
+     'k_050.data' u 1:2 t 'k=50' , \
+     'k_500.data' u 1:2 t 'k=500'
+
+# 'k_100.data' u 1:2 t 'k=100'
+# 'k_200.data' u 1:2 t 'k=200'
