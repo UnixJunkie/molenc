@@ -31,20 +31,20 @@ let main () =
   Log.info "read %d molecules" n;
   (* compute Tani for many pairs (and compute scoring rate) *)
   Random.init 12345; (* seed PRNG *)
-  let dt1, dists = Utls.time_it (fun () ->
-      let res = A.make n 0.0 in
-      for i = 0 to n - 1 do
-        let i1 = Random.int n in
-        let i2 = Random.int n in
-        let m1 = A.get sparse_fingerprints i1 in
-        let m2 = A.get sparse_fingerprints i2 in
-        let tani = Fp.tanimoto m1 m2 in
-        A.set res i tani
-      done;
-      res) in
+  let pairs = A.init 10_000 (fun _i -> (Random.int n, Random.int n)) in
+  let dists = A.make 10_000 0.0 in
+  let dt1, () = Utls.time_it (fun () ->
+      A.iteri (fun i (i1, i2) ->
+          let tani =
+            Fp.tanimoto
+              (A.unsafe_get sparse_fingerprints i1)
+              (A.unsafe_get sparse_fingerprints i2) in
+          A.unsafe_set dists i tani
+        ) pairs
+    ) in
   let tani_rate = (float n) /. dt1 in
   Log.info "Tani-rate: %.2f" tani_rate;
-  let ks = [1; 2; 5; 10; 15; 20; 30; 40; 50; 100] in
+  let ks = [10; 20; 30; 40; 50; 100; 200; 500] in
   (* test the correctness and bench hashing and scoring speeds
      as a function of k (the number of hashes) *)
   L.iter (fun k ->
@@ -59,31 +59,29 @@ let main () =
           Log.info "k: %d hashing-rate: %11.2f" k (float n /. dt0);
           (* compute estimated tani for the same pairs
              (and compute scoring rate) *)
-          Random.init 12345; (* seed PRNG *)
-          let dt2, est_dists = Utls.time_it (fun () ->
-              let res = A.make n 0.0 in
-              for i = 0 to n - 1 do
-                let i1 = Random.int n in
-                let i2 = Random.int n in
-                let m1 = A.get hashes i1 in
-                let m2 = A.get hashes i2 in
-                let tani = WMH.estimate_jaccard m1 m2 in
-                A.set res i tani
-              done;
-              res) in
+          let est_dists = A.make 10_000 0.0 in
+          let dt2, () = Utls.time_it (fun () ->
+              A.iteri (fun i (i1, i2) ->
+                  let m1 = A.unsafe_get hashes i1 in
+                  let m2 = A.unsafe_get hashes i2 in
+                  let tani = WMH.estimate_jaccard m1 m2 in
+                  A.unsafe_set est_dists i tani
+                ) pairs
+            ) in
+          let est_tani_rate = (float n) /. dt2 in
+          (if est_tani_rate <= tani_rate
+           then Log.warn
+           else Log.info) "k: %d est-Tani-rate: %.2f accel: %.2f"
+            k est_tani_rate (est_tani_rate /. tani_rate);
           A.iteri (fun i exact_dist ->
               fprintf out "%f %f\n" exact_dist est_dists.(i)
             ) dists;
-          let est_tani_rate = (float n) /. dt2 in
-          (if est_tani_rate <= tani_rate then Log.warn
-           else Log.info) "k: %d est-Tani-rate: %.2f accel: %.2f"
-            k est_tani_rate (est_tani_rate /. tani_rate);
           (* output maximum Tani error *)
           let diffs =
             A.map2 (fun d1 d2 -> abs_float (d1 -. d2)) dists est_dists in
           let max_abs_error = A.max diffs in
           let avg_abs_error = A.favg diffs in
-          Log.info "k: %d max-abs-error: %.2f avg-abs-error: %.2f"
+          Log.info "k: %d max-error: %.2f avg-error: %.2f"
             k max_abs_error avg_abs_error
         )
     ) ks
