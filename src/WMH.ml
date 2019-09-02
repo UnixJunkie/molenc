@@ -48,7 +48,7 @@ let string_of_dense x =
   let buff = Buffer.create 80 in
   for i = 0 to n - 1 do
     let j = BA1.get x i in
-    bprintf buff " %d" j
+    bprintf buff " %d:%d" i j
   done;
   Buffer.contents buff
 
