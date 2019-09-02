@@ -15,7 +15,6 @@ module L = BatList
 
 type dense = (int, BA.int8_unsigned_elt, BA.c_layout) BA1.t
 
-(* FBR: later on, try using a BA for the hashed FP too *)
 type hashed = int array
 
 (* FBR: compute [k] in as a function of the precision we want
@@ -133,7 +132,7 @@ let hash pregen_rands idx2feat feat2acc_bound (dense_fp: dense): hashed =
       test_feat_id := idx2feat.(rand);
       test_feat_val := rand - feat2acc_bound.(!test_feat_id)
     done;
-    res.(i) <- !misses
+    A.unsafe_set res i !misses
   done;
   res
 
