@@ -86,6 +86,7 @@ let main () =
           Log.info "k: %d error(max, avg, med): %.2f %.2f %.2f"
             k max_error avg_error med_error
         )
-    ) ks
+    ) ks;
+  Utls.run_command "gnuplot -persist tani_est.gpl"
 
 let () = main ()
