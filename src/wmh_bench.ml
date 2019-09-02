@@ -20,7 +20,7 @@ let main () =
   let input_fn = CLI.get_string ["-i"] args in
   (* read all molecules *)
   let molecules = FpMol.molecules_of_file input_fn in
-  let nb_features = 1 + (L.max (L.map FpMol.max_feature_index molecules)) in
+  let nb_features = L.max (L.map FpMol.nb_features molecules) in
   let sparse_fingerprints = A.of_list (L.map FpMol.get_fp molecules) in
   let bounds = WMH.bounds nb_features sparse_fingerprints in
   let idx2feat = WMH.lookup_table bounds in

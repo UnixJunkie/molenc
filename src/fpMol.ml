@@ -49,8 +49,8 @@ let get_index x =
 let get_fp x =
   x.fp
 
-let max_feature_index x =
-  Fp.max_feature_index x.fp
+let nb_features x =
+  Fp.nb_features x.fp
 
 let mol_is_active line =
   BatString.starts_with line "active"

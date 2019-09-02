@@ -48,9 +48,9 @@ let of_string s: t =
     ) kvs;
   res
 
-let max_feature_index x =
+let nb_features x =
   let n = BA1.dim x in
-  BA1.get x (n - 2)
+  1 + (BA1.get x (n - 2))
 
 (* tani(A,B) = |inter(A,B)| / |union(A,B)|
              = sum(min_i) / sum(max_i) *)
