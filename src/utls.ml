@@ -31,6 +31,10 @@ let enforce (condition: bool) (err_msg: string): unit =
   if not condition then
     failwith err_msg
 
+let enforce_f (condition: bool) (msg_constr: unit -> string): unit =
+  if not condition then
+    failwith (msg_constr ())
+
 let with_out_file (fn: filename) (f: out_channel -> 'a): 'a =
   let output = open_out_bin fn in
   let res = f output in
