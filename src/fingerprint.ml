@@ -20,6 +20,8 @@ module L = MyList
  * and to Chet Murthy for suggesting arrays *)
 type t = (int, BA.int16_unsigned_elt, BA.c_layout) BA1.t
 
+(* FBR: try BA.int32_unigned_elt *)
+
 let of_string s: t =
   let previous = ref (-1) in
   let n = ref 0 in
@@ -30,9 +32,10 @@ let of_string s: t =
              (* indices are >= 0 *)
              (* indices are incr. sorted *)
              (* feature counts are > 0 *)
-             (* keys and values all fit in an unsigned int 16 *)
-             assert(k >= 0 && k > !previous && v > 0 &&
-                    k <= 65535 && v <= 65535);
+             (* keys and values fit in an unsigned int 16 *)
+             Utls.enforce_f
+               (k >= 0 && k > !previous && v > 0 && k <= 65535 && v <= 65535)
+               (fun () -> "Fingerprint.of_string: invalid line: " ^ s);
              previous := k;
              incr n;
              (k, v)
