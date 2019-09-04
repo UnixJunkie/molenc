@@ -6,8 +6,6 @@
    Kyushu Institute of Technology,
    680-4 Kawazu, Iizuka, Fukuoka, 820-8502, Japan. *)
 
-(* open Printf *)
-
 module A = Array
 module BA = Bigarray
 module BA1 = BA.Array1
@@ -18,9 +16,7 @@ module L = MyList
 (* the int16 bigarray trick reduces memory consumption by four times compared
  * to regular 64 bits OCaml integers; thanks to Oleg for suggesting it
  * and to Chet Murthy for suggesting arrays *)
-type t = (int, BA.int16_unsigned_elt, BA.c_layout) BA1.t
-
-(* FBR: try BA.int32_unigned_elt *)
+type t = (int, BA.int_elt, BA.c_layout) BA1.t
 
 let of_string s: t =
   let previous = ref (-1) in
@@ -32,16 +28,14 @@ let of_string s: t =
              (* indices are >= 0 *)
              (* indices are incr. sorted *)
              (* feature counts are > 0 *)
-             (* keys and values fit in an unsigned int 16 *)
-             Utls.enforce_f
-               (k >= 0 && k > !previous && v > 0 && k <= 65535 && v <= 65535)
+             Utls.enforce_f (k >= 0 && k > !previous && v > 0)
                (fun () -> "Fingerprint.of_string: invalid line: " ^ s);
              previous := k;
              incr n;
              (k, v)
           )
       ) s in
-  let res = BA1.create BA.Int16_unsigned BA.C_layout (2 * !n) in
+  let res = BA1.create BA.Int BA.C_layout (2 * !n) in
   let i = ref 0 in
   L.iter (fun (k, v) ->
       BA1.unsafe_set res !i k;
