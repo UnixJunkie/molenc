@@ -65,22 +65,27 @@ there_is_pardi=`which pardi`
 if [ "$no_std" == "" ]; then
     # tell user how to install standardiser if not here
     which standardiser 2>&1 > /dev/null || \
-        echo 'ERROR: type: pip3 install chemo-standardizer'
+        echo 'molenc: ERROR: type: pip3 install chemo-standardizer'
     if [ "$there_is_pardi" != "" ]; then
-        echo standardizing molecules in parallel...
+        echo 'standardizing molecules in parallel...'
 
         pardi -i $input -o $tmp_smi -c 100 -d l -ie '.smi' -oe '.smi' \
               -w 'standardiser -i %IN -o %OUT 2>/dev/null'
     else
-        echo standardizing molecules...
+        echo 'standardizing molecules...'
         (standardiser -i $input -o $tmp_smi 2>&1) > $std_log
     fi
 else
     cp $input $tmp_smi
 fi
-echo typing atoms...
-# FBR: parallelize atom typing if pardi is detected
-molenc_type_atoms.py $tmp_smi > $tmp_types
+if [ "$there_is_pardi" != "" ]; then
+    echo 'typing atoms in parallel...'
+    pardi -i $tmp_smi -o $tmp_types -c 100 -d l -ie '.smi' \
+          -w 'molenc_type_atoms.py %IN > %OUT 2>/dev/null'
+else
+    echo 'typing atoms...'
+    molenc_type_atoms.py $tmp_smi > $tmp_types
+fi
 echo encoding molecules...
 molenc_e -i $tmp_types -r $range -o $tmp_enc
 if [ "$dico" != "" ]; then
