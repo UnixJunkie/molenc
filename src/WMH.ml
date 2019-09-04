@@ -17,16 +17,11 @@ type dense = (int, BA.int8_unsigned_elt, BA.c_layout) BA1.t
 
 type hashed = int array
 
-(* FBR: compute [k] in as a function of the precision we want
-        (there is a formula in some papers) *)
-
 let get_seeds k =
   let global_seed = 314159265 in
   let rng = Random.State.make [|global_seed|] in
   let bound = (BatInt.pow 2 30) - 1 in
   Array.init k (fun _ -> Random.State.int rng bound)
-
-(* FBR: put back unsafe where possible in whole file *)
 
 (* convert the sparse Fp.t type into a dense array of small positive ints *)
 let to_dense (feat_id_bound: int) (fp: Fp.t): dense =
@@ -37,7 +32,7 @@ let to_dense (feat_id_bound: int) (fp: Fp.t): dense =
   while !i < n do
     let k = BA1.get fp !i in
     let v = BA1.get fp (!i + 1) in
-    assert(k < feat_id_bound);
+    assert(k < feat_id_bound && v < 256);
     BA1.set res k v;
     i := !i + 2
   done;
@@ -96,13 +91,10 @@ let acc_bounds_table (bounds: int array): int array =
     ) bounds;
   res
 
-(* in the paper, he defines is_green; but he samples until is_green becomes
- * true. It is more natural to sample while is_red *)
-let is_red (arr: dense) (test_feat_id: int) (test_feat_val: int): bool =
-  test_feat_val >= (BA1.unsafe_get arr test_feat_id)
-
-let is_green (arr: dense) (test_feat_id: int) (test_feat_val: int): bool =
-  test_feat_val < BA1.unsafe_get arr test_feat_id
+(* (\* in the paper, he defines is_green; but he samples until is_green becomes
+ *  * true. It is more natural to sample while is_red *\)
+ * let is_red (arr: dense) (test_feat_id: int) (test_feat_val: int): bool =
+ *   test_feat_val >= (BA1.unsafe_get arr test_feat_id) *)
 
 (* pre-generate non-repeating random number sequences for later *)
 let gen_rands seeds rand_bound =
@@ -125,7 +117,8 @@ let hash pregen_rands idx2feat feat2acc_bound (dense_fp: dense): hashed =
     let rand' = rands.(!j) in
     let test_feat_id = ref (idx2feat.(rand')) in
     let test_feat_val = ref (rand' - feat2acc_bound.(!test_feat_id)) in
-    while is_red dense_fp !test_feat_id !test_feat_val do
+    (* while is_red ... *)
+    while !test_feat_val >= (BA1.unsafe_get dense_fp !test_feat_id) do
       incr misses; (* in the paper: Hashes[i]++ *)
       incr j;
       let rand = rands.(!j) in
