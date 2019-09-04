@@ -9,7 +9,7 @@ if [ $# -eq 0 ]; then
     echo "         [-d encoding.dix]; reuse existing dictionary"
     echo "         [-r i:j]; fingerprint radius (default=0:1)"
     echo "         [--no-std]; don't standardize input file molecules"
-    echo "                     only use if they have already been standardized"
+    echo "                     ONLY USE IF THEY HAVE ALREADY BEEN STANDARDIZED"
     exit 1
 fi
 
@@ -60,19 +60,26 @@ tmp_smi=$tmp'_std.smi'
 tmp_types=$tmp'_std.types'
 tmp_enc=$tmp'_std.enc'
 
-# FBR: parallelize standardization if pardi is detected
-# FBR: parallelize atom typing if pardi is detected
+there_is_pardi=`which pardi`
 
 if [ "$no_std" == "" ]; then
     # tell user how to install standardiser if not here
     which standardiser 2>&1 > /dev/null || \
         echo 'ERROR: type: pip3 install chemo-standardizer'
-    echo standardizing molecules...
-    (standardiser -i $input -o $tmp_smi 2>&1) > $std_log
+    if [ "$there_is_pardi" != "" ]; then
+        echo standardizing molecules in parallel...
+
+        pardi -i $input -o $tmp_smi -c 100 -d l -ie '.smi' -oe '.smi' \
+              -w 'standardiser -i %IN -o %OUT 2>/dev/null'
+    else
+        echo standardizing molecules...
+        (standardiser -i $input -o $tmp_smi 2>&1) > $std_log
+    fi
 else
     cp $input $tmp_smi
 fi
 echo typing atoms...
+# FBR: parallelize atom typing if pardi is detected
 molenc_type_atoms.py $tmp_smi > $tmp_types
 echo encoding molecules...
 molenc_e -i $tmp_types -r $range -o $tmp_enc
