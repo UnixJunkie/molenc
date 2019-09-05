@@ -4,7 +4,7 @@
   (public_name molenc)
   (modules ap_types atom_env fingerprint fpMol mini_mol MSE_mol myList
            node piEltHA scale utls WMH)
-  (libraries batteries dolog bst parany))
+  (libraries batteries dolog bst))
 
 ;; installed executables / public targets
 (executables
