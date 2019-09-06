@@ -17,6 +17,7 @@ open Printf
 
 module CLI = Minicli.CLI
 module FpMol = Molenc.FpMol
+module Ht = Hashtbl
 module L = BatList
 module Utls = Molenc.Utls
 
@@ -104,11 +105,18 @@ let main () =
       let total = L.length mols_to_filter in
       let ok_mols = diversity_filter threshold_distance mols_to_filter in
       let kept = L.length ok_mols in
-      Utls.with_out_file output_fn (fun out ->
-          L.iter (fun mol ->
+      let ok_names = Ht.create kept in
+      L.iter (fun mol ->
               let name = FpMol.get_name mol in
-              fprintf out "%s\n" name
-            ) ok_mols
+              Ht.add ok_names name ()
+            ) ok_mols;
+      Utls.with_out_file output_fn (fun out ->
+          Utls.iteri_on_lines_of_file input_fn (fun i line ->
+              let mol = FpMol.parse_one i line in
+              let name = FpMol.get_name mol in
+              if Ht.mem ok_names name then
+                fprintf out "%s\n" line
+            )
         );
       Log.info "read %d from %s" total input_fn;
       Log.info "kept %d in %s" kept output_fn
