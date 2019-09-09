@@ -25,13 +25,12 @@ let liblinear_line_of_pubchem_line line =
     let is_active = String.starts_with name "active" in
     let nb_bits = String.length bitstring in
     assert(nb_bits = 881);
-    let total = float (String.count_char bitstring '1') in
     let buff = Buffer.create 80 in
     Buffer.add_string buff (if is_active then "+1" else "-1");
     String.iteri (fun i c ->
         if c = '1' then
-          let k = i + 1 in
-          Printf.bprintf buff " %d:%f" k (1.0 /. total)
+          let k = i + 1 in (* in liblinear: feature indexes start at 1 *)
+          Printf.bprintf buff " %d:1" k
       ) bitstring;
     Buffer.contents buff
   | _ -> failwith ("Pubchem_decoder: invalide line: " ^ line)
@@ -49,14 +48,19 @@ let main () =
   let input_fn = CLI.get_string ["-i"] args in
   let output_fn = CLI.get_string ["-o"] args in
   CLI.finalize ();
+  let line_counter = ref 0 in
   Utls.with_infile_outfile input_fn output_fn (fun input output ->
       try
         while true do
           let in_line = input_line input in
+          incr line_counter;
+          if !line_counter mod 1000 = 0 then
+            eprintf "read: %d\r" !line_counter;
           let out_line = liblinear_line_of_pubchem_line in_line in
           fprintf output "%s\n" out_line
         done
       with End_of_file -> ()
-    )
+    );
+  eprintf "read: %d\n" !line_counter
 
 let () = main ()
