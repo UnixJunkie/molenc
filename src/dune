@@ -8,9 +8,9 @@
 
 ;; installed executables / public targets
 (executables
-  (names encoder decoder filter butina)
-  (public_names molenc_e molenc_d molenc_f molenc_c)
-  (modules encoder decoder filter butina)
+  (names encoder decoder filter butina pubchem_decoder)
+  (public_names molenc_e molenc_d molenc_f molenc_c pubchem_decoder)
+  (modules encoder decoder filter butina pubchem_decoder)
   (libraries molenc bst batteries dolog minicli))
 
 ;; never installed executables
