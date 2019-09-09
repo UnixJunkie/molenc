@@ -17,6 +17,7 @@ module Ht = BatHashtbl
 module IntMap = BatMap.Int
 module L = BatList
 module MSE_mol = Molenc.MSE_mol
+module Norm = Molenc.Norm
 module String = BatString
 module StringMap = BatMap.String
 module Utls = Molenc.Utls
@@ -33,26 +34,10 @@ let mop2d_line_of_int_map map =
     ) map;
   Buffer.contents buff
 
-(* max norm is probably to be preferred if we are going to minwise hash
- * the fingerprints later on *)
-type norm = Max_norm (* max feature value in current instance *)
-          | L1_norm (* Manhatan distance *)
-
-let norm_of_string = function
-  | "l1" -> L1_norm
-  | "max" -> Max_norm
-  | other -> failwith (sprintf "Decoder: unknown norm: %s" other)
-
-let map_norm style map =
-  float
-    (match style with
-     | L1_norm -> IntMap.fold (fun _k v acc -> v + acc) map 0
-     | Max_norm -> IntMap.fold (fun _k v acc -> max v acc) map 0)
-
 let iwn_line_of_int_map style map =
   let buff = Buffer.create 11 in
   let start = ref true in
-  let total = map_norm style map in
+  let total = Norm.map_norm style map in
   IntMap.iter (fun k' v ->
       let k = k' + 1 in
       let scaled = (float v) /. total in
@@ -124,7 +109,7 @@ let main () =
     | None -> Write_to (output_fn ^ ".dix")
     | Some fn -> Read_from fn in
   let maybe_norm =
-    Utls.may_apply norm_of_string (CLI.get_string_opt ["--norm"] args) in
+    Utls.may_apply Norm.of_string (CLI.get_string_opt ["--norm"] args) in
   CLI.finalize ();
   Log.info "reading molecules...";
   let all_lines = Utls.lines_of_file db_fn in
