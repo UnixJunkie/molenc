@@ -55,7 +55,7 @@ let main () =
           let in_line = input_line input in
           incr line_counter;
           if !line_counter mod 1000 = 0 then
-            eprintf "read: %d\r" !line_counter;
+            eprintf "read: %d\r%!" !line_counter;
           let out_line = liblinear_line_of_pubchem_line in_line in
           fprintf output "%s\n" out_line
         done
