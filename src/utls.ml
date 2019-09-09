@@ -71,7 +71,8 @@ let with_in_file3 fn1 fn2 fn3 f =
   close_in in3;
   res
 
-let with_infile_outfile (in_fn: filename) (out_fn: filename) (f: in_channel -> out_channel -> 'a): 'a =
+let with_infile_outfile (in_fn: filename) (out_fn: filename)
+    (f: in_channel -> out_channel -> 'a): 'a =
   let input = open_in_bin in_fn in
   let output = open_out_bin out_fn in
   let res = f input output in
