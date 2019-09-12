@@ -27,32 +27,44 @@ module L = BatList
 module StringSet = BatSet.String
 module Utls = Molenc.Utls
 
-let verbose = ref false
-
 let sort_by_decr_density clusters =
-  L.sort (fun (_c1, _m1, s1) (_c2, _m2, s2) ->
-      BatInt.compare s2 s1
+  (* for repeatability of the clustering:
+     stable_sort + using cluster center name in case cluster sizes are equal *)
+  L.stable_sort (fun (c1, _m1, s1) (c2, _m2, s2) ->
+      if s1 = s2 then
+        compare (FpMol.get_name c1) (FpMol.get_name c2)
+      else
+        BatInt.compare s2 s1 (* decr sort *)
     ) clusters
 
 let butina nprocs dist_t molecules =
   let rec loop clusters clustered = function
-    | [] -> L.rev clusters
-    | (center, members, size) :: rest ->
-      let clusters' = (center, members, size) :: clusters in
-      let clustered' = StringSet.union clustered members in
-      (* update remaining clusters *)
-      let to_cluster =
-        L.filter (fun (c, _m, _s) ->
-            not (StringSet.mem (FpMol.get_name c) clustered')
-          ) rest in
-      (* update their members and sizes *)
-      let to_cluster' =
-        L.map (fun (c, m, _s) ->
-            let m' = StringSet.diff m clustered' in
-            (c, m', StringSet.cardinal m')
-          ) to_cluster in
-      let to_cluster'' = sort_by_decr_density to_cluster' in
-      loop clusters' clustered' to_cluster'' in
+    | [] -> sort_by_decr_density clusters
+    | ((center, members, size) :: rest) as remaining ->
+      if size = 1 then
+        (* all remaining clusters are singletons *)
+        loop (L.rev_append remaining clusters) clustered []
+      else
+        let clusters' = (center, members, size) :: clusters in
+        let clustered' = StringSet.union clustered members in
+        (* update remaining clusters *)
+        let to_cluster =
+          L.filter (fun (c, _m, s) ->
+              (* molecules previously included in a cluster
+               * cannot be promoted to cluster center *)
+              (s = 1 ||
+               not (StringSet.mem (FpMol.get_name c) clustered'))
+            ) rest in
+        (* update their members and sizes *)
+        let to_cluster' =
+          L.map (fun (c, m, s) ->
+              if s = 1 then (c, m, s)
+              else
+                let m' = StringSet.diff m clustered' in
+                (c, m', StringSet.cardinal m')
+            ) to_cluster in
+        let to_cluster'' = sort_by_decr_density to_cluster' in
+        loop clusters' clustered' to_cluster'' in
   (* density around each mol *)
   let bst = BST.(create 1 Two_bands (Array.of_list molecules)) in
   let mol_densities =
@@ -62,22 +74,18 @@ let butina nprocs dist_t molecules =
         let neighbor_names = StringSet.of_list (L.map FpMol.get_name neighbors) in
         (mol, neighbor_names, nb_neighbs)
       ) (Parmap.L molecules) in
-  (* isolated molecules (singleton clusters) are handled here *)
-  let singletons, others = L.partition (fun (_c, _m, s) -> s = 1) mol_densities in
-  let clustered =
-    List.fold_left (fun acc (c, _m, _s) ->
-        StringSet.add (FpMol.get_name c) acc
-      ) StringSet.empty singletons in
-  (* update members *)
-  let to_cluster =
-    L.map (fun (c, m, _s) ->
-        let m' = StringSet.diff m clustered in
-        (c, m', StringSet.cardinal m')
-      ) others in
-  let highest_density_first = sort_by_decr_density to_cluster in
-  let clusters = loop [] StringSet.empty highest_density_first in
-  L.append clusters singletons
+  let highest_density_first = sort_by_decr_density mol_densities in
+  loop [] StringSet.empty highest_density_first
 
+let list_for_all_vs_all p l =
+  let rec loop = function
+    | [] -> true
+    | x :: xs ->
+      L.for_all (p x) xs &&
+      loop xs in
+  loop l
+
+(* check some mathematical properties about cluster centers and members *)
 let verify_clusters d_t molecules clusters =
   let n = L.length molecules in
   let name2mol = Ht.create n in
@@ -91,9 +99,10 @@ let verify_clusters d_t molecules clusters =
           FpMol.dist center_mol mol <= d_t
         ) member_names
     ) clusters);
-  (* no two cluster centers are nearer than 2 * d_t *)
-  (* TODO *)
-  ()
+  (* no two cluster centers are nearer than d_t *)
+  assert(list_for_all_vs_all (fun (c1, _m1, _s1) (c2, _m2, _s2) ->
+      FpMol.dist c1 c2 >= d_t
+    ) clusters)
 
 let main () =
   Log.(set_log_level INFO);
@@ -105,8 +114,8 @@ let main () =
                %s\n  \
                -i <filename>: molecules to filter (\"database\")\n  \
                -o <filename>: output file\n  \
-               [-t <float>]: Tanimoto threshold (default=1.0)\n  \
-               [-v]: verbose mode\n"
+               [-t <float>]: Tanimoto threshold (default=0.9)\n  \
+               [--verify]: run some checks on the obtained clusters\n"
         Sys.argv.(0);
       exit 1
     end;
@@ -114,13 +123,13 @@ let main () =
   let output_fn = CLI.get_string ["-o"] args in
   let dist_t = 1.0 -. (CLI.get_float_def ["-t"] args 0.9) in
   assert(dist_t >= 0.0 && dist_t < 1.0);
-  verbose := CLI.get_set_bool ["-v"] args;
+  let verify = CLI.get_set_bool ["--verify"] args in
   let nprocs = CLI.get_int_def ["-np"] args 1 in
   CLI.finalize ();
   let all_mols = FpMol.molecules_of_file input_fn in
   let total = L.length all_mols in
   Log.info "read %d from %s" total input_fn;
-  Log.info "BST OK";
+  Log.info "BST: done";
   let clusters = butina nprocs dist_t all_mols in
   Log.info "clusters: %d" (L.length clusters);
   Utls.with_out_file output_fn (fun out ->
@@ -134,8 +143,9 @@ let main () =
           ) 0 clusters in
       (* ensure all molecules were clustered *)
       assert(clustered = total);
-      (* more checks FBR: disable those tests by default *)
-      verify_clusters dist_t all_mols clusters
+      (* more checks *)
+      if verify then
+        verify_clusters dist_t all_mols clusters
     )
 
 let () = main ()
