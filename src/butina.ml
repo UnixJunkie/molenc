@@ -34,8 +34,7 @@ let sort_by_decr_density clusters =
       BatInt.compare s2 s1
     ) clusters
 
-let butina nprocs tani_t molecules =
-  let dist_t = 1.0 -. tani_t in
+let butina nprocs dist_t molecules =
   let rec loop clusters clustered = function
     | [] -> L.rev clusters
     | (center, members, size) :: rest ->
@@ -79,6 +78,23 @@ let butina nprocs tani_t molecules =
   let clusters = loop [] StringSet.empty highest_density_first in
   L.append clusters singletons
 
+let verify_clusters d_t molecules clusters =
+  let n = L.length molecules in
+  let name2mol = Ht.create n in
+  L.iter (fun m ->
+      Ht.add name2mol (FpMol.get_name m) m
+    ) molecules;
+  (* all molecules from one cluster are at d <= d_t from its center *)
+  assert(L.for_all (fun (center_mol, member_names, _size) ->
+      StringSet.for_all (fun mol_name ->
+          let mol = Ht.find name2mol mol_name in
+          FpMol.dist center_mol mol <= d_t
+        ) member_names
+    ) clusters);
+  (* no two cluster centers are nearer than 2 * d_t *)
+  (* TODO *)
+  ()
+
 let main () =
   Log.(set_log_level INFO);
   Log.color_on ();
@@ -96,8 +112,8 @@ let main () =
     end;
   let input_fn = CLI.get_string ["-i"] args in
   let output_fn = CLI.get_string ["-o"] args in
-  let threshold = CLI.get_float_def ["-t"] args 0.9 in
-  assert(threshold >= 0.0 && threshold <= 1.0);
+  let dist_t = 1.0 -. (CLI.get_float_def ["-t"] args 0.9) in
+  assert(dist_t >= 0.0 && dist_t < 1.0);
   verbose := CLI.get_set_bool ["-v"] args;
   let nprocs = CLI.get_int_def ["-np"] args 1 in
   CLI.finalize ();
@@ -105,15 +121,21 @@ let main () =
   let total = L.length all_mols in
   Log.info "read %d from %s" total input_fn;
   Log.info "BST OK";
-  let clusters = butina nprocs threshold all_mols in
+  let clusters = butina nprocs dist_t all_mols in
   Log.info "clusters: %d" (L.length clusters);
   Utls.with_out_file output_fn (fun out ->
-      L.iteri (fun cid (center, members, size) ->
-          fprintf out "cid: %d size: %d center: %s members:"
-            cid size (FpMol.get_name center);
-          StringSet.iter (fprintf out " %s") members;
-          fprintf out "\n"
-        ) clusters
+      let clustered =
+        L.fold_lefti (fun count cid (center, members, size) ->
+            fprintf out "cid: %d size: %d center: %s members:"
+              cid size (FpMol.get_name center);
+            StringSet.iter (fprintf out " %s") members;
+            fprintf out "\n";
+            (count + size)
+          ) 0 clusters in
+      (* ensure all molecules were clustered *)
+      assert(clustered = total);
+      (* more checks FBR: disable those tests by default *)
+      verify_clusters dist_t all_mols clusters
     )
 
 let () = main ()
