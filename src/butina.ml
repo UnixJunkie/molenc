@@ -29,7 +29,8 @@ module Utls = Molenc.Utls
 
 let sort_by_decr_density clusters =
   (* for repeatability of the clustering:
-     stable_sort + using cluster center name in case cluster sizes are equal *)
+     stable_sort plus using cluster center names
+     in case clusters have same size *)
   L.stable_sort (fun (c1, _m1, s1) (c2, _m2, s2) ->
       if s1 = s2 then
         compare (FpMol.get_name c1) (FpMol.get_name c2)
