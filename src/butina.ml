@@ -12,10 +12,7 @@
    "Unsupervised data base clustering based on daylight's
    fingerprint and Tanimoto similarity: A fast and automated way to cluster
    small and large data sets".
-   Journal of Chemical Information and Computer Sciences, 39(4), 747-750.
-
-   -> output cluster centers
-   -> output cluster membership for each molecule *)
+   Journal of Chemical Information and Computer Sciences, 39(4), 747-750. *)
 
 open Printf
 
@@ -23,7 +20,7 @@ module CLI = Minicli.CLI
 module FpMol = Molenc.FpMol
 module BST = Bst.Bisec_tree.Make (FpMol)
 module Ht = Hashtbl
-module L = BatList
+module L = Molenc.MyList
 module StringSet = BatSet.String
 module Utls = Molenc.Utls
 
@@ -132,7 +129,9 @@ let main () =
   Log.info "read %d from %s" total input_fn;
   Log.info "BST: done";
   let clusters = butina nprocs dist_t all_mols in
+  let single_count = L.filter_count (fun (_c, _m, s) -> s = 1) clusters in
   Log.info "clusters: %d" (L.length clusters);
+  Log.info "singletons: %d" single_count;
   Utls.with_out_file output_fn (fun out ->
       let clustered =
         L.fold_lefti (fun count cid (center, members, size) ->
