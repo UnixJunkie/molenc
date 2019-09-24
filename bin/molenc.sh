@@ -8,6 +8,7 @@ if [ $# -eq 0 ]; then
     echo "molenc.sh -i input.smi -o output.txt"
     echo "         [-d encoding.dix]; reuse existing dictionary"
     echo "         [-r i:j]; fingerprint radius (default=0:1)"
+    echo "         [--seq]; sequential mode (disable parallelization)"
     echo "         [--no-std]; don't standardize input file molecules"
     echo "                     ONLY USE IF THEY HAVE ALREADY BEEN STANDARDIZED"
     exit 1
@@ -18,6 +19,7 @@ output=""
 dico=""
 range="0:1" # default val
 no_std=""
+sequential=""
 
 # parse CLI options
 while [[ $# -gt 0 ]]; do
@@ -47,6 +49,10 @@ while [[ $# -gt 0 ]]; do
             no_std="TRUE"
             shift # past argument
             ;;
+        --seq)
+            sequential="TRUE"
+            shift # past argument
+            ;;
         *) # unknown option
             echo "molenc: unknown option: "$1
             exit 1
@@ -60,7 +66,11 @@ tmp_smi=$tmp'_std.smi'
 tmp_types=$tmp'_std.types'
 tmp_enc=$tmp'_std.enc'
 
+# enable parallelization or not
 there_is_pardi=`which pardi`
+if [ "$sequential" != "" ]; then
+    there_is_pardi=""
+fi
 
 if [ "$no_std" == "" ]; then
     # tell user how to install standardiser if not here
