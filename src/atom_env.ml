@@ -11,6 +11,7 @@
 open Printf
 
 module L = BatList
+module Log = Dolog.Log
 
 (*   layer = (depth, counted-atoms) *)
 type layer = int * ((PiEltHA.t * int) list)

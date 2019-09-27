@@ -16,6 +16,7 @@ module CLI = Minicli.CLI
 module Ht = BatHashtbl
 module IntMap = BatMap.Int
 module L = BatList
+module Log = Dolog.Log
 module MSE_mol = Molenc.MSE_mol
 module Norm = Molenc.Norm
 module String = BatString

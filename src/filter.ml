@@ -19,6 +19,7 @@ module CLI = Minicli.CLI
 module FpMol = Molenc.FpMol
 module Ht = Hashtbl
 module L = BatList
+module Log = Dolog.Log
 module Utls = Molenc.Utls
 
 module Bstree = struct

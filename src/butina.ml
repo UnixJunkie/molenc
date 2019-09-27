@@ -21,6 +21,7 @@ module FpMol = Molenc.FpMol
 module BST = Bst.Bisec_tree.Make (FpMol)
 module Ht = Hashtbl
 module L = Molenc.MyList
+module Log = Dolog.Log
 module StringSet = BatSet.String
 module Utls = Molenc.Utls
 

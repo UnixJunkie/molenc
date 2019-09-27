@@ -16,6 +16,7 @@
 open Printf
 
 module CLI = Minicli.CLI
+module Log = Dolog.Log
 module String = BatString
 module Utls = Molenc.Utls
 

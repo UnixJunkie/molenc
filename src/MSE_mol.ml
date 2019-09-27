@@ -11,6 +11,7 @@
 open Printf
 
 module L = MyList
+module Log = Dolog.Log
 module String = BatString
 module StringMap = BatMap.String
 

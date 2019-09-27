@@ -17,6 +17,7 @@ module Ap_types = Molenc.Ap_types
 module Atom_env = Molenc.Atom_env
 module CLI = Minicli.CLI
 module L = BatList
+module Log = Dolog.Log
 module Mini_mol = Molenc.Mini_mol
 module Ht = BatHashtbl
 module Scale = Molenc.Scale
