@@ -329,7 +329,7 @@ let in_bounds lb x hb =
 
 let list_medianf (l: float list): float =
   let xs = Array.of_list l in
-  Array.sort Pervasives.compare xs;
+  Array.sort BatFloat.compare xs;
   let n = Array.length xs in
   if n mod 2 = 1 then
     xs.(n/2)
