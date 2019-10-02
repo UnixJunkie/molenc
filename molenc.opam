@@ -15,14 +15,15 @@ install: [
   ["cp" "bin/molenc_scan.sh" "%{bin}%/molenc_scan.sh"]
 ]
 depends: [
-  "bst"
-  "dune"
   "batteries"
-  "dolog" {>= "4.0.0"}
-  "minicli"
-  "conf-rdkit"
+  "bst"
   "conf-python-3"
+  "conf-rdkit"
+  "dolog" {>= "4.0.0"}
+  "dune"
+  "minicli"
   "ocaml" {>= "4.04.0"}
+  "parmap"
 ]
 synopsis: "Molecular encoder/featurizer using rdkit and OCaml"
 description: """Chemical fingerprints are lossy encodings of molecules.
