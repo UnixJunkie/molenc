@@ -99,3 +99,22 @@ let tanimoto (m1: t) (m2: t): float =
 (* tanimoto distance (this _is_ a metric) *)
 let distance x y =
   1.0 -. (tanimoto x y)
+
+(* Euclidian distance; in case we work with 2D points instead of molecules *)
+let distance_2D m1 m2 =
+  let len1 = BA1.dim m1 in
+  let len2 = BA1.dim m2 in
+  assert(len1 = 4 && len2 = 4);
+  let ix1 = BA1.unsafe_get m1 0 in
+  let x1  = BA1.unsafe_get m1 1 in
+  let iy1 = BA1.unsafe_get m1 2 in
+  let y1  = BA1.unsafe_get m1 3 in
+  assert(ix1 = 0 && iy1 = 1);
+  let ix2 = BA1.unsafe_get m2 0 in
+  let x2  = BA1.unsafe_get m2 1 in
+  let iy2 = BA1.unsafe_get m2 2 in
+  let y2  = BA1.unsafe_get m2 3 in
+  assert(ix2 = 0 && iy2 = 1);
+  let dx = x1 - x2 in
+  let dy = y1 - y2 in
+  sqrt (float (dx * dx + dy * dy))
