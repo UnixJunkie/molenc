@@ -40,8 +40,8 @@ let molecules_of_file fn =
 let dist m1 m2 =
   Fp.distance m1.fp m2.fp
 
-let dist_2D m1 m2 =
-  Fp.distance_2D m1.fp m2.fp
+(* let dist_2D m1 m2 =
+ *   Fp.distance_2D m1.fp m2.fp *)
 
 let get_name x =
   x.name
