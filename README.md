@@ -1,17 +1,17 @@
-# molenc
+# Introduction
 
-Molecular encoder using rdkit and OCaml.
+MolEnc: a molecular encoder using rdkit and OCaml.
 
 The implemented fingerprint is J-L Faulon's "Signature Molecular Descriptor"
-(SFP[1]).
+(SMD[1]).
 This is an unfolded-counted chemical fingerprint.
 Such fingerprints are less lossy than famous chemical fingerprints like ECFP4.
-SFP encoding doesn't introduce feature collisions upon encoding.
+SMD encoding doesn't introduce feature collisions upon encoding.
 Also, a feature dictionary is created at encoding time.
-This disctionary can be used later on to map a given feature index to an
+This dictionary can be used later on to map a given feature index to an
 atom environment.
 
-We recommend using a radius of zero to one (molenc_d -r 0:1 ...) or
+We recommend using a radius of zero to one (molenc.sh -r 0:1 ...) or
 zero to two.
 
 Currently, the fingerprint can be run using atom types
@@ -21,7 +21,46 @@ In the future, we might add pharmacophore feature points[3]
 (Donor, Acceptor, PosIonizable, NegIonizable, Aromatic, Hydrophobe),
 to allow a fuzzier description of molecules.
 It is also planned to support atom pairs[2] in addition
-to or in combination with SFP.
+to or in combination with SMD.
+
+# How to install the software
+
+For beginners/non opam users:
+download and execute the latest self-installer
+shell script from (https://github.com/UnixJunkie/molenc/releases).
+
+For opam users:
+```
+opam install molenc
+```
+
+Do not hesitate to contact the author in case you have problems installing
+or using the software or if you have any question.
+
+# Usage
+
+```
+molenc.sh -i input.smi -o output.txt
+         [-d encoding.dix]; reuse existing dictionary
+         [-r i:j]; fingerprint radius (default=0:1)
+         [--seq]; sequential mode (disable parallelization)
+         [--no-std]; don't standardize input file molecules
+                     ONLY USE IF THEY HAVE ALREADY BEEN STANDARDIZED
+```
+
+How to encode a database of molecules:
+
+```
+molenc.sh -i molecules.smi -o molecules.txt
+
+```
+
+How to encode another database of molecules, but reusing the feature
+dictionary from another database:
+
+```
+molenc.sh -i other_molecules.smi -o other_molecules.txt -d molecules.txt.dix
+```
 
 # Bibliography
 
