@@ -20,7 +20,7 @@ depends: [
   "conf-python-3"
   "conf-rdkit"
   "dolog" {>= "4.0.0"}
-  "dune"
+  "dune" {>= "1.11"}
   "minicli"
   "ocaml" {>= "4.04.0"}
   "parmap"
