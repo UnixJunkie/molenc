@@ -29,6 +29,14 @@ For beginners/non opam users:
 download and execute the latest self-installer
 shell script from (https://github.com/UnixJunkie/molenc/releases).
 
+Then execute:
+```
+./molenc-5.0.1.sh ~/usr/molenc-5.0.1
+```
+
+This will create ~/usr/molenc-5.0.1/bin/molenc.sh, among other things
+inside the same directory.
+
 For opam users:
 ```
 opam install molenc
