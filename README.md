@@ -3,7 +3,7 @@
 Molecular encoder using rdkit and OCaml.
 
 The implemented fingerprint is J-L Faulon's "Signature Molecular Descriptor"
-(SFP[Faulon2003][1]).
+(SFP[1]).
 This is an unfolded-counted chemical fingerprint.
 Such fingerprints are less lossy than famous chemical fingerprints like ECFP4.
 SFP encoding doesn't introduce feature collisions upon encoding.
@@ -17,10 +17,10 @@ zero to two.
 Currently, the fingerprint can be run using atom types
 (#pi-electrons, element symbol, #HA neighbors, formal charge).
 
-In the future, we might add pharmacophore feature points[Kearsley1996][3]
+In the future, we might add pharmacophore feature points[3]
 (Donor, Acceptor, PosIonizable, NegIonizable, Aromatic, Hydrophobe),
 to allow a fuzzier description of molecules.
-It is also planned to support atom pairs[Carhart1985][2] in addition
+It is also planned to support atom pairs[2] in addition
 to or in combination with SFP.
 
 # Bibliography
