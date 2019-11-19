@@ -2,6 +2,8 @@
 
 MolEnc: a molecular encoder using rdkit and OCaml.
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3546675.svg)](https://doi.org/10.5281/zenodo.3546675)
+
 The implemented fingerprint is J-L Faulon's "Signature Molecular Descriptor"
 (SMD[1]).
 This is an unfolded-counted chemical fingerprint.
