@@ -1,1 +1,2 @@
-molenc.install src/.merlin
+molenc.install
+src/.merlin
