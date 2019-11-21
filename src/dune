@@ -12,7 +12,7 @@
   (public_names molenc_e molenc_d molenc_filter molenc_cluster
                 molenc_pubchem_decoder molenc_uniq)
   (modules encoder decoder filter butina pubchem_decoder uniq)
-  (libraries molenc bst batteries dolog minicli parmap))
+  (libraries molenc bst batteries dolog minicli parmap cpm))
 
 ;; never installed executables
 (executables
