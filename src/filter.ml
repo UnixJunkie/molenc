@@ -20,6 +20,7 @@ module FpMol = Molenc.FpMol
 module Ht = Hashtbl
 module L = BatList
 module Log = Dolog.Log
+module TopKeeper = Cpm.TopKeeper
 module Utls = Molenc.Utls
 
 module Bstree = struct
@@ -41,6 +42,8 @@ type mode = Filter of string (* file from where to read molecules to exclude;
                                   predictions *)
           | Diversify (* enforce diversity among predicted molecules;
                          might remove some SAR info but OK for lead finding *)
+          | K_nearest of int (* retrieve from the "database" the [k]
+                                nearest molecules to the query molecule *)
 
 let diversity_filter distance_threshold lst =
   let rec loop acc = function
@@ -73,6 +76,9 @@ let main () =
                %s\n  \
                -i <filename>: molecules to filter (\"database\")\n  \
                -o <filename>: output file\n  \
+               [-q <filename>]: file containing a query/reference molecule\n  \
+               [-k <int>]: number of neighbor molecules to retrieve\n  \
+               (required by -q)\n  \
                [-t <float>]: Tanimoto threshold (default=1.0)\n  \
                [-e <filename>]: molecules to exclude from the ones to filter\n  \
                [-a <filename>]: molecules to annotate the ones to filter\n  \
@@ -82,19 +88,27 @@ let main () =
     end;
   let input_fn = CLI.get_string ["-i"] args in
   let output_fn = CLI.get_string ["-o"] args in
+  let query_fn = CLI.get_string_opt ["-q"] args in
   let filtered_out_fn = output_fn ^ ".discarded" in
   let threshold = CLI.get_float_def ["-t"] args 1.0 in
   assert(threshold >= 0.0 && threshold <= 1.0);
   verbose := CLI.get_set_bool ["-v"] args;
   (* -a and -e are mutually exclusive options *)
   assert(not (List.mem "-a" args && List.mem "-e" args));
-  let mode = match CLI.get_string_opt ["-e"] args with
+  let mode =
+    match query_fn with
+    | Some _fn -> (* -q implies -k *)
+      let k = CLI.get_int ["-k"] args in
+      K_nearest k
     | None ->
-      begin match CLI.get_string_opt ["-a"] args with
-        | None -> Diversify
-        | Some fn -> Annotate fn
-      end
-    | Some fn -> Filter fn in
+      begin match CLI.get_string_opt ["-e"] args with
+        | None ->
+          begin match CLI.get_string_opt ["-a"] args with
+            | None -> Diversify
+            | Some fn -> Annotate fn
+          end
+        | Some fn -> Filter fn
+      end in
   CLI.finalize ();
   let threshold_distance = 1.0 -. threshold in
   let read_count = ref 0 in
@@ -170,6 +184,31 @@ let main () =
         );
       Log.info "read %d from %s" !read_count input_fn;
       Log.info "discarded %d in %s" !filtered_count filtered_out_fn
+    end
+  | K_nearest k ->
+    begin
+      let query_mol = match query_fn with
+        | None -> failwith "Filter: K_nearest mode requires -q option"
+        | Some fn -> match FpMol.molecules_of_file fn with
+          | [q] -> q
+          | _ :: _ -> failwith "Filter: several molecules in query file"
+          | [] -> failwith "Filter: no molecule in query file"
+      in
+      let top_k = TopKeeper.create k in
+      Utls.with_out_file output_fn (fun out ->
+          Utls.iteri_on_lines_of_file input_fn (fun i line ->
+              let mol = FpMol.parse_one i line in
+              let score = FpMol.tani query_mol mol in
+              TopKeeper.add top_k score mol;
+              incr read_count
+            );
+          Log.info "read %d from %s" !read_count input_fn;
+          let kept = TopKeeper.high_scores_first top_k in
+          L.iter (fun (tani, near_mol) ->
+              let curr_name = FpMol.get_name near_mol in
+              fprintf out "%s_%.3f\n" curr_name tani
+            ) kept
+        )
     end
 
 let () = main ()
