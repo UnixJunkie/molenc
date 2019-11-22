@@ -77,6 +77,7 @@ let main () =
                -i <filename>: molecules to filter (\"database\")\n  \
                -o <filename>: output file\n  \
                [-q <filename>]: file containing a query/reference molecule\n  \
+               [-r]: repeat query in output\n  \
                [-k <int>]: number of neighbor molecules to retrieve\n  \
                (required by -q)\n  \
                [-t <float>]: Tanimoto threshold (default=1.0)\n  \
@@ -89,6 +90,7 @@ let main () =
   let input_fn = CLI.get_string ["-i"] args in
   let output_fn = CLI.get_string ["-o"] args in
   let query_fn = CLI.get_string_opt ["-q"] args in
+  let repeat_query = CLI.get_set_bool ["-r"] args in
   let filtered_out_fn = output_fn ^ ".discarded" in
   let threshold = CLI.get_float_def ["-t"] args 1.0 in
   assert(threshold >= 0.0 && threshold <= 1.0);
@@ -203,6 +205,11 @@ let main () =
               incr read_count
             );
           Log.info "read %d from %s" !read_count input_fn;
+          if repeat_query then
+            begin
+              let query_name = FpMol.get_name query_mol in
+              fprintf out "%s_%.3f\n" query_name 1.0
+            end;
           let kept = TopKeeper.high_scores_first top_k in
           L.iter (fun (tani, near_mol) ->
               let curr_name = FpMol.get_name near_mol in
