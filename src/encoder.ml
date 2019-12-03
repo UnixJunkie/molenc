@@ -29,18 +29,31 @@ let main () =
   Log.color_on ();
   let argc, args = CLI.init () in
   if argc = 1 then
-    (eprintf "usage:\n\
-              %s -i molecules.{types|ph4} -r {radius|srad:frad} -o output.idx\n\
-              -i <filename>: where to read molecules from\n\
-              -r {<int>|<int>:<int>}: encoding radius or radii range\n\
+    (eprintf "usage:\n  \
+              %s -i molecules.{types|ph4} -r {radius|srad:frad} -o out.idx\n  \
+              -i <filename>: where to read molecules from\n  \
+              -r {<int>|<int>:<int>}: encoding radius or radii range\n  \
+              -d <filename>: read feature dico from file\n  \
               -o <filename>: where to write encoded molecules\n"
        Sys.argv.(0);
      exit 1);
   let input_fn = CLI.get_string ["-i"] args in
-  (* assert(BatString.ends_with input_fn ".types" ||
-   *        BatString.ends_with input_fn ".ph4"); *)
   let output_fn = CLI.get_string ["-o"] args in
-  let scale = Scale.of_string (CLI.get_string ["-r"] args) in
+  let scale =
+    if L.mem "-r" args && L.mem "-d" args then
+      (* enforce that radius ranges are equal *)
+      let r_scale = Scale.of_string (CLI.get_string ["-r"] args) in
+      let d_scale = Scale.of_dictionary_header (CLI.get_string ["-d"] args) in
+      Utls.enforce (r_scale = d_scale)
+        (sprintf "Encoder: -r and -d don't agree: r_scale=%s d_scale=%s"
+           (Scale.to_string r_scale) (Scale.to_string d_scale));
+      r_scale
+    else
+      match CLI.get_string_opt ["-r"] args with
+      | Some r_str -> Scale.of_string r_str
+      | None ->
+        let dico_fn = CLI.get_string ["-d"] args in
+        Scale.of_dictionary_header dico_fn in
   let radii = Scale.to_list scale in
   Utls.with_infile_outfile input_fn output_fn (fun input output ->
       fprintf output "#radius=%s\n" (Scale.to_string scale);
