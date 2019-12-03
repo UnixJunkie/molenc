@@ -78,7 +78,6 @@ if [ "$no_std" == "" ]; then
         echo 'molenc: ERROR: type: pip3 install chemo-standardizer'
     if [ "$there_is_pardi" != "" ]; then
         echo 'standardizing molecules in parallel...'
-
         pardi -i $input -o $tmp_smi -c 100 -d l -ie '.smi' -oe '.smi' \
               -w 'standardiser -i %IN -o %OUT 2>/dev/null'
     else
@@ -96,11 +95,13 @@ else
     echo 'typing atoms...'
     molenc_type_atoms.py $tmp_smi > $tmp_types
 fi
-echo encoding molecules...
-molenc_e -i $tmp_types -r $range -o $tmp_enc
+
+echo "encoding molecules..."
 if [ "$dico" != "" ]; then
+    molenc_e -i $tmp_types -r $range -o $tmp_enc -d $dico
     molenc_d -i $tmp_enc -o $output -d $dico
 else
+    molenc_e -i $tmp_types -r $range -o $tmp_enc
     molenc_d -i $tmp_enc -o $output
 fi
 
