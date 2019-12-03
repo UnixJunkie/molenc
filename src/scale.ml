@@ -20,6 +20,16 @@ let of_string s =
   else
     Single (int_of_string s)
 
+(* Example first line: ^#radius=0..1$
+   i.e. the radius indicator is everything after "#radius=" *)
+let of_dictionary_header fn =
+  let header = Utls.get_first_line fn in
+  let prfx = "#radius=" in
+  let prfx_len = String.length prfx in
+  assert(BatString.starts_with header prfx);
+  let s = BatString.lchop ~n:prfx_len header in
+  of_string s
+
 let to_string = function
   | Single i -> sprintf "%d" i
   | Multi (i, j) -> sprintf "%d..%d" i j
