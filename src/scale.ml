@@ -32,7 +32,7 @@ let of_dictionary_header fn =
 
 let to_string = function
   | Single i -> sprintf "%d" i
-  | Multi (i, j) -> sprintf "%d..%d" i j
+  | Multi (i, j) -> sprintf "%d:%d" i j
 
 let to_list = function
   | Single i -> [i]
