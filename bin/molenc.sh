@@ -20,6 +20,7 @@ dico=""
 range="0:1" # default val
 no_std=""
 sequential=""
+binary=""
 
 # parse CLI options
 while [[ $# -gt 0 ]]; do
@@ -51,6 +52,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --seq)
             sequential="TRUE"
+            shift # past argument
+            ;;
+        --bin)
+            binary="--bin"
             shift # past argument
             ;;
         *) # unknown option
@@ -99,10 +104,10 @@ fi
 echo "encoding molecules..."
 if [ "$dico" != "" ]; then
     molenc_e -i $tmp_types -r $range -o $tmp_enc -d $dico
-    molenc_d -i $tmp_enc -o $output -d $dico
+    molenc_d -i $tmp_enc -o $output -d $dico $binary
 else
     molenc_e -i $tmp_types -r $range -o $tmp_enc
-    molenc_d -i $tmp_enc -o $output
+    molenc_d -i $tmp_enc -o $output $binary
 fi
 
 # cleanup
