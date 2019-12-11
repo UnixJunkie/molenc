@@ -13,6 +13,7 @@
 open Printf
 
 module CLI = Minicli.CLI
+module FpMol = Molenc.FpMol
 module Ht = BatHashtbl
 module IntMap = BatMap.Int
 module L = BatList
@@ -100,12 +101,14 @@ let main () =
               %s -i db\n  \
               -i <filename>: encoded molecules database\n  \
               -o <filename>: where to write decoded molecules\n  \
+              [--bin]: write decoded molecules in binary format\n  \
               [--norm {l1|max}]: perform Instance-Wise Normalisation\n  \
               [-d <filename>]: read feature dictionary from file\n"
        Sys.argv.(0);
      exit 1);
   let db_fn = CLI.get_string ["-i"] args in
   let output_fn = CLI.get_string ["-o"] args in
+  let binary_mode = CLI.get_set_bool ["--bin"] args in
   let dico = match CLI.get_string_opt ["-d"] args with
     | None -> Write_to (output_fn ^ ".dix")
     | Some fn -> Read_from fn in
@@ -141,8 +144,13 @@ let main () =
                let line = iwn_line_of_int_map norm feat_counts in
                fprintf out "%+d %s\n" label line
              | None ->
-               let line = mop2d_line_of_int_map feat_counts in
-               fprintf out "%s,0.0,[%s]\n" name line
+               let bitstring = mop2d_line_of_int_map feat_counts in
+               let line = sprintf "%s,0.0,[%s]" name bitstring in
+               if binary_mode then
+                 let mol = FpMol.parse_one mol_count line in
+                 Marshal.to_channel out mol [Marshal.No_sharing]
+               else
+                 fprintf out "%s\n" line
             );
             if (mol_count mod 1000) = 0 then
               printf "done: %d/%d\r%!" (mol_count + 1) nb_mols
