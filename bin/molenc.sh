@@ -6,10 +6,11 @@ set -u
 if [ $# -eq 0 ]; then
     echo "usage:"
     echo "molenc.sh -i input.smi -o output.txt"
-    echo "         [-d encoding.dix]; reuse existing dictionary"
-    echo "         [-r i:j]; fingerprint radius (default=0:1)"
-    echo "         [--seq]; sequential mode (disable parallelization)"
-    echo "         [--no-std]; don't standardize input file molecules"
+    echo "         [--bin]: output in binary format"
+    echo "         [-d encoding.dix]: reuse existing feature dictionary"
+    echo "         [-r i:j]: fingerprint radius (default=0:1)"
+    echo "         [--seq]: sequential mode (disable parallelization)"
+    echo "         [--no-std]: don't standardize input file molecules"
     echo "                     ONLY USE IF THEY HAVE ALREADY BEEN STANDARDIZED"
     exit 1
 fi
