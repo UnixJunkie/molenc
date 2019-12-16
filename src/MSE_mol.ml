@@ -31,6 +31,8 @@ let feat_count_of_string s =
   with exn -> (eprintf "MSE_mol.feat_count_of_string: cannot parse: %s" s;
                raise exn)
 
+(* to construct one molecules with all its constituent lines
+   already read from the input file *)
 let read_one = function
   | [] -> failwith "MSE_mol.read_one: empty list"
   | name_line :: feat_count_strs ->
@@ -47,6 +49,34 @@ let read_one = function
           StringMap.add feat count acc
         ) StringMap.empty feat_count_strs in
     create name map
+
+let previous_name = ref ""
+
+exception Break
+
+(* get lines for just one molecule (i.e. for one call to read_one after) *)
+let get_lines input =
+  let line = input_line input in
+  assert(BatString.starts_with line "#"); (* enforce molecule name line *)
+  let acc = ref [line] in
+  try
+    while true do
+      let line' = input_line input in
+      if BatString.starts_with line' "#" then
+        (* this is the start of another molecule *)
+        begin
+          previous_name := line';
+          raise Break
+        end
+      else
+        acc := line' :: !acc
+    done;
+    assert(false) (* for typing: should never be reached at exec *)
+  with Break | End_of_file ->
+    begin
+      previous_name := "";
+      L.rev !acc
+    end
 
 let of_lines lines =
   let rec loop acc ls =

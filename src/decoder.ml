@@ -126,8 +126,7 @@ let main () =
   Utls.with_infile_outfile db_fn output_fn (fun input output ->
       try
         begin
-          (* FBR: we need to read several lines for one ... *)
-          let some_lines = [input_line input] in
+          let some_lines = MSE_mol.get_lines input in
           let mol = MSE_mol.read_one some_lines in
           let name = MSE_mol.get_name mol in
           let map = MSE_mol.get_map mol in
