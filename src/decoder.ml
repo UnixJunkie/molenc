@@ -114,61 +114,67 @@ let main () =
     Utls.may_apply Norm.of_string (CLI.get_string_opt ["--norm"] args) in
   CLI.finalize ();
   Log.info "reading molecules...";
-  let all_lines = Utls.lines_of_file db_fn in
-  match all_lines with
-  | [] -> assert(false)
-  | db_rad :: rest ->
-    let all_mols = MSE_mol.of_lines rest in
-    let nb_mols = L.length all_mols in
-    let feat_to_id = match dico with
-      | Read_from dico_fn -> dictionary_from_file dico_fn
-      | Write_to _fn -> Ht.create nb_mols in
-    let feat_id_to_max_count = Ht.create nb_mols in
-    Utls.with_out_file output_fn (fun out ->
-        L.iteri (fun mol_count mol ->
-            let name = MSE_mol.get_name mol in
-            let map = MSE_mol.get_map mol in
-            (* feature values _MUST_ be printed out in increasing
-               order of feature ids; hence the IntMap we create *)
-            let feat_counts = match dico with
-              | Write_to _ ->
-                feat_counts_dico_RW feat_to_id feat_id_to_max_count map
-              | Read_from _ ->
-                feat_counts_dico_RO feat_to_id map in
-            (match maybe_norm with
-             | Some norm ->
-               let label =
-                 if BatString.starts_with name "active" then 1 else -1 in
-               let line = iwn_line_of_int_map norm feat_counts in
-               fprintf out "%+d %s\n" label line
-             | None ->
-               let bitstring = mop2d_line_of_int_map feat_counts in
-               fprintf out "%s,0.0,[%s]\n" name bitstring
-            );
-            if (mol_count mod 1000) = 0 then
-              printf "done: %d/%d\r%!" (mol_count + 1) nb_mols
-          ) all_mols
-      );
-    let incr_feat_ids =
-      let feat_ids' = Ht.to_list feat_to_id in
-      L.sort (fun (_feat1, id1) (_feat2, id2) ->
-          BatInt.compare id1 id2
-        ) feat_ids' in
-    (* output dictionary and max_counts *)
-    (match dico with
-     | Read_from _ -> () (* read-only dico *)
-     | Write_to dico_fn ->
-       Utls.with_out_file dico_fn (fun out ->
-           fprintf out "%s\n#featId maxCount featStr\n" db_rad;
-           L.iter (fun (feature, id) ->
-               let max_count = Ht.find feat_id_to_max_count id in
-               fprintf out "%d %d %s\n" id max_count feature
-             ) incr_feat_ids
-         );
-       Log.info "dictionary written to %s" dico_fn
+  let db_rad = Utls.get_first_line db_fn in
+  let nb_mols =
+    (* remove header line from the count *)
+    int_of_string (sprintf "cat %s | wc -l" db_fn) - 1 in
+  let feat_to_id = match dico with
+    | Read_from dico_fn -> dictionary_from_file dico_fn
+    | Write_to _fn -> Ht.create nb_mols in
+  let feat_id_to_max_count = Ht.create nb_mols in
+  let mol_count = ref 0 in
+  Utls.with_infile_outfile db_fn output_fn (fun input output ->
+      try
+        begin
+          (* FBR: we need to read several lines for one ... *)
+          let some_lines = [input_line input] in
+          let mol = MSE_mol.read_one some_lines in
+          let name = MSE_mol.get_name mol in
+          let map = MSE_mol.get_map mol in
+          (* feature values _MUST_ be printed out in increasing
+             order of feature ids; hence the IntMap we create *)
+          let feat_counts = match dico with
+            | Write_to _ ->
+              feat_counts_dico_RW feat_to_id feat_id_to_max_count map
+            | Read_from _ ->
+              feat_counts_dico_RO feat_to_id map in
+          (match maybe_norm with
+           | Some norm ->
+             let label =
+               if BatString.starts_with name "active" then 1 else -1 in
+             let line = iwn_line_of_int_map norm feat_counts in
+             fprintf output "%+d %s\n" label line
+           | None ->
+             let bitstring = mop2d_line_of_int_map feat_counts in
+             fprintf output "%s,0.0,[%s]\n" name bitstring
+          );
+          if (!mol_count mod 1000) = 0 then
+            printf "done: %d/%d\r%!" (!mol_count + 1) nb_mols;
+          incr mol_count
+        end
+      with End_of_file ->
+        Log.info "finished reading %s" db_fn
     );
-    let nb_features = Ht.length feat_to_id in
-    Log.info "read %d molecules from %s" nb_mols db_fn;
-    Log.info "#features: %d" nb_features
+  let incr_feat_ids =
+    let feat_ids' = Ht.to_list feat_to_id in
+    L.sort (fun (_feat1, id1) (_feat2, id2) ->
+        BatInt.compare id1 id2
+      ) feat_ids' in
+  (* output dictionary and max_counts *)
+  (match dico with
+   | Read_from _ -> () (* read-only dico *)
+   | Write_to dico_fn ->
+     Utls.with_out_file dico_fn (fun out ->
+         fprintf out "%s\n#featId maxCount featStr\n" db_rad;
+         L.iter (fun (feature, id) ->
+             let max_count = Ht.find feat_id_to_max_count id in
+             fprintf out "%d %d %s\n" id max_count feature
+           ) incr_feat_ids
+       );
+     Log.info "dictionary written to %s" dico_fn
+  );
+  let nb_features = Ht.length feat_to_id in
+  Log.info "read %d molecules from %s" nb_mols db_fn;
+  Log.info "#features: %d" nb_features
 
 let () = main ()
