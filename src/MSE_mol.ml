@@ -56,9 +56,14 @@ exception Break
 
 (* get lines for just one molecule (i.e. for one call to read_one after) *)
 let get_lines input =
-  let line = input_line input in
-  assert(BatString.starts_with line "#"); (* enforce molecule name line *)
-  let acc = ref [line] in
+  let acc = ref [] in
+  if !previous_name = "" then
+    begin
+      let line = input_line input in
+      assert(BatString.starts_with line "#"); (* enforce name line *)
+      previous_name := line
+    end;
+  acc := [!previous_name];
   try
     while true do
       let line' = input_line input in
@@ -72,11 +77,12 @@ let get_lines input =
         acc := line' :: !acc
     done;
     assert(false) (* for typing: should never be reached at exec *)
-  with Break | End_of_file ->
-    begin
-      previous_name := "";
-      L.rev !acc
-    end
+  with Break -> L.rev !acc
+     | End_of_file ->
+       begin
+         previous_name := "";
+         L.rev !acc
+       end
 
 let of_lines lines =
   let rec loop acc ls =

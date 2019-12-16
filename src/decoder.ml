@@ -116,17 +116,19 @@ let main () =
   Log.info "reading molecules...";
   let db_rad = Utls.get_first_line db_fn in
   let nb_mols =
-    (* remove header line from the count *)
-    let cmd = sprintf "cat %s | wc -l" db_fn in
-    (int_of_string (Utls.get_command_output cmd)) - 1 in
+    let cmd = sprintf "egrep -c '^#' %s" db_fn in
+    (* rm header line from the count *)
+    int_of_string (Utls.get_command_output cmd) - 1 in
   let feat_to_id = match dico with
     | Read_from dico_fn -> dictionary_from_file dico_fn
     | Write_to _fn -> Ht.create nb_mols in
   let feat_id_to_max_count = Ht.create nb_mols in
   let mol_count = ref 0 in
   Utls.with_infile_outfile db_fn output_fn (fun input output ->
+      let header = input_line input in (* skip header comment line *)
+      assert(BatString.starts_with header "#");
       try
-        begin
+        while true do
           let some_lines = MSE_mol.get_lines input in
           let mol = MSE_mol.read_one some_lines in
           let name = MSE_mol.get_name mol in
@@ -151,7 +153,7 @@ let main () =
           if (!mol_count mod 1000) = 0 then
             printf "done: %d/%d\r%!" (!mol_count + 1) nb_mols;
           incr mol_count
-        end
+        done
       with End_of_file ->
         Log.info "finished reading %s" db_fn
     );
