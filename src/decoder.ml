@@ -117,7 +117,8 @@ let main () =
   let db_rad = Utls.get_first_line db_fn in
   let nb_mols =
     (* remove header line from the count *)
-    int_of_string (sprintf "cat %s | wc -l" db_fn) - 1 in
+    let cmd = sprintf "cat %s | wc -l" db_fn in
+    (int_of_string (Utls.get_command_output cmd)) - 1 in
   let feat_to_id = match dico with
     | Read_from dico_fn -> dictionary_from_file dico_fn
     | Write_to _fn -> Ht.create nb_mols in
