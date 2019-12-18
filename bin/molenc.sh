@@ -10,6 +10,7 @@ if [ $# -eq 0 ]; then
     echo "         [-d encoding.dix]: reuse existing feature dictionary"
     echo "         [-r i:j]: fingerprint radius (default=0:1)"
     echo "         [--seq]: sequential mode (disable parallelization)"
+    echo "         [-v]: debug mode; keep temp files"
     echo "         [--no-std]: don't standardize input file molecules"
     echo "                     ONLY USE IF THEY HAVE ALREADY BEEN STANDARDIZED"
     exit 1
@@ -22,6 +23,7 @@ range="0:1" # default val
 no_std=""
 sequential=""
 binary=""
+debug=""
 
 # parse CLI options
 while [[ $# -gt 0 ]]; do
@@ -57,6 +59,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --bin)
             binary="--bin"
+            shift # past argument
+            ;;
+        -v)
+            debug="TRUE"
             shift # past argument
             ;;
         *) # unknown option
@@ -112,4 +118,6 @@ else
 fi
 
 # cleanup
-rm -f $std_log $tmp $tmp_smi $tmp_types $tmp_enc
+if [ "$debug" == "" ]; then
+    rm -f $std_log $tmp $tmp_smi $tmp_types $tmp_enc
+fi
