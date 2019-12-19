@@ -119,7 +119,7 @@ echo "encoding molecules..."
 if [ "$dico" != "" ]; then
     # if dictionary is provided, parallelize encoding
     molenc_e -n $nprocs -i $tmp_types -r $range -o $tmp_enc -d $dico
-    molenc_d -i $tmp_enc -o $output -d $dico $binary
+    molenc_d -n $nprocs -i $tmp_enc -o $output -d $dico $binary
 else
     molenc_e -i $tmp_types -r $range -o $tmp_enc
     molenc_d -i $tmp_enc -o $output $binary
