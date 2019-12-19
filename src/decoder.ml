@@ -102,16 +102,24 @@ let main () =
               -i <filename>: encoded molecules database\n  \
               -o <filename>: where to write decoded molecules\n  \
               [--norm {l1|max}]: perform Instance-Wise Normalisation\n  \
-              [-d <filename>]: read feature dictionary from file\n"
+              [-d <filename>]: read feature dictionary from file\n  \
+              [-n <int>]: max number of parallel jobs\n"
        Sys.argv.(0);
      exit 1);
   let db_fn = CLI.get_string ["-i"] args in
   let output_fn = CLI.get_string ["-o"] args in
+  let nprocs = CLI.get_int_def ["-n"] args 1 in
   let dico = match CLI.get_string_opt ["-d"] args with
     | None -> Write_to (output_fn ^ ".dix")
     | Some fn -> Read_from fn in
   let maybe_norm =
     Utls.may_apply Norm.of_string (CLI.get_string_opt ["--norm"] args) in
+  (* the normalized output format is for liblinear.
+     Since molecule names are lost: it is FORBIDDEN to change
+     the order between input and output files.
+     Hence, parallelization is forbidden. *)
+  Utls.enforce ((Option.is_none maybe_norm) || (nprocs = 1))
+    "Decoder: normalized output only allowed in sequential mode";
   CLI.finalize ();
   Log.info "reading molecules...";
   let db_rad = Utls.get_first_line db_fn in
@@ -121,7 +129,12 @@ let main () =
     int_of_string (Utls.get_command_output cmd) - 1 in
   let feat_to_id = match dico with
     | Read_from dico_fn -> dictionary_from_file dico_fn
-    | Write_to _fn -> Ht.create nb_mols in
+    | Write_to _fn -> begin
+        Utls.enforce (nprocs = 1)
+          "Decoder: writing the feature dictionary only works \
+           in sequential mode";
+        Ht.create nb_mols
+      end in
   let feat_id_to_max_count = Ht.create nb_mols in
   let mol_count = ref 0 in
   Utls.with_infile_outfile db_fn output_fn (fun input output ->
