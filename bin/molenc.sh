@@ -11,6 +11,7 @@ if [ $# -eq 0 ]; then
     echo "         [-r i:j]: fingerprint radius (default=0:1)"
     echo "         [--seq]: sequential mode (disable parallelization)"
     echo "         [-v]: debug mode; keep temp files"
+    echo "         [-n <int>]: max jobs in parallel"
     echo "         [--no-std]: don't standardize input file molecules"
     echo "                     ONLY USE IF THEY HAVE ALREADY BEEN STANDARDIZED"
     exit 1
@@ -24,6 +25,7 @@ no_std=""
 sequential=""
 binary=""
 debug=""
+nprocs="1"
 
 # parse CLI options
 while [[ $# -gt 0 ]]; do
@@ -41,6 +43,11 @@ while [[ $# -gt 0 ]]; do
             ;;
         -d)
             dico="$2"
+            shift
+            shift
+            ;;
+        -n)
+            nprocs="$2"
             shift
             shift
             ;;
@@ -90,7 +97,7 @@ if [ "$no_std" == "" ]; then
         echo 'molenc: ERROR: type: pip3 install chemo-standardizer'
     if [ "$there_is_pardi" != "" ]; then
         echo 'standardizing molecules in parallel...'
-        pardi -i $input -o $tmp_smi -c 100 -d l -ie '.smi' -oe '.smi' \
+        pardi -n $nprocs -i $input -o $tmp_smi -c 100 -d l -ie '.smi' -oe '.smi' \
               -w 'standardiser -i %IN -o %OUT 2>/dev/null'
     else
         echo 'standardizing molecules...'
@@ -101,7 +108,7 @@ else
 fi
 if [ "$there_is_pardi" != "" ]; then
     echo 'typing atoms in parallel...'
-    pardi -i $tmp_smi -o $tmp_types -c 100 -d l -ie '.smi' \
+    pardi -n $nprocs -i $tmp_smi -o $tmp_types -c 100 -d l -ie '.smi' \
           -w 'molenc_type_atoms.py %IN > %OUT 2>/dev/null'
 else
     echo 'typing atoms...'
@@ -110,7 +117,8 @@ fi
 
 echo "encoding molecules..."
 if [ "$dico" != "" ]; then
-    molenc_e -i $tmp_types -r $range -o $tmp_enc -d $dico
+    # if dictionary is provided, parallelize encoding
+    molenc_e -n $nprocs -i $tmp_types -r $range -o $tmp_enc -d $dico
     molenc_d -i $tmp_enc -o $output -d $dico $binary
 else
     molenc_e -i $tmp_types -r $range -o $tmp_enc
