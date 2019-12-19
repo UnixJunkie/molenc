@@ -92,6 +92,38 @@ let feat_counts_dico_RO feat_to_id map =
                                of unknown features per molecule but... *)
     ) map IntMap.empty
 
+let read_one input () =
+  try
+    let some_lines = MSE_mol.get_lines input in
+    MSE_mol.read_one some_lines
+  with End_of_file -> raise Parany.End_of_input
+
+let process_one dico feat_to_id feat_id_to_max_count maybe_norm mol =
+  let name = MSE_mol.get_name mol in
+  let map = MSE_mol.get_map mol in
+  (* feature values _MUST_ be printed out in increasing
+     order of feature ids; hence the IntMap we create *)
+  let feat_counts = match dico with
+    | Write_to _ ->
+      feat_counts_dico_RW feat_to_id feat_id_to_max_count map
+    | Read_from _ ->
+      feat_counts_dico_RO feat_to_id map in
+  match maybe_norm with
+  | Some norm ->
+    let label =
+      if BatString.starts_with name "active" then 1 else -1 in
+    let line = iwn_line_of_int_map norm feat_counts in
+    sprintf "%+d %s\n" label line
+  | None ->
+    let bitstring = mop2d_line_of_int_map feat_counts in
+    sprintf "%s,0.0,[%s]\n" name bitstring
+
+let write_one mol_count nb_mols output str =
+  fprintf output "%s" str;
+  if (!mol_count mod 1000) = 0 then
+    eprintf "done: %d/%d\r%!" !mol_count nb_mols;
+  incr mol_count
+
 let main () =
   Log.(set_log_level INFO);
   Log.color_on ();
