@@ -25,11 +25,17 @@ module StringSet = BatSet.String
 module Utls = Molenc.Utls
 
 let read_one counter input () =
-  let m = Ap_types.read_one counter input in
-  if !counter mod 1000 = 0 then
-    (* user feedback *)
-    eprintf "read: %d\r%!" !counter;
-  m
+  try
+    let m = Ap_types.read_one counter input in
+    if !counter mod 1000 = 0 then
+      (* user feedback *)
+      eprintf "read %d\r%!" !counter;
+    m
+  with End_of_file ->
+    begin
+      Log.info "read %d" !counter;
+      raise Parany.End_of_input
+    end
 
 let process_one radii m =
   (Mini_mol.get_name m,
@@ -62,11 +68,13 @@ let main () =
               -i <filename>: where to read molecules from\n  \
               -r {<int>|<int>:<int>}: encoding radius or radii range\n  \
               -d <filename>: read feature dico from file\n  \
-              -o <filename>: where to write encoded molecules\n"
+              -o <filename>: where to write encoded molecules\n  \
+              [-n <int>]: max jobs in parallel\n"
        Sys.argv.(0);
      exit 1);
   let input_fn = CLI.get_string ["-i"] args in
   let output_fn = CLI.get_string ["-o"] args in
+  let nprocs = CLI.get_int_def ["-n"] args 1 in
   let scale =
     if L.mem "-r" args && L.mem "-d" args then
       (* enforce that radius ranges are equal *)
@@ -84,29 +92,12 @@ let main () =
         Scale.of_dictionary_header dico_fn in
   let radii = Scale.to_list scale in
   Utls.with_infile_outfile input_fn output_fn (fun input output ->
+      (* format header *)
       fprintf output "#radius=%s\n" (Scale.to_string scale);
-      let counter = ref 0 in
-      try
-        while true do
-          let m = Ap_types.read_one counter input in
-          if !counter mod 1000 = 0 then
-            eprintf "molecules seen: %d\r%!" !counter; (* user feedback *)
-          let name = Mini_mol.get_name m in
-          let seen_envs = Ht.create 11 in
-          fprintf output "#%s\n" name;
-          L.iter (fun radius ->
-              let envs = Mini_mol.encode radius m in
-              L.iter (fun (env, count) ->
-                  (* only output envs that were not already encountered
-                     at lower radius *)
-                  if not (Ht.mem seen_envs env) then
-                    (fprintf output "%s %d\n" (Atom_env.to_string env) count;
-                     Ht.add seen_envs env ())
-                ) envs
-            ) radii
-        done
-      with End_of_file ->
-        Log.info "read %d from %s" !counter input_fn
+      Parany.run ~verbose:false ~csize:1 ~nprocs
+        ~demux:(read_one (ref 0) input)
+        ~work:(process_one radii)
+        ~mux:(write_one output)
     )
 
 let () = main ()
