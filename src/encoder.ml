@@ -38,25 +38,26 @@ let read_one counter input () =
     end
 
 let process_one radii m =
-  (Mini_mol.get_name m,
-   L.map (fun radius ->
-       Mini_mol.encode radius m
-     ) radii)
-
-let write_one output (name, incr_envs) =
+  let buff = Buffer.create 1024 in
+  let name = Mini_mol.get_name m in
+  bprintf buff "#%s\n" name;
   let seen_envs = Ht.create 1000 in
-  fprintf output "#%s\n" name;
-  L.iter (fun envs ->
+  L.iter (fun radius ->
+      let envs = Mini_mol.encode radius m in
       L.iter (fun (env, count) ->
           (* only output envs that were not already encountered
              at lower radius *)
           if not (Ht.mem seen_envs env) then
             begin
-              fprintf output "%s %d\n" (Atom_env.to_string env) count;
+              bprintf buff "%s %d\n" (Atom_env.to_string env) count;
               Ht.add seen_envs env ()
             end
         ) envs
-    ) incr_envs
+    ) radii;
+  Buffer.contents buff
+
+let write_one output str =
+  fprintf output "%s" str
 
 let main () =
   Log.(set_log_level INFO);
