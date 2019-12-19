@@ -93,7 +93,7 @@ let main () =
   let radii = Scale.to_list scale in
   Utls.with_infile_outfile input_fn output_fn (fun input output ->
       (* format header *)
-      fprintf output "#radius=%s\n" (Scale.to_string scale);
+      fprintf output "#radius=%s\n%!" (Scale.to_string scale);
       Parany.run ~verbose:false ~csize:1 ~nprocs
         ~demux:(read_one (ref 0) input)
         ~work:(process_one radii)
