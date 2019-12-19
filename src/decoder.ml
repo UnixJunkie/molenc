@@ -168,39 +168,14 @@ let main () =
         Ht.create nb_mols
       end in
   let feat_id_to_max_count = Ht.create nb_mols in
-  let mol_count = ref 0 in
   Utls.with_infile_outfile db_fn output_fn (fun input output ->
-      let header = input_line input in (* skip header comment line *)
+      (* skip header comment line *)
+      let header = input_line input in
       assert(BatString.starts_with header "#");
-      try
-        while true do
-          let some_lines = MSE_mol.get_lines input in
-          let mol = MSE_mol.read_one some_lines in
-          let name = MSE_mol.get_name mol in
-          let map = MSE_mol.get_map mol in
-          (* feature values _MUST_ be printed out in increasing
-             order of feature ids; hence the IntMap we create *)
-          let feat_counts = match dico with
-            | Write_to _ ->
-              feat_counts_dico_RW feat_to_id feat_id_to_max_count map
-            | Read_from _ ->
-              feat_counts_dico_RO feat_to_id map in
-          (match maybe_norm with
-           | Some norm ->
-             let label =
-               if BatString.starts_with name "active" then 1 else -1 in
-             let line = iwn_line_of_int_map norm feat_counts in
-             fprintf output "%+d %s\n" label line
-           | None ->
-             let bitstring = mop2d_line_of_int_map feat_counts in
-             fprintf output "%s,0.0,[%s]\n" name bitstring
-          );
-          if (!mol_count mod 1000) = 0 then
-            printf "done: %d/%d\r%!" (!mol_count + 1) nb_mols;
-          incr mol_count
-        done
-      with End_of_file ->
-        Log.info "finished reading %s" db_fn
+      Parany.run ~verbose:false ~csize:1 ~nprocs
+        ~demux:(read_one input)
+        ~work:(process_one dico feat_to_id feat_id_to_max_count maybe_norm)
+        ~mux:(write_one (ref 0) nb_mols output)
     );
   let incr_feat_ids =
     let feat_ids' = Ht.to_list feat_to_id in
