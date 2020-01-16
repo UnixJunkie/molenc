@@ -22,9 +22,15 @@ let to_string to_str l =
 
 let of_string of_str s =
   let s' = BatString.chop ~l:1 ~r:1 s in
-  if String.contains s' ']' then
-    failwith ("MyList.of_string: sub lists inside: " ^ s);
-  map of_str (BatString.nsplit s' ~by:";")
+  if s' = "" then
+    (* the empty list case was not handled in the past *)
+    []
+  else
+    begin
+      if String.contains s' ']' then
+        failwith ("MyList.of_string: sub lists inside: " ^ s);
+      map of_str (BatString.nsplit s' ~by:";")
+    end
 
 (* count elements satisfying 'p' *)
 let filter_count p l =
