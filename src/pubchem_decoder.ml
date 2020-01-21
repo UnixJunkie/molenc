@@ -25,8 +25,8 @@ let liblinear_line_of_pubchem_line line =
   | [name; _IC50; bitstring] ->
     let is_active = String.starts_with name "active" in
     let nb_bits = String.length bitstring in
-    assert(nb_bits = 881 || nb_bits = 16384);
-    let buff = Buffer.create 16500 in
+    assert(nb_bits = 881 || nb_bits = 2048 || nb_bits = 16384);
+    let buff = Buffer.create 1024 in
     Buffer.add_string buff (if is_active then "+1" else "-1");
     String.iteri (fun i c ->
         if c = '1' then
