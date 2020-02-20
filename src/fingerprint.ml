@@ -45,6 +45,17 @@ let of_string s: t =
     ) kvs;
   res
 
+(* FBR: we need a function to take a random sample without replacement
+        of the whole feature IDs *)
+
+(* let filter_pairs to_drop l = *)
+  
+
+
+(* (\* drop some features and their values *\)
+ * let drop_coords (to_drop: IntMap.t) (init: t): t =
+ *   failwith "not implemented yet" *)
+
 let nb_features x =
   let n = BA1.dim x in
   1 + (BA1.get x (n - 2))
@@ -95,6 +106,19 @@ let tanimoto (m1: t) (m2: t): float =
   done;
   if !ucard = 0 then 0.0
   else (float !icard) /. (float !ucard)
+
+(* convert to int map: feat_id -> feat_val *)
+let key_values fp =
+  let res = ref IntMap.empty in
+  let len = BA1.dim fp in
+  let i = ref 0 in
+  while !i < len do
+    let k = BA1.unsafe_get fp !i in
+    let v = BA1.unsafe_get fp (!i + 1) in
+    res := IntMap.add k v !res;
+    i := !i + 2
+  done;
+  !res
 
 (* tanimoto distance (this _is_ a metric) *)
 let distance x y =
