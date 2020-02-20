@@ -60,3 +60,6 @@ let mol_is_active line =
 
 let is_active x =
   mol_is_active x.name
+
+let drop_features to_drop x =
+  { x with fp = Fp.drop_features to_drop x.fp }

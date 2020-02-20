@@ -117,7 +117,7 @@ let key_values fp =
   done;
   !res
 
-let filter_features to_drop fp =
+let drop_features to_drop fp =
   let kept =
     let kvs = key_values fp in
     IntMap.filter (fun k _v ->
