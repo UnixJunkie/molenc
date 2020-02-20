@@ -6,6 +6,7 @@ module CLI = Minicli.CLI
 module Fp = Molenc.Fingerprint
 module FpMol = Molenc.FpMol
 module L = BatList
+module Log = Dolog.Log
 module Utls = Molenc.Utls
 module WMH = Molenc.WMH
 

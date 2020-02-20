@@ -9,6 +9,7 @@
 (* regression tests for Fingerprint.tanimoto *)
 
 module Fp = Molenc.Fingerprint
+module Log = Dolog.Log
 
 let () =
   Log.color_on ();
