@@ -49,9 +49,12 @@ let of_string s: t =
     ) kvs;
   res
 
-let nb_features x =
+let max_feat_id x =
   let n = BA1.dim x in
-  1 + (BA1.get x (n - 2))
+  BA1.get x (n - 2)
+
+let nb_features x =
+  1 + (max_feat_id x)
 
 (* tani(A,B) = |inter(A,B)| / |union(A,B)|
              = sum(min_i) / sum(max_i) *)
