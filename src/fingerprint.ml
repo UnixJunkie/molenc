@@ -9,6 +9,7 @@
 module A = Array
 module BA = Bigarray
 module BA1 = BA.Array1
+module HT = Hashtbl
 module IntMap = BatMap.Int
 module L = MyList
 
@@ -17,6 +18,9 @@ module L = MyList
  * to regular 64 bits OCaml integers; thanks to Oleg for suggesting it
  * and to Chet Murthy for suggesting arrays *)
 type t = (int, BA.int_elt, BA.c_layout) BA1.t
+
+let create_BA1 n =
+  BA1.create BA.Int BA.C_layout n
 
 let of_string s: t =
   let previous = ref (-1) in
@@ -35,7 +39,7 @@ let of_string s: t =
              (k, v)
           )
       ) s in
-  let res = BA1.create BA.Int BA.C_layout (2 * !n) in
+  let res = create_BA1 (2 * !n) in
   let i = ref 0 in
   L.iter (fun (k, v) ->
       BA1.unsafe_set res !i k;
@@ -44,17 +48,6 @@ let of_string s: t =
       incr i
     ) kvs;
   res
-
-(* FBR: we need a function to take a random sample without replacement
-        of the whole feature IDs *)
-
-(* let filter_pairs to_drop l = *)
-  
-
-
-(* (\* drop some features and their values *\)
- * let drop_coords (to_drop: IntMap.t) (init: t): t =
- *   failwith "not implemented yet" *)
 
 let nb_features x =
   let n = BA1.dim x in
@@ -107,6 +100,10 @@ let tanimoto (m1: t) (m2: t): float =
   if !ucard = 0 then 0.0
   else (float !icard) /. (float !ucard)
 
+(* tanimoto distance (this _is_ a metric) *)
+let distance x y =
+  1.0 -. (tanimoto x y)
+
 (* convert to int map: feat_id -> feat_val *)
 let key_values fp =
   let res = ref IntMap.empty in
@@ -120,9 +117,35 @@ let key_values fp =
   done;
   !res
 
-(* tanimoto distance (this _is_ a metric) *)
-let distance x y =
-  1.0 -. (tanimoto x y)
+let filter_features to_drop fp =
+  let kept =
+    let kvs = key_values fp in
+    IntMap.filter (fun k _v ->
+        not (HT.mem to_drop k)
+      ) kvs in
+  let n = IntMap.cardinal kept in
+  let res = create_BA1 (2 * n) in
+  let i = ref 0 in
+  IntMap.iter (fun k v ->
+      BA1.unsafe_set res !i k;
+      incr i;
+      BA1.unsafe_set res !i v;
+      incr i
+    ) kept;
+  res
+
+(* FBR: we need a function to take a random sample without replacement
+        of the whole feature IDs *)
+
+(* let filter_pairs to_drop l = *)
+  
+
+
+(* (\* drop some features and their values *\)
+ * let drop_coords (to_drop: IntMap.t) (init: t): t =
+ *   failwith "not implemented yet" *)
+
+
 
 (* (\* Euclidian distance; in case we work with 2D points instead of molecules
  *    HACK: POINTS HAVE COORDINATES AS INT BUT THEY NEED TO BE DIVIDED BY 1000
