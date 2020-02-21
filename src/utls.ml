@@ -465,3 +465,6 @@ let time_it f =
   let res = f () in
   let stop = Unix.gettimeofday () in
   (stop -. start, res)
+
+let ceili (x: float): int =
+  int_of_float (ceil x)
