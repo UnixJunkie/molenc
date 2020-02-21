@@ -56,9 +56,7 @@ let max_feat_id x =
 let nb_features x =
   1 + (max_feat_id x)
 
-(* tani(A,B) = |inter(A,B)| / |union(A,B)|
-             = sum(min_i) / sum(max_i) *)
-let tanimoto (m1: t) (m2: t): float =
+let sum_min_max (m1: t) (m2: t): (int * int) =
   let icard = ref 0 in
   let ucard = ref 0 in
   let len1 = BA1.dim m1 in
@@ -100,8 +98,14 @@ let tanimoto (m1: t) (m2: t): float =
     ucard := !ucard + (BA1.unsafe_get m2 !j);
     j := !j + 2
   done;
-  if !ucard = 0 then 0.0
-  else (float !icard) /. (float !ucard)
+  (!icard, !ucard)
+
+(* tani(A,B) = |inter(A,B)| / |union(A,B)|
+             = sum(min_i) / sum(max_i) *)
+let tanimoto (m1: t) (m2: t): float =
+  let icard, ucard = sum_min_max m1 m2 in
+  if ucard = 0 then 0.0
+  else (float icard) /. (float ucard)
 
 (* tanimoto distance (this _is_ a metric) *)
 let distance x y =
