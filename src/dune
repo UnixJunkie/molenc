@@ -16,6 +16,6 @@
 
 ;; never installed executables
 (executables
-  (names fp_test wmh_test wmh_bench wmh_unit_test)
-  (modules fp_test wmh_test wmh_bench wmh_unit_test)
+  (names fp_test wmh_test wmh_bench wmh_unit_test test_RS)
+  (modules fp_test wmh_test wmh_bench wmh_unit_test test_RS)
   (libraries molenc batteries dolog minicli))
