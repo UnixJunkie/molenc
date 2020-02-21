@@ -9,7 +9,7 @@
 module A = Array
 module BA = Bigarray
 module BA1 = BA.Array1
-module HT = Hashtbl
+module Ht = Hashtbl
 module IntMap = BatMap.Int
 module L = MyList
 
@@ -124,7 +124,7 @@ let drop_features to_drop fp =
   let kept =
     let kvs = key_values fp in
     IntMap.filter (fun k _v ->
-        not (HT.mem to_drop k)
+        not (Ht.mem to_drop k)
       ) kvs in
   let n = IntMap.cardinal kept in
   let res = create_BA1 (2 * n) in
@@ -137,11 +137,21 @@ let drop_features to_drop fp =
     ) kept;
   res
 
+let sum_values fp =
+  let len = BA1.dim fp in
+  let i = ref 1 in (* values start at 1 *)
+  let total = ref 0 in
+  while !i < len do
+    total := !total + (BA1.unsafe_get fp !i);
+    i := !i + 2
+  done;
+  !total
+
 (* FBR: we need a function to take a random sample without replacement
         of the whole feature IDs *)
 
 (* let filter_pairs to_drop l = *)
-  
+
 
 
 (* (\* drop some features and their values *\)
