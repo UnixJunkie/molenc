@@ -56,6 +56,15 @@ let max_feat_id x =
 let nb_features x =
   1 + (max_feat_id x)
 
+(* sparse to dense conversion *)
+let to_dense (x: t): int array =
+  let res = A.make (nb_features x) 0 in
+  let n = BA1.dim x in
+  for i = 0 to n - 2 do
+    res.(BA1.unsafe_get x i) <- BA1.unsafe_get x (i + 1)
+  done;
+  res
+
 let sum_min_max (m1: t) (m2: t): (int * int) =
   let icard = ref 0 in
   let ucard = ref 0 in
