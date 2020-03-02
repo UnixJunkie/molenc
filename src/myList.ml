@@ -29,7 +29,7 @@ let of_string of_str s =
     begin
       if String.contains s' ']' then
         failwith ("MyList.of_string: sub lists inside: " ^ s);
-      map of_str (BatString.nsplit s' ~by:";")
+      map of_str (BatString.split_on_string s' ~by:";")
     end
 
 (* count elements satisfying 'p' *)

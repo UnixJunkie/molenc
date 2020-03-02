@@ -49,6 +49,21 @@ let of_string s: t =
     ) kvs;
   res
 
+let to_string (x: t): string =
+  let buff = Buffer.create 80 in
+  let n = BA1.dim x in
+  let i = ref 0 in
+  while !i < n do
+    let k = BA1.unsafe_get x !i in
+    let v = BA1.unsafe_get x (!i + 1) in
+    if !i = 0 then
+      Printf.bprintf buff "%d:%d" k v
+    else
+      Printf.bprintf buff ";%d:%d" k v;
+    i := !i + 2
+  done;
+  Buffer.contents buff
+
 let max_feat_id x =
   let n = BA1.dim x in
   BA1.get x (n - 2)
@@ -57,11 +72,13 @@ let nb_features x =
   1 + (max_feat_id x)
 
 (* sparse to dense conversion *)
-let to_dense (x: t): int array =
-  let res = A.make (nb_features x) 0 in
+let to_dense (max_len: int) (x: t): int array =
+  let res = A.make max_len 0 in
   let n = BA1.dim x in
-  for i = 0 to n - 2 do
-    res.(BA1.unsafe_get x i) <- BA1.unsafe_get x (i + 1)
+  let i = ref 0 in
+  while !i < n do
+    res.(BA1.unsafe_get x !i) <- BA1.unsafe_get x (!i + 1);
+    i := !i + 2
   done;
   res
 

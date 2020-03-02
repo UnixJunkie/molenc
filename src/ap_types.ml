@@ -51,7 +51,7 @@ let read_one counter input =
   let matrix_lines = Utls.read_n_lines nb_atoms input in
   let matrix = Array.make_matrix nb_atoms nb_atoms 0 in
   L.iteri (fun i line ->
-      let dist_strings = BatString.nsplit line ~by:" " in
+      let dist_strings = BatString.split_on_string line ~by:" " in
       L.iteri (fun j str ->
           let d = int_of_string str in
           matrix.(i).(j) <- d

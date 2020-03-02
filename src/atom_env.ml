@@ -27,7 +27,7 @@ let counted_types_to_string (l: (PiEltHA.t * int) list): string =
   Buffer.contents buff
 
 let counted_types_of_string (s: string): (PiEltHA.t * int) list =
-  let strings = BatString.nsplit s ~by:"," in
+  let strings = BatString.split_on_string s ~by:"," in
   L.map (fun str -> Scanf.sscanf str "%s:%d" Utls.make_pair) strings
 
 let layer_to_string ((depth, counted_types): layer): string =
@@ -47,7 +47,7 @@ let to_string (layers: t): string =
   Buffer.contents buff
 
 let of_string (s: string): t =
-  let layer_strings = BatString.nsplit s ~by:";" in
+  let layer_strings = BatString.split_on_string s ~by:";" in
   L.map layer_of_string layer_strings
 
 (* parse the 1st line of a .idx file *)
