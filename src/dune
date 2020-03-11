@@ -13,7 +13,7 @@
                 molenc_pubchem_decoder molenc_uniq molenc_dense molenc_get)
   (modules encoder decoder filter butina pubchem_decoder uniq to_dense get_mol
            sybyl syb_atom mol2 sdf smi)
-  (libraries molenc bst batteries dolog minicli parmap parany cpm dokeysto))
+  (libraries molenc bst batteries dolog minicli parany cpm dokeysto))
 
 ;; never installed executables
 (executables

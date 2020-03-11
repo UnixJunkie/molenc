@@ -67,12 +67,12 @@ let butina nprocs dist_t molecules =
   (* density around each mol *)
   let bst = BST.(create 1 Two_bands (Array.of_list molecules)) in
   let mol_densities =
-    Parmap.parmap ~ncores:nprocs ~chunksize:1 (fun mol ->
+    Parany.Parmap.parmap ~ncores:nprocs ~csize:1 (fun mol ->
         let neighbors = BST.neighbors mol dist_t bst in
         let nb_neighbs = L.length neighbors in
         let neighbor_names = StringSet.of_list (L.map FpMol.get_name neighbors) in
         (mol, neighbor_names, nb_neighbs)
-      ) (Parmap.L molecules) in
+      ) molecules in
   let highest_density_first = sort_by_decr_density mol_densities in
   loop [] StringSet.empty highest_density_first
 
