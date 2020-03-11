@@ -6,7 +6,6 @@ set -u
 if [ $# -eq 0 ]; then
     echo "usage:"
     echo "molenc.sh -i input.smi -o output.txt"
-    echo "         [--bin]: output in binary format"
     echo "         [-d encoding.dix]: reuse existing feature dictionary"
     echo "         [-r i:j]: fingerprint radius (default=0:1)"
     echo "         [--seq]: sequential mode (disable parallelization)"
@@ -23,7 +22,6 @@ dico=""
 range="0:1" # default val
 no_std=""
 sequential=""
-binary=""
 debug=""
 nprocs="1"
 
@@ -62,10 +60,6 @@ while [[ $# -gt 0 ]]; do
             ;;
         --seq)
             sequential="TRUE"
-            shift # past argument
-            ;;
-        --bin)
-            binary="--bin"
             shift # past argument
             ;;
         -v)
@@ -119,10 +113,10 @@ echo "encoding molecules..."
 if [ "$dico" != "" ]; then
     # if dictionary is provided, parallelize encoding
     molenc_e -n $nprocs -i $tmp_types -r $range -o $tmp_enc -d $dico
-    molenc_d -n $nprocs -i $tmp_enc -o $output -d $dico $binary
+    molenc_d -n $nprocs -i $tmp_enc -o $output -d $dico
 else
     molenc_e -i $tmp_types -r $range -o $tmp_enc
-    molenc_d -i $tmp_enc -o $output $binary
+    molenc_d -i $tmp_enc -o $output
 fi
 
 # cleanup
