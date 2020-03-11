@@ -51,3 +51,8 @@ let read_one_raw (input: in_channel): string =
       let res = Buffer.contents buff in
       Buffer.reset buff;
       res
+
+let get_name mol_lines =
+  let _header, rest = S.split mol_lines ~by:"\n" in
+  let name, _tail = S.split rest ~by:"\n" in
+  name
