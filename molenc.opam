@@ -24,7 +24,7 @@ depends: [
   "dolog" {>= "4.0.0"}
   "dune" {>= "1.11"}
   "minicli"
-  "ocaml" {>= "4.04.0"}
+  "ocaml"
   "parany" {>= "9.0.0"} # for the Parmap compatibility module
 ]
 synopsis: "Molecular encoder/featurizer using rdkit and OCaml"

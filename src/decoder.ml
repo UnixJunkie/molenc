@@ -150,7 +150,7 @@ let main () =
      Since molecule names are lost: it is FORBIDDEN to change
      the order between input and output files.
      Hence, parallelization is forbidden. *)
-  Utls.enforce ((Option.is_none maybe_norm) || (nprocs = 1))
+  Utls.enforce ((BatOption.is_none maybe_norm) || (nprocs = 1))
     "Decoder: normalized output only allowed in sequential mode";
   CLI.finalize ();
   Log.info "reading molecules...";
