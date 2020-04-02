@@ -18,7 +18,7 @@ let main () =
       eprintf "usage:\n\
                %s\n  \
                -i <filename>: input file\n  \
-               -d <char>: field separator (default=\t)\n  \
+               -d <char>: field separator (default=\\t)\n  \
                -f <int>: field to filter on\n"
         Sys.argv.(0);
       exit 1
