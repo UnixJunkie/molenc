@@ -28,5 +28,5 @@ if __name__ == '__main__':
         if mol is None:
             continue
         smi = Chem.MolToSmiles(mol)
-        output.write("%s\t%s\n" % (name, smi))
+        output.write("%s\t%s\n" % (smi, name))
     output.close()
