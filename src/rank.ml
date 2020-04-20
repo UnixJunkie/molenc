@@ -20,7 +20,7 @@ let main () =
                %s\n  \
                -i <filename>: input scores file\n  \
                -o <filename>: output rank and scores file\n  \
-               -f <int>: score field (<= 1)\n  \
+               -f <int>: score field (>= 1)\n  \
                -d <char>: field separator (default=\\t)\n"
         Sys.argv.(0);
       exit 1
@@ -43,7 +43,9 @@ let main () =
       all_scores := score :: !all_scores
     );
   (* create the score to rank LUT *)
-  let uniq_scores = L.sort_uniq BatFloat.compare !all_scores in
+  let uniq_scores =
+    (* we want scores in decreasing order *)
+    L.sort_uniq (fun x y -> BatFloat.compare y x) !all_scores in
   let score2rank = Ht.create (L.length uniq_scores) in
   L.iteri (fun i score ->
       Ht.add score2rank score i
