@@ -10,6 +10,7 @@
 
 module A = BatArray
 module IntSet = BatSet.Int
+module Ht = BatHashtbl
 module L = BatList
 module StringMap = BatMap.String
 
@@ -29,10 +30,10 @@ let create name graph diameter matrix =
   { name; graph; diameter; matrix }
 
 let get_typ (m: t) (i: int) =
-  Node.get_typ m.graph.(i)
+  Node.get_typ (A.unsafe_get m.graph i)
 
 let get_succs (m: t) (i: int) =
-  Node.get_succs m.graph.(i)
+  Node.get_succs (A.unsafe_get m.graph i)
 
 (* list (sorted-uniq-counted) atom types of all atoms
    at given distance from center atom *)
@@ -67,3 +68,22 @@ let encode (max_height: int) (mol: t): (Atom_env.t * int) list =
      and counting duplicates *)
   let atom_envs = L.map encode_atom atom_indexes in
   Utls.list_uniq_count atom_envs
+
+(* encode the molecule to counted atom pairs *)
+let atom_pairs (mol: t): (Atom_pair.t * int) list =
+  let n = nb_atoms mol in
+  assert(n >= 1); (* at least one heavy atom *)
+  let max_nb_pairs = max 1 (n * (n - 1) / 2) in
+  let pair2count = Ht.create max_nb_pairs in
+  for i = 0 to n - 1 do
+    let type_i = get_typ mol i in
+    for j = i to n - 1 do
+      let type_j = get_typ mol j in
+      let dist = A.unsafe_get (A.unsafe_get mol.matrix i) j in
+      let pair = Atom_pair.create type_i type_j dist in
+      let prev_count = Ht.find_default pair2count pair 0 in
+      Ht.replace pair2count pair (prev_count + 1)
+    done;
+  done;
+  let pair_counts = Ht.bindings pair2count in
+  L.sort compare pair_counts (* canonicalization by sorting *)
