@@ -11,6 +11,7 @@
 open Printf
 
 module Ap_types = Molenc.Ap_types
+module Atom_pair = Molenc.Atom_pair
 module CLI = Minicli.CLI
 module Ht = BatHashtbl
 module L = BatList
@@ -18,10 +19,8 @@ module Log = Dolog.Log
 module Mini_mol = Molenc.Mini_mol
 module Utls = Molenc.Utls
 
-type filename = string
-
-type mode = Input_dictionary of filename
-          | Output_dictionary of filename
+type mode = Input_dictionary of string
+          | Output_dictionary of string
 
 (* reconstruct the map feat->featId from given file *)
 let dico_from_file fn =
@@ -41,7 +40,7 @@ let dico_from_file fn =
     );
   feat2id
 
-let read_one counter input () =
+let read_one counter input =
   try
     let m = Ap_types.read_one counter input in
     (* user feedback *)
@@ -65,7 +64,8 @@ let process_one feat2id mol =
   let pairs = Mini_mol.atom_pairs mol in
   let feat_id_counts =
     L.rev_map (fun (feat, count) ->
-        (Ht.find feat2id feat, count)
+        let feat_str = Atom_pair.to_string feat in
+        (Ht.find feat2id feat_str, count)
       ) pairs in
   (* canonicalization *)
   let cano = L.sort compare_int_pairs feat_id_counts in
@@ -92,22 +92,30 @@ let main () =
               (incompatible with -id)\n  \
               -id <filename>: read existing feature dictionary\n      \
               (incompatible with -od)\n  \
-              -np <int>: maximum number of cores\n"
+              -np <int>: max number of cores (default=1)\n  \
+              -cs <int>: chunk size (default=1)\n"
        Sys.argv.(0);
      exit 1);
   let input_fn = CLI.get_string ["-i"] args in
   let output_fn = CLI.get_string ["-o"] args in
   let nprocs = CLI.get_int_def ["-np"] args 1 in
-  let dico_mode = match (CLI.get_string_opt ["-id"] args,
-                         CLI.get_string_opt ["-od"] args) with
-  | (None, None) -> failwith "Ap_encoder: provide either -id or -od"
-  | (Some _, Some _) -> failwith "Ap_encoder: -id and -od are exclusive"
-  | (Some id_fn, None) -> Input_dictionary id_fn
-  | (None, Some od_fn) -> Output_dictionary od_fn in
+  let csize = CLI.get_int_def ["-cs"] args 1 in
+  let dico_mode =
+    match (CLI.get_string_opt ["-id"] args,
+           CLI.get_string_opt ["-od"] args) with
+    | (None, None) -> failwith "Ap_encoder: provide either -id or -od"
+    | (Some _, Some _) -> failwith "Ap_encoder: -id and -od are exclusive"
+    | (Some id_fn, None) -> Input_dictionary id_fn
+    | (None, Some od_fn) -> Output_dictionary od_fn in
   CLI.finalize ();
   let dico = match dico_mode with
     | Input_dictionary id_fn -> dico_from_file id_fn
     | Output_dictionary od_fn -> failwith "not implemented yet" in
-  failwith "not implemented yet"
+  Utls.with_infile_outfile input_fn output_fn (fun input output ->
+      Parany.run ~verbose:false ~csize ~nprocs
+        ~demux:(fun () -> read_one (ref 0) input)
+        ~work:(process_one dico)
+        ~mux:(write_one output)
+    )
 
 let () = main ()
