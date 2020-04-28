@@ -2,7 +2,7 @@
 (library
   (name molenc)
   (public_name molenc)
-  (modules ap_types atom_env fingerprint fpMol mini_mol MSE_mol myList
+  (modules ap_types atom_env fingerprint fpMol atom_pair mini_mol MSE_mol myList
            node piEltHA scale utls WMH norm)
   (libraries batteries dolog bst))
 
