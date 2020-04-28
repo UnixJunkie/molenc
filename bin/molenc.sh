@@ -8,9 +8,11 @@ if [ $# -eq 0 ]; then
     echo "molenc.sh -i input.smi -o output.txt"
     echo "         [-d encoding.dix]: reuse existing feature dictionary"
     echo "         [-r i:j]: fingerprint radius (default=0:1)"
+    echo "         [--pairs]: use atom pairs instead of Faulon's FP"
     echo "         [--seq]: sequential mode (disable parallelization)"
     echo "         [-v]: debug mode; keep temp files"
     echo "         [-n <int>]: max jobs in parallel"
+    echo "         [-c <int>]: chunk size"
     echo "         [--no-std]: don't standardize input file molecules"
     echo "                     ONLY USE IF THEY HAVE ALREADY BEEN STANDARDIZED"
     exit 1
@@ -24,6 +26,8 @@ no_std=""
 sequential=""
 debug=""
 nprocs="1"
+csize="1"
+pairs=""
 
 # parse CLI options
 while [[ $# -gt 0 ]]; do
@@ -49,6 +53,11 @@ while [[ $# -gt 0 ]]; do
             shift
             shift
             ;;
+        -c)
+            csize="$2"
+            shift
+            shift
+            ;;
         -r)
             range="$2"
             shift
@@ -60,6 +69,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --seq)
             sequential="TRUE"
+            shift # past argument
+            ;;
+        --pairs)
+            pairs="TRUE"
             shift # past argument
             ;;
         -v)
@@ -110,13 +123,21 @@ else
 fi
 
 echo "encoding molecules..."
-if [ "$dico" != "" ]; then
-    # if dictionary is provided, parallelize encoding
-    molenc_e -n $nprocs -i $tmp_types -r $range -o $tmp_enc -d $dico
-    molenc_d -n $nprocs -i $tmp_enc -o $output -d $dico
+if [ "$pairs" != "" ]; then
+    if [ "$dico" != "" ]; then
+        molenc_ap -np $nprocs -cs $csize -i $tmp_types -o $output -id $dico
+    else
+        molenc_ap -np $nprocs -cs $csize -i $tmp_types -o $output -od $input'.dix'
+    fi
 else
-    molenc_e -i $tmp_types -r $range -o $tmp_enc
-    molenc_d -i $tmp_enc -o $output
+    if [ "$dico" != "" ]; then
+        # if dictionary is provided, parallelize encoding
+        molenc_e -n $nprocs -i $tmp_types -r $range -o $tmp_enc -d $dico
+        molenc_d -n $nprocs -i $tmp_enc -o $output -d $dico
+    else
+        molenc_e -i $tmp_types -r $range -o $tmp_enc
+        molenc_d -i $tmp_enc -o $output
+    fi
 fi
 
 # cleanup
