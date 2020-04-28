@@ -14,7 +14,7 @@ type t = { src: PiEltHA.t; (* source atom *)
 
 (* canonicalization is obtained by sorting the types *)
 let create x y dist =
-  if PiEltHA.compare src dst <= 0 then
+  if PiEltHA.compare x y <= 0 then
     { src = x; dst = y; dist }
   else
     { src = y; dst = x; dist }
