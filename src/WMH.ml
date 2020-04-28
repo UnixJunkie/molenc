@@ -1,4 +1,3 @@
-
 (* Weighted Minwise Hashing in (amortized) Constant Time
 
    Shrivastava, A. (2016).
