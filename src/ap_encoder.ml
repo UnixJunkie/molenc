@@ -40,7 +40,7 @@ let dico_from_file fn =
     );
   feat2id
 
-let read_one counter input =
+let read_one counter input () =
   try
     let m = Ap_types.read_one counter input in
     (* user feedback *)
@@ -60,7 +60,7 @@ let dico_to_file molecules_fn dico_fn =
           try
             let count = ref 0 in
             while true do
-              let mol = read_one count input in
+              let mol = read_one count input () in
               let pair_counts = Mini_mol.atom_pairs mol in
               L.iter (fun (pair, _count) ->
                   let feature = Atom_pair.to_string pair in
@@ -102,7 +102,7 @@ let process_one feat2id mol =
   Buffer.contents buff
 
 let write_one output str =
-  fprintf output "%s" str
+  fprintf output "%s\n" str
 
 let main () =
   Log.(set_log_level INFO);
@@ -138,7 +138,7 @@ let main () =
     | Output_dictionary od_fn -> dico_to_file input_fn od_fn in
   Utls.with_infile_outfile input_fn output_fn (fun input output ->
       Parany.run ~verbose:false ~csize ~nprocs
-        ~demux:(fun () -> read_one (ref 0) input)
+        ~demux:(read_one (ref 0) input)
         ~work:(process_one dico)
         ~mux:(write_one output)
     )
