@@ -1,4 +1,4 @@
-(* Copyright (C) 2019, Francois Berenger
+(* Copyright (C) 2020, Francois Berenger
 
    Yamanishi laboratory,
    Department of Bioscience and Bioinformatics,
@@ -53,7 +53,8 @@ let iwn_line_of_int_map style map =
 
 (* reconstruct map/dico feat->featId from given file *)
 let dictionary_from_file fn =
-  let feat_to_id = Ht.create 10_000 in
+  let n = Utls.count_lines_of_file fn in
+  let feat_to_id = Ht.create n in
   Utls.iter_on_lines_of_file fn (fun line ->
       if not (BatString.starts_with line "#") then
         Scanf.sscanf line "%d %d %s" (fun id _max_count feat ->
