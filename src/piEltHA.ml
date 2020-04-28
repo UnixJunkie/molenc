@@ -17,3 +17,6 @@ let to_string x =
 
 let of_string s =
   s
+
+let compare x y =
+  String.compare x y
