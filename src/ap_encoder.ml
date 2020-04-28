@@ -51,6 +51,31 @@ let read_one counter input =
     (Log.info "read %d" !counter;
      raise Parany.End_of_input)
 
+(* create and store the feature dictionary *)
+let dico_to_file molecules_fn dico_fn =
+  let dico = Ht.create 10_000 in
+  Utls.with_out_file dico_fn (fun output ->
+      fprintf output "#atom_pairs\n";
+      Utls.with_in_file molecules_fn (fun input ->
+          try
+            let count = ref 0 in
+            while true do
+              let mol = read_one count input in
+              let pair_counts = Mini_mol.atom_pairs mol in
+              L.iter (fun (pair, _count) ->
+                  let feature = Atom_pair.to_string pair in
+                  if not (Ht.mem dico feature) then
+                    (* assign new feature id *)
+                    let id = Ht.length dico in
+                    fprintf output "%d %s\n" id feature;
+                    Ht.add dico feature id
+                ) pair_counts
+            done
+          with Parany.End_of_input -> ()
+        )
+    );
+  dico
+
 (* specialized compare for int pairs *)
 let compare_int_pairs (i, j) (k, l) =
   let cmp = BatInt.compare i k in
