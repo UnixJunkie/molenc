@@ -85,5 +85,6 @@ let atom_pairs (mol: t): (Atom_pair.t * int) list =
       Ht.replace pair2count pair (prev_count + 1)
     done;
   done;
-  let pair_counts = Ht.bindings pair2count in
-  L.sort compare pair_counts (* canonicalization by sorting *)
+  (* canonicalization will be done later; when the features (string) are
+   * converted to feature ids (int) *)
+  Ht.bindings pair2count
