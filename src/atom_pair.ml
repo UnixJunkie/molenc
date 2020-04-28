@@ -18,3 +18,6 @@ let create x y dist =
     { src = x; dst = y; dist }
   else
     { src = y; dst = x; dist }
+
+let to_string { src; dst; dist } =
+  Printf.sprintf "%s-%d-%s" src dist dst
