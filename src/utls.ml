@@ -1,4 +1,4 @@
-(* Copyright (C) 2019, Francois Berenger
+(* Copyright (C) 2020, Francois Berenger
 
    Yamanishi laboratory,
    Department of Bioscience and Bioinformatics,
@@ -468,3 +468,8 @@ let time_it f =
 
 let ceili (x: float): int =
   int_of_float (ceil x)
+
+let count_lines_of_file (fn: string): int =
+  let count = ref 0 in
+  iter_on_lines_of_file fn (fun _line -> incr count);
+  !count
