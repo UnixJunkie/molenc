@@ -135,7 +135,7 @@ let main () =
   CLI.finalize ();
   let dico = match dico_mode with
     | Input_dictionary id_fn -> dico_from_file id_fn
-    | Output_dictionary od_fn -> failwith "not implemented yet" in
+    | Output_dictionary od_fn -> dico_to_file input_fn od_fn in
   Utls.with_infile_outfile input_fn output_fn (fun input output ->
       Parany.run ~verbose:false ~csize ~nprocs
         ~demux:(fun () -> read_one (ref 0) input)
