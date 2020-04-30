@@ -32,7 +32,7 @@ let dico_from_file fn =
     ("Ap_encoder.dico_from_file: not an atom pairs dict: " ^ fn);
   Utls.iter_on_lines_of_file fn (fun line ->
       if not (BatString.starts_with line "#") then
-        Scanf.sscanf line "%d %s" (fun id feat ->
+        Scanf.sscanf line "%d %s %d" (fun id feat _count ->
             (* the binding defined in the dictionary should be unique *)
             assert(not (Ht.mem feat2id feat));
             Ht.add feat2id feat id
@@ -44,8 +44,8 @@ let read_one counter input () =
   try
     let m = Ap_types.read_one counter input in
     (* user feedback *)
-    (if !counter mod 1000 = 0 then
-       eprintf "read %d\r%!" !counter);
+    (if !counter mod 1000 = 0
+     then eprintf "read %d\r%!" !counter);
     m
   with End_of_file ->
     (Log.info "read %d" !counter;
@@ -53,26 +53,41 @@ let read_one counter input () =
 
 (* create and store the feature dictionary *)
 let dico_to_file molecules_fn dico_fn =
-  let dico = Ht.create 10_000 in
+  (* How many times a given feature is seen when considering all
+   * molecules (note that each molecule may have it several times) *)
+  let feat_to_tot_count = Ht.create 100_000 in
+  Utls.with_in_file molecules_fn (fun input ->
+      try
+        let mol_counter = ref 0 in
+        while true do
+          let mol = read_one mol_counter input () in
+          let pair_counts = Mini_mol.atom_pairs mol in
+          L.iter (fun (pair, curr_count) ->
+              let feat_str = Atom_pair.to_string pair in
+              let prev_count = Ht.find_default feat_to_tot_count feat_str 0 in
+              Ht.replace feat_to_tot_count feat_str (prev_count + curr_count)
+            ) pair_counts
+        done
+      with Parany.End_of_input -> ()
+    );
+  (* make the feature dictionary invariant to input molecules order
+     by sorting (i.e. canonicalization) *)
+  let sorted =
+    let count_feats =
+      let feat_counts = Ht.bindings feat_to_tot_count in
+      L.rev_map (fun (feat_str, count) -> (count, feat_str)) feat_counts in
+    Utls.list_rev_sort compare count_feats in
+  let n = L.length sorted in
+  let dico = Ht.create n in
   Utls.with_out_file dico_fn (fun output ->
       fprintf output "#atom_pairs\n";
-      Utls.with_in_file molecules_fn (fun input ->
-          try
-            let count = ref 0 in
-            while true do
-              let mol = read_one count input () in
-              let pair_counts = Mini_mol.atom_pairs mol in
-              L.iter (fun (pair, _count) ->
-                  let feature = Atom_pair.to_string pair in
-                  if not (Ht.mem dico feature) then
-                    (* assign new feature id *)
-                    let id = Ht.length dico in
-                    fprintf output "%d %s\n" id feature;
-                    Ht.add dico feature id
-                ) pair_counts
-            done
-          with Parany.End_of_input -> ()
-        )
+      L.iteri (fun id (count, feat_str) ->
+          (* we also print the total count, to allow verification
+           * of the dictionary's features order *)
+          fprintf output "%d %s %d\n" id feat_str count;
+          assert(not (Ht.mem dico feat_str)); (* feature must be uniq *)
+          Ht.add dico feat_str id
+        ) sorted
     );
   dico
 
