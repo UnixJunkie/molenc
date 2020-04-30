@@ -473,3 +473,6 @@ let count_lines_of_file (fn: string): int =
   let count = ref 0 in
   iter_on_lines_of_file fn (fun _line -> incr count);
   !count
+
+let list_rev_sort cmp l =
+  List.sort (fun x y -> cmp y x) l
