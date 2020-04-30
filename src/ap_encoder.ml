@@ -103,10 +103,14 @@ let process_one feat2id mol =
   bprintf buff "%s,0.0,[" name;
   let pairs = Mini_mol.atom_pairs mol in
   let feat_id_counts =
-    L.rev_map (fun (feat, count) ->
+    L.fold_left (fun acc (feat, count) ->
         let feat_str = Atom_pair.to_string feat in
-        (Ht.find feat2id feat_str, count)
-      ) pairs in
+        try (Ht.find feat2id feat_str, count) :: acc
+        with Not_found ->
+          (Log.warn "Ap_encoder: mol: %s unknown feat: %s %d"
+             name feat_str count;
+           acc)
+      ) [] pairs in
   (* canonicalization *)
   let cano = L.sort compare_int_pairs feat_id_counts in
   L.iteri (fun i (feat_id, count) ->
