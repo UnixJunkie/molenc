@@ -20,7 +20,7 @@ depends: [
   "conf-python-3"
   "conf-rdkit"
   "cpm"
-  "dokeysto"
+  "dokeysto_camltc"
   "dolog" {>= "4.0.0"}
   "dune" {>= "1.11"}
   "minicli"

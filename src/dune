@@ -15,7 +15,7 @@
                 molenc_rank molenc_ap)
   (modules encoder decoder filter butina pubchem_decoder uniq to_dense get_mol
            sybyl syb_atom mol2 sdf smi rank ap_encoder)
-  (libraries molenc bst batteries dolog minicli parany cpm dokeysto))
+  (libraries molenc bst batteries dolog minicli parany cpm dokeysto_camltc))
 
 ;; never installed executables
 (executables

@@ -4,7 +4,7 @@
 open Printf
 
 module CLI = Minicli.CLI
-module Db = Dokeysto.Db.RW
+module Db = Dokeysto_camltc.Db_camltc.RW
 module Log = Dolog.Log
 module String = BatString
 module Utls = Molenc.Utls
