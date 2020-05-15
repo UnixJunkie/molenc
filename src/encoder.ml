@@ -95,7 +95,7 @@ let main () =
   Utls.with_infile_outfile input_fn output_fn (fun input output ->
       (* format header *)
       fprintf output "#radius=%s\n%!" (Scale.to_string scale);
-      Parany.run nprocs ~csize:1
+      Parany.run ~preserve:true ~csize:1 nprocs
         ~demux:(read_one (ref 0) input)
         ~work:(process_one radii)
         ~mux:(write_one output)

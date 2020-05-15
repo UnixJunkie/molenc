@@ -182,7 +182,7 @@ let main () =
               let mol = FpMol.parse_one i line in
               let curr_name = FpMol.get_name mol in
               let nearest_train_mol, nearest_d =
-                Parany.Parmap.parfold ncores ~csize
+                Parany.Parmap.parfold ~csize ncores
                   (fun annot_mol -> (annot_mol, FpMol.dist mol annot_mol))
                   (fun (nearest_mol, nearest_dist) (annot_mol, annot_dist) ->
                      if annot_dist < nearest_dist then

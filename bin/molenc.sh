@@ -104,7 +104,7 @@ if [ "$no_std" == "" ]; then
         echo 'molenc: ERROR: type: pip3 install chemo-standardizer'
     if [ $nprocs -gt 1 ] && [ "$there_is_pardi" != "" ]; then
         echo 'standardizing molecules in parallel...'
-        pardi -n $nprocs -i $input -o $tmp_smi -c 100 -d l -ie '.smi' -oe '.smi' \
+        pardi -p -n $nprocs -i $input -o $tmp_smi -c 100 -d l -ie '.smi' -oe '.smi' \
               -w 'standardiser -i %IN -o %OUT 2>/dev/null'
     else
         echo 'standardizing molecules...'
@@ -115,7 +115,7 @@ else
 fi
 if [ $nprocs -gt 1 ] && [ "$there_is_pardi" != "" ]; then
     echo 'typing atoms in parallel...'
-    pardi -n $nprocs -i $tmp_smi -o $tmp_types -c 100 -d l -ie '.smi' \
+    pardi -p -n $nprocs -i $tmp_smi -o $tmp_types -c 100 -d l -ie '.smi' \
           -w 'molenc_type_atoms.py %IN > %OUT 2>/dev/null'
 else
     echo 'typing atoms...'

@@ -173,7 +173,7 @@ let main () =
       (* skip header comment line *)
       let header = input_line input in
       assert(BatString.starts_with header "#");
-      Parany.run nprocs ~csize:1
+      Parany.run ~preserve:true ~csize:1 nprocs
         ~demux:(read_one input)
         ~work:(process_one dico feat_to_id feat_id_to_max_count maybe_norm)
         ~mux:(write_one (ref 0) nb_mols output)
