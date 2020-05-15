@@ -156,7 +156,7 @@ let main () =
     | Input_dictionary id_fn -> dico_from_file id_fn
     | Output_dictionary od_fn -> dico_to_file input_fn od_fn in
   Utls.with_infile_outfile input_fn output_fn (fun input output ->
-      Parany.run ~verbose:false ~csize ~nprocs
+      Parany.run nprocs ~csize
         ~demux:(read_one (ref 0) input)
         ~work:(process_one dico)
         ~mux:(write_one output)
