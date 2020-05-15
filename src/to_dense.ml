@@ -16,10 +16,8 @@ let string_of_line nb_features line =
     Scanf.sscanf line "%s@,%f,%s"
       (fun _name pIC50 fp_str ->
          bprintf buff "%f" pIC50;
-         let a = Fp.to_dense nb_features (Fp.of_string fp_str) in
-         for i = 0 to (Array.length a) - 1 do
-           bprintf buff " %d" a.(i)
-         done;
+         let fp = Fp.of_string fp_str in
+         Fp.to_dense_bprintf buff nb_features fp;
          Buffer.contents buff
       )
   with exn ->
