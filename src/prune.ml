@@ -20,6 +20,7 @@ let prune_dico features_to_drop in_dico_fn out_dico_fn =
     ) features_to_drop;
   Log.info "pruning %d features" (Ht.length to_drop);
   Utls.with_out_file out_dico_fn (fun out ->
+      let new_feat_id = ref 0 in
       Utls.iter_on_lines_of_file in_dico_fn (fun line ->
           if S.starts_with line "#" then
             (* preserve comments *)
@@ -28,9 +29,10 @@ let prune_dico features_to_drop in_dico_fn out_dico_fn =
             try
               (* this is the format for an Atom Pairs dictionary *)
               Scanf.sscanf line "%d %s@ %d" (fun featId featStr featCount ->
-                  (* drop some features *)
+                  (* drop some features and update feature ids *)
                   if not (Ht.mem to_drop featId) then
-                    fprintf out "%d %s %d\n" featId featStr featCount
+                    (fprintf out "%d %s %d\n" !new_feat_id featStr featCount;
+                     incr new_feat_id)
                 )
             with exn -> (Log.fatal "dico %s: cannot parse line %s"
                            in_dico_fn line;
