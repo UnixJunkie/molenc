@@ -8,20 +8,17 @@ module Log = Dolog.Log
 module Fp = Molenc.Fingerprint
 module Utls = Molenc.Utls
 
-let buff = Buffer.create 1024
-
-let string_of_line nb_features line =
-  Buffer.clear buff;
+let expand_line nb_features line =
   try
     Scanf.sscanf line "%s@,%f,%s"
       (fun _name pIC50 fp_str ->
-         bprintf buff "%f" pIC50;
+         printf "%f" pIC50;
          let fp = Fp.of_string fp_str in
-         Fp.to_dense_bprintf buff nb_features fp;
-         Buffer.contents buff
+         Fp.to_dense_printf nb_features fp;
+         printf "\n"
       )
   with exn ->
-    (Log.error "cannot parse: %s" line;
+    (Log.fatal "cannot parse: %s" line;
      raise exn)
 
 let main () =
@@ -46,9 +43,6 @@ let main () =
   done;
   printf "\n";
   (* dense data lines *)
-  Utls.iter_on_lines_of_file input_fn (fun line ->
-      let str = string_of_line nb_features line in
-      printf "%s\n" str
-    )
+  Utls.iter_on_lines_of_file input_fn (expand_line nb_features)
 
 let () = main ()
