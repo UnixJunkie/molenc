@@ -82,48 +82,25 @@ let to_dense (max_len: int) (x: t): int array =
   done;
   res
 
-(* sparse to dense conversion;
-   does not allocate a new array each time *)
-let to_dense_in_place (res: int array) (x: t): unit =
-  let n = BA1.dim x in
-  let len = A.length res in
-  let i = ref 0 in
-  let j = ref 0 in
-  while !i < n do
-    let k = BA1.unsafe_get x !i in
-    while !j < k do
-      res.(!j) <- 0;
-      incr j
-    done;
-    let v = BA1.unsafe_get x (!i + 1) in
-    res.(!j) <- v;
-    incr j;
-    i := !i + 2
-  done;
-  while !j < len do
-    res.(!j) <- 0;
-    incr j
-  done
-
-(* sparse to dense bprintf;
+(* sparse to dense printf;
    without creation of the intermediate dense array (for perfs) *)
-let to_dense_bprintf buff len (x: t): unit =
+let to_dense_printf nb_features (x: t): unit =
   let n = BA1.dim x in
   let i = ref 0 in
   let j = ref 0 in
   while !i < n do
-    let k = BA1.unsafe_get x !i in
+    let k = BA1.get x !i in
     while !j < k do
-      Printf.bprintf buff " 0";
+      Printf.printf " 0";
       incr j
     done;
-    let v = BA1.unsafe_get x (!i + 1) in
-    Printf.bprintf buff " %d" v;
+    let v = BA1.get x (!i + 1) in
+    Printf.printf " %d" v;
     incr j;
     i := !i + 2
   done;
-  while !j < len do
-    Printf.bprintf buff " 0";
+  while !j < nb_features do
+    Printf.printf " 0";
     incr j
   done
 
