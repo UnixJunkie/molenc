@@ -42,7 +42,8 @@ let main () =
   Log.(set_log_level INFO);
   Log.color_on ();
   let argc, args = CLI.init () in
-  if argc = 1 then
+  let show_help = CLI.get_set_bool ["-h";"--help"] args in
+  if argc = 1 || show_help then
     (eprintf "usage:\n  \
               %s -i input.dix -o output.dix -f features.txt\n  \
               -i <filename>: input AP dictionary\n  \
@@ -50,10 +51,13 @@ let main () =
               -f <filename>: file with list of features to drop\n  \
               (format: one integer per line)\n"
        Sys.argv.(0);
-     exit 1);
-  let input_fn = CLI.get_string ["-i"] args in
-  let output_fn = CLI.get_string ["-i"] args in
-  let features_fn = CLI.get_string ["-f"] args in
-  CLI.finalize();
-  let features = Utls.map_on_lines_of_file features_fn int_of_string in
-  prune_dico features input_fn output_fn
+     exit 1)
+  else
+    let input_fn = CLI.get_string ["-i"] args in
+    let output_fn = CLI.get_string ["-o"] args in
+    let features_fn = CLI.get_string ["-f"] args in
+    CLI.finalize();
+    let features = Utls.map_on_lines_of_file features_fn int_of_string in
+    prune_dico features input_fn output_fn
+
+let () = main ()
