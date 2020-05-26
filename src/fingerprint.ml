@@ -89,12 +89,12 @@ let to_dense_printf nb_features (x: t): unit =
   let i = ref 0 in
   let j = ref 0 in
   while !i < n do
-    let k = BA1.get x !i in
+    let k = BA1.unsafe_get x !i in
     while !j < k do
       Printf.printf " 0";
       incr j
     done;
-    let v = BA1.get x (!i + 1) in
+    let v = BA1.unsafe_get x (!i + 1) in
     Printf.printf " %d" v;
     incr j;
     i := !i + 2
