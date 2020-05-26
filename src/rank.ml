@@ -21,7 +21,8 @@ let main () =
                -i <filename>: input scores file\n  \
                -o <filename>: output rank and scores file\n  \
                -f <int>: score field (>= 1)\n  \
-               -d <char>: field separator (default=\\t)\n"
+               -d <char>: field separator (default=\\t)\n \
+               [-r]: increasing scores order (default=decreasing)\n"
         Sys.argv.(0);
       exit 1
     end;
@@ -29,6 +30,8 @@ let main () =
   let output_fn = CLI.get_string ["-o"] args in
   let sep = CLI.get_char_def ["-d"] args '\t' in
   let field = (CLI.get_int ["-f"] args) - 1 in
+  let revert = CLI.get_set_bool ["-r"] args in
+  CLI.finalize();
   let all_scores = ref [] in
   (* read all scores *)
   Utls.iter_on_lines_of_file input_fn (fun line ->
@@ -44,8 +47,13 @@ let main () =
     );
   (* create the score to rank LUT *)
   let uniq_scores =
-    (* we want scores in decreasing order *)
-    L.sort_uniq (fun x y -> BatFloat.compare y x) !all_scores in
+    let cmp =
+      if revert then BatFloat.compare (* increasing sort *)
+      else
+        (* default: scores in decreasing order; i.e. the highest score
+           gets the lowest rank *)
+        (fun x y -> BatFloat.compare y x) in
+    L.sort_uniq cmp !all_scores in
   let score2rank = Ht.create (L.length uniq_scores) in
   L.iteri (fun i score ->
       Ht.add score2rank score i
