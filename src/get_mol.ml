@@ -64,10 +64,10 @@ let main () =
               %s -i molecules.{sdf|mol2|smi} \
               {-names \"mol1,mol2,...\"|-f names_file} [-v]\n  \
               -i <filename>: molecules input file\n  \
-              [-names <string>,<string>,...]: list molecule names\n  \
-              [-f <filename>]: molecule names will be read from file\n  \
+              [-names <string>,<string>,...]: molecule names\n  \
+              [-f <filename>]: get molecule names from file\n  \
               [-if <filename>,<filename>,...]: several molecule input files\n  \
-              [--force]: overwrite existing db file, if any\n"
+              [--force]: overwrite existing db file(s), if any\n"
        Sys.argv.(0);
      exit 1);
   let verbose = CLI.get_set_bool ["-v"] args in
