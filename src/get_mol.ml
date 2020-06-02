@@ -5,6 +5,7 @@ open Printf
 
 module CLI = Minicli.CLI
 module DB = Dokeysto_camltc.Db_camltc.RW
+module L = BatList
 module Log = Dolog.Log
 module S = BatString
 module Utls = Molenc.Utls
@@ -19,7 +20,7 @@ let mol_reader_for_file fn =
   if S.ends_with fn ".mol2" then Mol2.(read_one_raw, get_name)
   else if S.ends_with fn ".sdf" then Sdf.(read_one, get_fst_line)
   else if S.ends_with fn ".smi" then Smi.(read_one, get_name)
-  else failwith ("Mol_get.mol_reader_for_file: not {.mol2|.sdf|.smi}: " ^ fn)
+  else failwith ("Get_mol.mol_reader_for_file: not {.mol2|.sdf|.smi}: " ^ fn)
 
 let populate_db db input_fn =
   let read_one_mol, read_mol_name = mol_reader_for_file input_fn in
@@ -73,7 +74,12 @@ let main () =
   Log.set_log_level (if verbose then Log.DEBUG else Log.INFO);
   Log.set_output stderr;
   Log.color_on ();
-  let input_fn = CLI.get_string ["-i"] args in
+  let input_fns =
+    match (CLI.get_string_opt ["-i"] args, CLI.get_string_opt ["-if"] args) with
+    | (None, None) -> failwith "Get_mol: provide either -i or -if"
+    | (Some _, Some _) -> failwith "Get_mol: both -i and -if"
+    | (Some fn, None) -> [fn]
+    | (None, Some filenames) -> S.split_on_string filenames ~by:"," in
   let force_db_creation = CLI.get_set_bool ["--force"] args in
   let names_provider = match CLI.get_string_opt ["-names"] args with
     | Some names -> On_cli names
@@ -82,16 +88,20 @@ let main () =
        From_file fn in
   CLI.finalize ();
   let names = match names_provider with
-    | On_cli names -> BatString.split_on_string names ~by:","
+    | On_cli names -> S.split_on_string names ~by:","
     | From_file fn -> Utls.lines_of_file fn in
-  let db = db_open_or_create verbose force_db_creation input_fn in
+  let dbs = L.map (db_open_or_create verbose force_db_creation) input_fns in
   List.iter (fun name ->
       try
+        (* find containing db, if any *)
+        let db = L.find (fun db -> DB.mem db name) dbs in
+        (* extract molecule from it *)
         let m = DB.find db name in
         printf "%s" m
       with Not_found ->
+        (* no db contains this molecule *)
         Log.warn "not found: %s" name
     ) names;
-  DB.close db
+  L.iter DB.close dbs
 
 let () = main ()
