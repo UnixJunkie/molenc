@@ -21,22 +21,6 @@ let mol_reader_for_file fn =
   else if S.ends_with fn ".smi" then Smi.(read_one, get_name)
   else failwith ("Mol_get.mol_reader_for_file: not {.mol2|.sdf|.smi}: " ^ fn)
 
-let db_open_or_create verbose force input_fn =
-  let db_fn = db_name_of input_fn in
-  (* is there a DB already? *)
-  let db_exists, db =
-    if force || not (Sys.file_exists db_fn) then
-      (Log.info "creating %s" db_fn;
-       (false, DB.create db_fn))
-    else
-      (Log.warn "reusing %s" db_fn;
-       (true, DB.open_existing db_fn)) in
-  if verbose then
-    DB.iter (fun k v ->
-        Log.debug "k: %s v: %s" k v
-      ) db;
-  (db_exists, db)
-
 let populate_db db input_fn =
   let read_one_mol, read_mol_name = mol_reader_for_file input_fn in
   let count = ref 0 in
@@ -54,6 +38,23 @@ let populate_db db input_fn =
         done
       with End_of_file -> DB.sync db
     )
+
+let db_open_or_create verbose force input_fn =
+  let db_fn = db_name_of input_fn in
+  (* is there a DB already? *)
+  let db_exists, db =
+    if force || not (Sys.file_exists db_fn) then
+      (Log.info "creating %s" db_fn;
+       (false, DB.create db_fn))
+    else
+      (Log.warn "reusing %s" db_fn;
+       (true, DB.open_existing db_fn)) in
+  if not db_exists then populate_db db input_fn;
+  if verbose then
+    DB.iter (fun k v ->
+        Log.debug "k: %s v: %s" k v
+      ) db;
+  db
 
 let main () =
   let argc, args = CLI.init () in
@@ -74,19 +75,16 @@ let main () =
   Log.color_on ();
   let input_fn = CLI.get_string ["-i"] args in
   let force_db_creation = CLI.get_set_bool ["--force"] args in
-  let names_provider =
-    match CLI.get_string_opt ["-names"] args with
+  let names_provider = match CLI.get_string_opt ["-names"] args with
     | Some names -> On_cli names
     | None ->
-      let fn = CLI.get_string ["-f"] args in
-      From_file fn in
-  let db_exists, db = db_open_or_create verbose force_db_creation input_fn in
-  (if not db_exists then
-     populate_db db input_fn
-  );
+       let fn = CLI.get_string ["-f"] args in
+       From_file fn in
+  CLI.finalize ();
   let names = match names_provider with
     | On_cli names -> BatString.split_on_string names ~by:","
     | From_file fn -> Utls.lines_of_file fn in
+  let db = db_open_or_create verbose force_db_creation input_fn in
   List.iter (fun name ->
       try
         let m = DB.find db name in
