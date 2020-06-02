@@ -37,6 +37,24 @@ let db_open_or_create verbose force input_fn =
       ) db;
   (db_exists, db)
 
+let populate_db db input_fn =
+  let read_one_mol, read_mol_name = mol_reader_for_file input_fn in
+  let count = ref 0 in
+  Utls.with_in_file input_fn (fun input ->
+      try
+        while true do
+          let m = read_one_mol input in
+          Log.debug "m: %s" m;
+          let name = read_mol_name m in
+          Log.debug "name: %s" name;
+          DB.add db name m;
+          incr count;
+          if (!count mod 10_000) = 0 then
+            eprintf "read %d\r%!" !count;
+        done
+      with End_of_file -> DB.sync db
+    )
+
 let main () =
   let argc, args = CLI.init () in
   if argc = 1 then
@@ -56,7 +74,6 @@ let main () =
   Log.color_on ();
   let input_fn = CLI.get_string ["-i"] args in
   let force_db_creation = CLI.get_set_bool ["--force"] args in
-  let read_one_mol, read_mol_name = mol_reader_for_file input_fn in
   let names_provider =
     match CLI.get_string_opt ["-names"] args with
     | Some names -> On_cli names
@@ -64,23 +81,9 @@ let main () =
       let fn = CLI.get_string ["-f"] args in
       From_file fn in
   let db_exists, db = db_open_or_create verbose force_db_creation input_fn in
-  let count = ref 0 in
-  if not db_exists then
-    Utls.with_in_file input_fn (fun input ->
-        try
-          while true do
-            let m = read_one_mol input in
-            Log.debug "m: %s" m;
-            let name = read_mol_name m in
-            Log.debug "name: %s" name;
-            DB.add db name m;
-            incr count;
-            if (!count mod 10_000) = 0 then
-              eprintf "read %d\r%!" !count;
-          done
-        with End_of_file ->
-          DB.sync db
-      );
+  (if not db_exists then
+     populate_db db input_fn
+  );
   let names = match names_provider with
     | On_cli names -> BatString.split_on_string names ~by:","
     | From_file fn -> Utls.lines_of_file fn in
