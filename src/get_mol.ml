@@ -21,12 +21,32 @@ let mol_reader_for_file fn =
   else if S.ends_with fn ".smi" then Smi.(read_one, get_name)
   else failwith ("Mol_get.mol_reader_for_file: not {.mol2|.sdf|.smi}: " ^ fn)
 
+let db_open_or_create verbose force input_fn =
+  let db_fn = db_name_of input_fn in
+  (* is there a DB already? *)
+  let db_exists, db =
+    if force || not (Sys.file_exists db_fn) then
+      (Log.info "creating %s" db_fn;
+       (false, DB.create db_fn))
+    else
+      (Log.warn "reusing %s" db_fn;
+       (true, DB.open_existing db_fn)) in
+  if verbose then
+    DB.iter (fun k v ->
+        Log.debug "k: %s v: %s" k v
+      ) db;
+  (db_exists, db)
+
 let main () =
   let argc, args = CLI.init () in
   if argc = 1 then
     (eprintf "usage:\n\
               %s -i molecules.{sdf|mol2|smi} \
-              {-names \"mol1,mol2,...\"|-f names_file} [-v] [--force]\n\
+              {-names \"mol1,mol2,...\"|-f names_file} [-v]\n  \
+              -i <filename>: molecules input file\n  \
+              [-names <string>,<string>,...]: list molecule names\n  \
+              [-f <filename>]: molecule names will be read from file\n  \
+              [-if <filename>,<filename>,...]: several molecule input files\n  \
               [--force]: overwrite existing db file, if any\n"
        Sys.argv.(0);
      exit 1);
@@ -43,19 +63,7 @@ let main () =
     | None ->
       let fn = CLI.get_string ["-f"] args in
       From_file fn in
-  (* is there a DB already? *)
-  let db_fn = db_name_of input_fn in
-  let db_exists, db =
-    if force_db_creation || not (Sys.file_exists db_fn) then
-      let () = Log.info "creating %s" db_fn in
-      (false, DB.create db_fn)
-    else
-      let () = Log.warn "reusing %s" db_fn in
-      (true, DB.open_existing db_fn) in
-  if verbose then
-    DB.iter (fun k v ->
-        Log.debug "k: %s v: %s" k v
-      ) db;
+  let db_exists, db = db_open_or_create verbose force_db_creation input_fn in
   let count = ref 0 in
   if not db_exists then
     Utls.with_in_file input_fn (fun input ->
