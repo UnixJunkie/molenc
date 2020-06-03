@@ -476,3 +476,8 @@ let count_lines_of_file (fn: string): int =
 
 let list_rev_sort cmp l =
   List.sort (fun x y -> cmp y x) l
+
+let list_really_take n l =
+  let took = L.take n l in
+  assert(L.length took = n);
+  took
