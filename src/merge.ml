@@ -12,6 +12,8 @@ module String = BatString
 module StringSet = BatSet.String
 module Utls = Molenc.Utls
 
+(* FBR: pass the separator char as a global parameter (common to all files) *)
+
 type score_spec = { fn: string;
                     sep: char;
                     name_field: int;
@@ -53,7 +55,7 @@ let normalize_scores spec =
   let mini, maxi = L.min_max raw_scores in
   let avg = Utls.faverage raw_scores in
   let std = Utls.stddev raw_scores in
-  Log.info "fn: %s%s min:avg:std:max: %g:%g:%g:%g"
+  Log.info "fn: %s%s min:avg+/-std:max: %g:%g+/-%g:%g"
     spec.fn (if spec.increasing then "(incr)" else "")
     mini avg std maxi;
   let sign = if spec.increasing then -1.0 else +1.0 in
@@ -65,10 +67,13 @@ let populate_ht spec =
   let norm_scores = normalize_scores spec in
   let ht = Ht.create (L.length norm_scores) in
   L.iter (fun (name, score) ->
-      if Ht.mem ht name then
-        Log.warn "%s: prev: %f curr: %f"
-          name (Ht.find ht name) score
-      else
+      try
+        let prev = Ht.find ht name in
+        if prev <> score then
+          (* FBR: ask AK what to do about them *)
+          Log.warn "%s: prev: %f curr: %f"
+            name prev score
+      with Not_found ->
         Ht.add ht name score
     ) norm_scores;
   ht
