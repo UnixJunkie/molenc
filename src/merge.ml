@@ -53,7 +53,7 @@ let normalize_scores spec =
   let mini, maxi = L.min_max raw_scores in
   let avg = Utls.faverage raw_scores in
   let std = Utls.stddev raw_scores in
-  Log.info "fn: %s%s min:avg:std:max: %f:%f:%f:%f"
+  Log.info "fn: %s%s min:avg:std:max: %g:%g:%g:%g"
     spec.fn (if spec.increasing then "(incr)" else "")
     mini avg std maxi;
   let sign = if spec.increasing then -1.0 else +1.0 in
