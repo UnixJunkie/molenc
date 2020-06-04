@@ -12,19 +12,17 @@ module String = BatString
 module StringSet = BatSet.String
 module Utls = Molenc.Utls
 
-(* FBR: pass the separator char as a global parameter (common to all files) *)
-
 type score_spec = { fn: string;
                     sep: char;
                     name_field: int;
                     score_field: int;
                     increasing: bool }
 
-let parse_spec str =
+let parse_spec sep str =
   try
     Scanf.sscanf str "%s@:%d:%d" (fun fn name score ->
         { fn;
-          sep = '\t'; (* FBR: hardcoded because cannot pass it on the CLI !? *)
+          sep;
           name_field = name - 1;
           score_field = (abs score) - 1;
           increasing = score < 0 }
@@ -32,11 +30,11 @@ let parse_spec str =
   with exn -> (Log.fatal "Merge.parse_spec: cannot parse: %s" str;
                raise exn)
 
-let parse_ifs s =
+let parse_ifs sep s =
   let specs =
     try String.split_on_string s ~by:","
     with Not_found -> [s] in
-  L.map parse_spec specs
+  L.map (parse_spec sep) specs
 
 let normalize_scores spec =
   let name_raw_scores =
@@ -112,17 +110,19 @@ let main () =
               -ifs <filename:sep_char:name_field:{-}score_field>,...: \
               input score files\n  \
               the optional '-' means lower scores are better \
-              (like docking scores)\n  \
+              (like ranks or docking scores)\n  \
               (field indexes start at 1)\n  \
               -o <filename>: output scores file\n  \
-              -n <int>: keep only top N\n"
+              -n <int>: keep only top N\n  \
+              -d <char>: field separator (default=\t)\n"
        Sys.argv.(0);
      exit 1);
   let input_spec = CLI.get_string ["-ifs"] args in
   let output_fn = CLI.get_string ["-o"] args in
   let maybe_top = CLI.get_int_opt ["-n"] args in
+  let sep = CLI.get_char_def ["-d"] args '\t' in
   CLI.finalize();
-  let specs = parse_ifs input_spec in
+  let specs = parse_ifs sep input_spec in
   Utls.with_out_file output_fn (fun out ->
       let hts = L.map populate_ht specs in
       let rescored = merge_hts hts in
