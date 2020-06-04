@@ -66,15 +66,19 @@ let normalize_scores spec =
 let populate_ht spec =
   let norm_scores = normalize_scores spec in
   let ht = Ht.create (L.length norm_scores) in
-  L.iter (fun (name, score) ->
+  L.iter (fun (name, curr_score) ->
       try
-        let prev = Ht.find ht name in
-        if prev <> score then
-          (* FBR: ask AK what to do about them *)
-          Log.warn "%s: prev: %f curr: %f"
-            name prev score
+        let prev_score = Ht.find ht name in
+        if prev_score <> curr_score then
+          begin
+            Log.warn "%s: prev: %f curr: %f" name prev_score curr_score;
+            let new_score =
+              (* conflict resolution policy: keep only best score *)
+              (if spec.increasing then min else max) prev_score curr_score in
+            Ht.replace ht name new_score
+          end
       with Not_found ->
-        Ht.add ht name score
+        Ht.add ht name curr_score
     ) norm_scores;
   ht
 
