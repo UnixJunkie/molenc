@@ -2,6 +2,8 @@
 (* A counted Bloom filter *)
 
 module A = BatArray
+module Fp = Fingerprint
+module L = BatList
 module Log = Dolog.Log
 
 type t = int array array (* input feature index (0..N-1) to output feature
@@ -31,4 +33,17 @@ let init n k m =
   (if !collisions > 0 then
      Log.warn "Bloom.init(%d,%d,%d): %d collisions" n k m !collisions
   );
+  (n, k, m, res)
+
+let encode (_n, k, m, mappings) fp =
+  let kvs = Fp.key_value_pairs fp in (* sparse input vector *)
+  let res = A.create m 0 in (* dense output vector *)
+  L.iter (fun (key, value) ->
+      let output_indexes = mappings.(key) in
+      (* increment all corresponding output features *)
+      for i = 0 to k - 1 do
+        let j = output_indexes.(i) in
+        res.(j) <- res.(j) + value
+      done
+    ) kvs;
   res
