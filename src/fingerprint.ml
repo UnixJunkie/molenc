@@ -172,6 +172,18 @@ let key_values fp =
   done;
   !res
 
+let key_value_pairs fp =
+  let res = ref [] in
+  let len = BA1.dim fp in
+  let i = ref 0 in
+  while !i < len do
+    let k = BA1.unsafe_get fp !i in
+    let v = BA1.unsafe_get fp (!i + 1) in
+    res := (k, v) :: !res;
+    i := !i + 2
+  done;
+  !res
+
 let drop_features to_drop fp =
   let kept =
     let kvs = key_values fp in
@@ -198,19 +210,6 @@ let sum_values fp =
     i := !i + 2
   done;
   !total
-
-(* FBR: we need a function to take a random sample without replacement
-        of the whole feature IDs *)
-
-(* let filter_pairs to_drop l = *)
-
-
-
-(* (\* drop some features and their values *\)
- * let drop_coords (to_drop: IntMap.t) (init: t): t =
- *   failwith "not implemented yet" *)
-
-
 
 (* (\* Euclidian distance; in case we work with 2D points instead of molecules
  *    HACK: POINTS HAVE COORDINATES AS INT BUT THEY NEED TO BE DIVIDED BY 1000
