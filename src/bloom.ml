@@ -9,17 +9,30 @@ module Log = Dolog.Log
 type t = int array array (* input feature index (0..N-1) to output feature
                             indexes mapping (0..M-1) *)
 
+let distinct_rands rng n bound =
+  let rec loop acc count =
+    if count = n then
+      acc
+    else
+      let cand = Random.State.int rng bound in
+      if List.mem cand acc then
+        loop acc count (* retry *)
+      else
+        loop (cand :: acc) (count + 1) in
+  loop [] 0
+
 (* n: input vector dimension
    k: number of "hash" functions;
-      or number of output features "turned ON" by a single input feature
+      number of output features "turned ON" by a single input feature
    m: output vector dimension *)
 let init n k m =
   let res = Array.make_matrix n k 0 in
   let rng = Random.State.make [|3141596|] in
   for i = 0 to n - 1 do
-    for j = 0 to k - 1 do
-      res.(i).(j) <- Random.State.int rng m
-    done
+    let rands = distinct_rands rng k m in
+    L.iteri (fun j rand ->
+        res.(i).(j) <- rand
+      ) rands
   done;
   (* log the number of collisions
      (different input features mapping to the same set of output features *)
