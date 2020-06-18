@@ -124,11 +124,9 @@ let compute_gram_matrix ncores csize samples res =
       ~work:(process_one samples n)
       ~mux:(gather_one res)
 
-(* FBR: output all to all graph to file for inspection/verification *)
 (* FBR: color nodes by percentage relative to (max - min) activity values *)
 (* FBR: output the MST in SVG format. Label each node with the SVG of
         the correspondinf 2D molecule *)
-(* FBR: use distance as label for edges in dot format *)
 (* FBR: we could use a threshold distance: if two molecules are further than
  *      this distance, we know they are not related (e.g. DBBAD) *)
 
@@ -176,8 +174,11 @@ let main () =
        (it is supposed to be all 0s) *)
     for j = i + 1 to nb_mols - 1 do
       let w = matrix.(i).(j) in
-      let edge = G.E.create i w j in
-      G.add_edge_e g edge
+      if w < 1.0 then
+        (* T_dist = 1.0 means the two molecules have nothing in common *)
+        (* So, the default molecules "linking threshold" is 1.0. *)
+        let edge = G.E.create i w j in
+        G.add_edge_e g edge
     done
   done;
   Utls.may_apply (fun fn -> graph_to_dot fn g) maybe_full_graph_fn;
