@@ -486,14 +486,3 @@ let list_really_take n l =
   let took = L.take n l in
   assert(L.length took = n);
   took
-
-(* find (min, max) of [a] *)
-let array_min_max a =
-  assert(A.length a > 0);
-  let mini = ref a.(0) in
-  let maxi = ref a.(0) in
-  A.iter (fun x ->
-      mini := min !mini x;
-      maxi := max !maxi x
-    ) a;
-  (!mini, !maxi)
