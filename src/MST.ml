@@ -109,15 +109,19 @@ let compute_gram_matrix ncores csize samples res =
   assert(n > 0);
   assert(ncores >= 1);
   if ncores = 1 then (* Sequential *)
-    for i = 0 to n - 1 do
-      (* WARNING: we initialize the diagonal while it is supposed to be all 0s *)
-      for j = i to n - 1 do
-        let x = FpMol.dist samples.(i) samples.(j) in
-        res.(i).(j) <- x;
-        (* WARNING: we could remove the next one *)
-        res.(j).(i) <- x (* symmetric matrix *)
-      done
-    done
+    begin
+      for i = 0 to n - 1 do
+        (* WARNING: we initialize the diagonal while it is all 0s *)
+        for j = i to n - 1 do
+          let x = FpMol.dist samples.(i) samples.(j) in
+          res.(i).(j) <- x;
+          (* WARNING: we could remove the next one *)
+          res.(j).(i) <- x (* symmetric matrix *)
+        done;
+        printf "done: %d/%d\r%!" (i + 1) n;
+      done;
+      printf "\n%!";
+    end
   else (* parallel *)
     Parany.run ~csize ncores
       ~demux:(emit_one (ref 0) n)
@@ -157,6 +161,9 @@ let main () =
   CLI.finalize ();
   Log.info "reading molecules...";
   let all_mols = A.of_list (FpMol.molecules_of_file input_fn) in
+  let min_pIC50, max_pIC50 = Utls.array_min_max FpMol.get_value all_mols in
+  let delta_pIC50 = max_pIC50 -. min_pIC50 in
+  Log.info "pIC50: (min,max,delta): %g %g %g" min_pIC50 max_pIC50 delta_pIC50;
   let nb_mols = A.length all_mols in
   Log.info "read %d" nb_mols;
   let g = G.create ~size:nb_mols () in
@@ -168,19 +175,27 @@ let main () =
   let matrix = A.init nb_mols (fun _ -> A.create_float nb_mols) in
   Log.info "Gram matrix initialization...";
   compute_gram_matrix nprocs csize all_mols matrix;
+  Log.info "Adding edges to graph...";
   (* add all edges to graph *)
+  let disconnected = ref 0 in
   for i = 0 to nb_mols - 1 do
     (* WARNING: we don't initialize the diagonal
        (it is supposed to be all 0s) *)
     for j = i + 1 to nb_mols - 1 do
       let w = matrix.(i).(j) in
-      if w < 1.0 then
+      if w = 1.0 then
+        incr disconnected
+      else
         (* T_dist = 1.0 means the two molecules have nothing in common *)
         (* So, the default molecules "linking threshold" is 1.0. *)
         let edge = G.E.create i w j in
         G.add_edge_e g edge
-    done
+    done;
+    printf "done: %d/%d\r%!" (i + 1) nb_mols;
   done;
+  printf "\n%!";
+  (if !disconnected > 0 then
+     Log.info "disconnected molecules: %d" !disconnected);
   Utls.may_apply (fun fn -> graph_to_dot fn g) maybe_full_graph_fn;
   (* MST *)
   Log.info "MST...";
