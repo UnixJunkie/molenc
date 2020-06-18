@@ -17,6 +17,7 @@ install: [
 depends: [
   "batteries"
   "bst"
+  "conf-graphviz"
   "conf-python-3"
   "conf-rdkit"
   "cpm"
