@@ -68,15 +68,44 @@ let graph_to_dot fn g =
       fprintf out "}\n";
     )
 
+(* a blue to white to red color palette *)
+(* FBR: this is buggy *)
+let rgb_triplet min_pIC50 delta_pIC50 ic50 =
+  let fraction = (ic50 -. min_pIC50) /. delta_pIC50 in
+  assert(fraction >= 0.0 && fraction <= 1.0);
+  if fraction >= 0.5 then
+    (* white to red *)
+    let red = int_of_float (ceil (255.0 *. fraction)) in
+    let green = 255 - red in
+    let blue = 255 - red in
+    (red, green, blue)
+  else (* blue/magenta to white
+          (pure blue is too dark to allow reading node labels) *)
+    let blue = int_of_float (ceil (255.0 *. (1.0 -. fraction))) in
+    let green = blue in
+    let red = 255 - green in
+    (red, green, blue)
+
 (* write the MST edges to file in dot format *)
-let mst_edges_to_dot fn edges =
+let mst_edges_to_dot fn pIC50s edges =
+  let min_pIC50, max_pIC50 = A.min_max pIC50s in
+  let delta_pIC50 = max_pIC50 -. min_pIC50 in
+  Log.info "pIC50: (min,max,delta): %g %g %g" min_pIC50 max_pIC50 delta_pIC50;
   Utls.with_out_file fn (fun out ->
       fprintf out "graph min_span_tree {\n";
+      let nb_nodes = A.length pIC50s in
+      for i = 0 to nb_nodes - 1 do
+        let ic50 = pIC50s.(i) in
+        (* color molecule's node *)
+        let red, green, blue = rgb_triplet min_pIC50 delta_pIC50 ic50 in
+        fprintf out "\"%d\" [style=\"filled\" color=\"#%02x%02x%02x\"]\n"
+          i red green blue
+      done;
       L.iter (fun e ->
           fprintf out "%d -- %d [label=\"%.2f\"]\n"
             (G.E.src e) (G.E.dst e) (G.E.label e)
         ) edges;
-      fprintf out "}\n";
+      fprintf out "}\n"
     )
 
 let minimum_spanning_tree g =
@@ -103,7 +132,6 @@ let gather_one (res: float array array) ((i, xs): (int * float list)): unit =
       res.(j).(i) <- x (* symmetric matrix *)
     ) xs
 
-(* FBR: provide some user feedback *)
 let compute_gram_matrix ncores csize samples res =
   let n = A.length samples in
   assert(n > 0);
@@ -128,16 +156,13 @@ let compute_gram_matrix ncores csize samples res =
       ~work:(process_one samples n)
       ~mux:(gather_one res)
 
+(* FBR: polish the node coloring scheme *)
+(* FBR: show the corners of the matrix after init *)
 (* FBR: color nodes by percentage relative to (max - min) activity values *)
 (* FBR: output the MST in SVG format. Label each node with the SVG of
         the correspondinf 2D molecule *)
 (* FBR: we could use a threshold distance: if two molecules are further than
  *      this distance, we know they are not related (e.g. DBBAD) *)
-
-let dot_color_string_of_pIC50 delta_pIC50 curr =
-  let i = int_of_float (ceil (255.0 *. curr *. delta_pIC50)) in
-  assert(i >= 0 && i <= 255);
-  sprintf "[style=\"filled\" color=\"#%2x0000\"]" i
 
 let main () =
   Log.(set_log_level INFO);
@@ -161,9 +186,7 @@ let main () =
   CLI.finalize ();
   Log.info "reading molecules...";
   let all_mols = A.of_list (FpMol.molecules_of_file input_fn) in
-  let min_pIC50, max_pIC50 = Utls.array_min_max FpMol.get_value all_mols in
-  let delta_pIC50 = max_pIC50 -. min_pIC50 in
-  Log.info "pIC50: (min,max,delta): %g %g %g" min_pIC50 max_pIC50 delta_pIC50;
+  let pIC50s = A.map FpMol.get_value all_mols in
   let nb_mols = A.length all_mols in
   Log.info "read %d" nb_mols;
   let g = G.create ~size:nb_mols () in
@@ -201,7 +224,7 @@ let main () =
   Log.info "MST...";
   let mst = minimum_spanning_tree g in
   (* dump to file *)
-  Log.info "dumping to file...";
-  mst_edges_to_dot output_fn mst
+  Log.info "writing file %s ..." output_fn;
+  mst_edges_to_dot output_fn pIC50s mst
 
 let () = main ()
