@@ -15,24 +15,25 @@ module L = MyList
 
 type t = { name: string;
            index: int; (* position in input file *)
+           value: float;
            fp: Fp.t }
 
-let create name index bitstring =
-  { name; index; fp = Fp.of_string bitstring }
+let create name index value bitstring =
+  { name; index; value; fp = Fp.of_string bitstring }
 
 (* read one molecule from an FP file *)
 let read_one_mol line =
   try Scanf.sscanf line "%s@,%f,%s"
-        (fun name _ic50 bitstring ->
-           (name, bitstring)
+        (fun name value bitstring ->
+           (name, value, bitstring)
         )
   with Scanf.Scan_failure msg ->
     failwith ("FpMol.read_one_mol: fmt: %s@,%f,%s err: " ^ msg ^
               " line: " ^ line)
 
 let parse_one index line =
-  let name, bitstring = read_one_mol line in
-  create name index bitstring
+  let name, value, bitstring = read_one_mol line in
+  create name index value bitstring
 
 let molecules_of_file fn =
   Utls.mapi_on_lines_of_file fn parse_one
@@ -45,6 +46,9 @@ let tani m1 m2 =
 
 let get_name x =
   x.name
+
+let get_value x =
+  x.value
 
 let get_index x =
   x.index
