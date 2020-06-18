@@ -260,9 +260,13 @@ let string_is_a_list_of_integers (s: string): bool =
   let chopped = BatString.chop ~l:1 ~r:1 s in
   not (Str.string_match string_contains_non_digits_non_sep chopped 0)
 
-let may_apply f = function
+let may_apply_opt f = function
   | Some x -> Some (f x)
   | None -> None
+
+let may_apply f = function
+  | Some x -> f x
+  | None -> ()
 
 (* returns true if we could create the file; false else (already there) *)
 let lock_file_for_writing (fn: filename): bool =

@@ -146,7 +146,7 @@ let main () =
     | None -> Write_to (output_fn ^ ".dix")
     | Some fn -> Read_from fn in
   let maybe_norm =
-    Utls.may_apply Norm.of_string (CLI.get_string_opt ["--norm"] args) in
+    Utls.may_apply_opt Norm.of_string (CLI.get_string_opt ["--norm"] args) in
   (* the normalized output format is for liblinear.
      Since molecule names are lost: it is FORBIDDEN to change
      the order between input and output files.
