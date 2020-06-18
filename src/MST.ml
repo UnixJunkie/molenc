@@ -6,7 +6,7 @@
    Kyushu Institute of Technology,
    680-4 Kawazu, Iizuka, Fukuoka, 820-8502, Japan.
 
-   Minimum Spanning Tree using the dataset's Gram matrix. *)
+   Minimum Spanning Tree (MST) using the dataset's Gram matrix. *)
 
 open Printf
 
@@ -16,6 +16,44 @@ module Ht = Hashtbl
 module L = BatList
 module Log = Dolog.Log
 module Utls = Molenc.Utls
+
+(* Undirected graph with integer labels on vertices and float labels (weights)
+   on edges *)
+module Int = struct
+  type t = int
+  let compare = BatInt.compare
+  let hash = Ht.hash
+  let equal = BatInt.equal
+  let default = 0
+end
+
+module Float = struct
+  type t = float
+  let compare = BatFloat.compare
+  let hash = Ht.hash
+  let equal = BatFloat.equal
+  let default = 0.0
+end
+
+module G = Graph.Imperative.Graph.ConcreteLabeled(Int)(Float)
+
+module W = struct
+  type label = G.E.label
+  type edge = G.E.t
+  type t = float (* mandatory *)
+  let weight x = G.E.label x
+  let zero = 0.0
+  let add = (+.)
+  let compare = BatFloat.compare (* mandatory *)
+end
+
+module Kruskal = Graph.Kruskal.Make(G)(W)
+
+(* FBR: compute the Gram matrix.
+ *      Create the graph and populate it with distances from the Gram matrix *)
+
+let mst g =
+  Kruskal.spanningtree g
 
 let main () =
   Log.(set_log_level INFO);
