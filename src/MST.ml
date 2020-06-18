@@ -61,8 +61,9 @@ module Kruskal = Graph.Kruskal.Make(G)(W)
 let graph_to_dot fn g =
   Utls.with_out_file fn (fun out ->
       fprintf out "graph all_to_all {\n";
-      G.iter_edges (fun src dst ->
-          fprintf out "%d -- %d\n" (G.V.label src) (G.V.label dst)
+      G.iter_edges_e (fun e ->
+          fprintf out "%d -- %d [label=\"%.2f\"]\n"
+            (G.E.src e) (G.E.dst e) (G.E.label e)
         ) g;
       fprintf out "}\n";
     )
@@ -72,7 +73,8 @@ let mst_edges_to_dot fn edges =
   Utls.with_out_file fn (fun out ->
       fprintf out "graph min_span_tree {\n";
       L.iter (fun e ->
-          fprintf out "%d -- %d\n" (G.E.src e) (G.E.dst e)
+          fprintf out "%d -- %d [label=\"%.2f\"]\n"
+            (G.E.src e) (G.E.dst e) (G.E.label e)
         ) edges;
       fprintf out "}\n";
     )
@@ -101,6 +103,7 @@ let gather_one (res: float array array) ((i, xs): (int * float list)): unit =
       res.(j).(i) <- x (* symmetric matrix *)
     ) xs
 
+(* FBR: provide some user feedback *)
 let compute_gram_matrix ncores csize samples res =
   let n = A.length samples in
   assert(n > 0);
