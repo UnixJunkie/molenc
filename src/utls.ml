@@ -8,6 +8,7 @@
 
 open Printf
 
+module A = BatArray
 module L = BatList
 module Log = Dolog.Log
 
@@ -481,3 +482,15 @@ let list_really_take n l =
   let took = L.take n l in
   assert(L.length took = n);
   took
+
+(* find (min, max) from [a] using getter [f] on each array element *)
+let array_min_max f a =
+  assert(A.length a > 0);
+  let mini = ref (f a.(0)) in
+  let maxi = ref (f a.(0)) in
+  A.iter (fun x ->
+      let y = f x in
+      mini := min !mini y;
+      maxi := max !maxi y
+    ) a;
+  (!mini, !maxi)
