@@ -1,3 +1,8 @@
+open Printf
+
+module A = BatArray
+module FpMol = Molenc.FpMol
+module L = BatList
 
 (* Parallel Gram matrix initialization *)
 let emit_one (i: int ref) (n: int) ((): unit): int =
