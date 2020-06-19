@@ -43,6 +43,10 @@ module Edge = struct
   let default = 0.0
 end
 
+(* JCF said we should use Graph.Imperative.Matrix.Graph for performance reasons
+   because our graphs are dense
+   JS said we should use Prim's algorithm instead of Kruskal; also for performance
+   reasons since we have a dense graph *)
 module G = Graph.Imperative.Graph.ConcreteLabeled(Node)(Edge)
 
 module W = struct
