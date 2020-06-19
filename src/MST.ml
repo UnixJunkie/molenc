@@ -68,25 +68,20 @@ let graph_to_dot fn g =
       fprintf out "}\n";
     )
 
-(* a blue to white to red color palette *)
-(* FBR: this is buggy *)
+(* node color *)
 let rgb_triplet min_pIC50 delta_pIC50 ic50 =
-  let fraction = (ic50 -. min_pIC50) /. delta_pIC50 in
-  assert(fraction >= 0.0 && fraction <= 1.0);
-  if fraction >= 0.5 then
-    (* white to red *)
-    let red = int_of_float (ceil (255.0 *. fraction)) in
-    let green = 255 - red in
-    let blue = 255 - red in
-    (red, green, blue)
-  else (* blue/magenta to white
-          (pure blue is too dark to allow reading node labels) *)
-    let blue = int_of_float (ceil (255.0 *. (1.0 -. fraction))) in
-    let green = blue in
-    let red = 255 - green in
-    (red, green, blue)
+  let percent = ceil (100.0 *. ((ic50 -. min_pIC50) /. delta_pIC50)) in
+  let _fractional, integral = modf percent in
+  let key = integral /. 100.0 in
+  let red_f, green_f, blue_f = Ht.find Palette.ht key in
+  (int_of_float (ceil (255.0 *. red_f)),
+   int_of_float (ceil (255.0 *. green_f)),
+   int_of_float (ceil (255.0 *. blue_f)))
 
-(* FBR: generate on the fly all needed images in parallel using a python rdkit
+(* TODO *)
+(* FBR: we could use a threshold distance: if two molecules are further than
+ *      this distance, we know they are not related (e.g. using DBBAD) *)
+(* FBR: generate on the fly all molecule images in parallel using a python rdkit
         script *)
 (* FBR: put the molecule label inside the SVG *)
 (* FBR: put the molecule pIC50 value in the SVG too *)
@@ -103,11 +98,15 @@ let mst_edges_to_dot fn pIC50s edges =
         let ic50 = pIC50s.(i) in
         (* color molecule's node *)
         let red, green, blue = rgb_triplet min_pIC50 delta_pIC50 ic50 in
+        assert(Utls.in_bounds 0 red   255 &&
+               Utls.in_bounds 0 green 255 &&
+               Utls.in_bounds 0 blue  255);
         (* fprintf out "\"%d\" [label=\"%d\\n%.2f\" image=\"data/%d.svg\" \
          *              style=\"filled\" color=\"#%02x%02x%02x\"]\n" *)
-        fprintf out "\"%d\" [label=\"%.2f\" image=\"data/%d.svg\" \
-                     style=\"filled\" color=\"#%02x%02x%02x\"]\n"
-          i ic50 i red green blue
+        fprintf out "\"%d\" [label=\"%.2f\" \
+                     style=\"filled\" color=\"#%02x%02x%02x\" \
+                     image=\"%d.svg\"]\n"
+          i ic50 red green blue i
       done;
       L.iter (fun e ->
           fprintf out "%d -- %d [label=\"%.2f\"]\n"
@@ -118,57 +117,6 @@ let mst_edges_to_dot fn pIC50s edges =
 
 let minimum_spanning_tree g =
   Kruskal.spanningtree g
-
-(* Parallel Gram matrix initialization *)
-let emit_one (i: int ref) (n: int) ((): unit): int =
-  if !i >= n then raise Parany.End_of_input
-  else
-    let res = !i in
-    incr i;
-    res
-
-let process_one (samples: FpMol.t array) (n: int) (i: int):
-  (int * float list) =
-  let js = L.range i `To (n - 1) in
-  let si = samples.(i) in
-  (i, L.map (fun j -> FpMol.dist si samples.(j)) js)
-
-let gather_one (res: float array array) ((i, xs): (int * float list)): unit =
-  L.iteri (fun j' x ->
-      let j = j' + i in
-      res.(i).(j) <- x;
-      res.(j).(i) <- x (* symmetric matrix *)
-    ) xs
-
-let compute_gram_matrix ncores csize samples res =
-  let n = A.length samples in
-  assert(n > 0);
-  assert(ncores >= 1);
-  if ncores = 1 then (* Sequential *)
-    begin
-      for i = 0 to n - 1 do
-        (* WARNING: we initialize the diagonal while it is all 0s *)
-        for j = i to n - 1 do
-          let x = FpMol.dist samples.(i) samples.(j) in
-          res.(i).(j) <- x;
-          (* WARNING: we could remove the next one *)
-          res.(j).(i) <- x (* symmetric matrix *)
-        done;
-        printf "done: %d/%d\r%!" (i + 1) n;
-      done;
-      printf "\n%!";
-    end
-  else (* parallel *)
-    Parany.run ~csize ncores
-      ~demux:(emit_one (ref 0) n)
-      ~work:(process_one samples n)
-      ~mux:(gather_one res)
-
-(* FBR: polish the node coloring scheme *)
-(* FBR: show the corners of the matrix after init *)
-(* FBR: color nodes by percentage relative to (max - min) activity values *)
-(* FBR: we could use a threshold distance: if two molecules are further than
- *      this distance, we know they are not related (e.g. DBBAD) *)
 
 let main () =
   Log.(set_log_level INFO);
@@ -203,7 +151,8 @@ let main () =
   (* compute Gram matrix in // *)
   let matrix = A.init nb_mols (fun _ -> A.create_float nb_mols) in
   Log.info "Gram matrix initialization...";
-  compute_gram_matrix nprocs csize all_mols matrix;
+  Gram.initialize_matrix nprocs csize all_mols matrix;
+  Gram.print_corners matrix;
   Log.info "Adding edges to graph...";
   (* add all edges to graph *)
   let disconnected = ref 0 in
