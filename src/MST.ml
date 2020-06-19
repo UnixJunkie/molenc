@@ -98,8 +98,9 @@ let mst_edges_to_dot fn pIC50s edges =
         let ic50 = pIC50s.(i) in
         (* color molecule's node *)
         let red, green, blue = rgb_triplet min_pIC50 delta_pIC50 ic50 in
-        fprintf out "\"%d\" [style=\"filled\" color=\"#%02x%02x%02x\"]\n"
-          i red green blue
+        fprintf out "\"%d\" [label=\"%d\\n%.2f\" \
+                     style=\"filled\" color=\"#%02x%02x%02x\"]\n"
+          i i ic50 red green blue
       done;
       L.iter (fun e ->
           fprintf out "%d -- %d [label=\"%.2f\"]\n"
