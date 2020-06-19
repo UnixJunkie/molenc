@@ -1,2 +1,3 @@
 molenc.install
 src/.merlin
+data/*.svg
