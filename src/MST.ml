@@ -86,6 +86,11 @@ let rgb_triplet min_pIC50 delta_pIC50 ic50 =
     let red = 255 - green in
     (red, green, blue)
 
+(* FBR: generate on the fly all needed images in parallel using a python rdkit
+        script *)
+(* FBR: put the molecule label inside the SVG *)
+(* FBR: put the molecule pIC50 value in the SVG too *)
+
 (* write the MST edges to file in dot format *)
 let mst_edges_to_dot fn pIC50s edges =
   let min_pIC50, max_pIC50 = A.min_max pIC50s in
@@ -98,9 +103,11 @@ let mst_edges_to_dot fn pIC50s edges =
         let ic50 = pIC50s.(i) in
         (* color molecule's node *)
         let red, green, blue = rgb_triplet min_pIC50 delta_pIC50 ic50 in
-        fprintf out "\"%d\" [label=\"%d\\n%.2f\" image=\"data/%d.svg\" \
+        (* fprintf out "\"%d\" [label=\"%d\\n%.2f\" image=\"data/%d.svg\" \
+         *              style=\"filled\" color=\"#%02x%02x%02x\"]\n" *)
+        fprintf out "\"%d\" [label=\"%.2f\" image=\"data/%d.svg\" \
                      style=\"filled\" color=\"#%02x%02x%02x\"]\n"
-          i i ic50 i red green blue
+          i ic50 i red green blue
       done;
       L.iter (fun e ->
           fprintf out "%d -- %d [label=\"%.2f\"]\n"
@@ -160,8 +167,6 @@ let compute_gram_matrix ncores csize samples res =
 (* FBR: polish the node coloring scheme *)
 (* FBR: show the corners of the matrix after init *)
 (* FBR: color nodes by percentage relative to (max - min) activity values *)
-(* FBR: output the MST in SVG format. Label each node with the SVG of
-        the correspondinf 2D molecule *)
 (* FBR: we could use a threshold distance: if two molecules are further than
  *      this distance, we know they are not related (e.g. DBBAD) *)
 
