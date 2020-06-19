@@ -25,7 +25,7 @@ let gather_one (res: float array array) ((i, xs): (int * float list)): unit =
       res.(j).(i) <- x (* symmetric matrix *)
     ) xs
 
-let fill_matrix ncores csize samples res =
+let initialize_matrix ncores csize samples res =
   let n = A.length samples in
   assert(n > 0);
   assert(ncores >= 1);
@@ -48,3 +48,26 @@ let fill_matrix ncores csize samples res =
       ~demux:(emit_one (ref 0) n)
       ~work:(process_one samples n)
       ~mux:(gather_one res)
+
+(* partial display *)
+let print_corners mat =
+  let m = A.length mat in
+  let n = A.length mat.(0) in
+  let idots = ref false in
+  for i = 0 to m - 1 do
+    if i < 3 || i > m - 4 then
+      begin
+        let jdots = ref false in
+        for j = 0 to n - 1 do
+          if j < 3 || j > n - 4 then
+            printf (if j <> 0 then "\t%6.2f" else "%6.2f")
+              mat.(i).(j)
+          else if not !jdots then
+            (printf "\t..."; jdots := true)
+        done;
+        printf "\n"
+      end
+    else if not !idots then
+      (printf "\t\t\t...\n"; idots := true)
+  done;
+  flush stdout
