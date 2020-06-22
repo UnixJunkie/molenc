@@ -105,7 +105,7 @@ let mst_edges_to_dot fn pIC50s edges =
                Utls.in_bounds 0 blue  255);
         fprintf out "\"%d\" [label=\"%.2f\" \
                      style=\"filled\" color=\"#%02x%02x%02x\" \
-                     image=\"%d.svg\"]\n"
+                     image=\"%d.png\"]\n"
           i ic50 red green blue i
       done;
       L.iter (fun e ->
