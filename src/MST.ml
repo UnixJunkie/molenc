@@ -85,8 +85,6 @@ let rgb_triplet min_pIC50 delta_pIC50 ic50 =
 (* TODO *)
 (* FBR: we could use a threshold distance: if two molecules are further than
  *      this distance, we know they are not related (e.g. using DBBAD) *)
-(* FBR: generate on the fly all molecule images in parallel using a python rdkit
-        script *)
 
 (* write the MST edges to file in dot format *)
 let mst_edges_to_dot fn pIC50s edges =
