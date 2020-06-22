@@ -87,8 +87,6 @@ let rgb_triplet min_pIC50 delta_pIC50 ic50 =
  *      this distance, we know they are not related (e.g. using DBBAD) *)
 (* FBR: generate on the fly all molecule images in parallel using a python rdkit
         script *)
-(* FBR: put the molecule label inside the SVG *)
-(* FBR: put the molecule pIC50 value in the SVG too *)
 
 (* write the MST edges to file in dot format *)
 let mst_edges_to_dot fn pIC50s edges =
@@ -105,8 +103,6 @@ let mst_edges_to_dot fn pIC50s edges =
         assert(Utls.in_bounds 0 red   255 &&
                Utls.in_bounds 0 green 255 &&
                Utls.in_bounds 0 blue  255);
-        (* fprintf out "\"%d\" [label=\"%d\\n%.2f\" image=\"data/%d.svg\" \
-         *              style=\"filled\" color=\"#%02x%02x%02x\"]\n" *)
         fprintf out "\"%d\" [label=\"%.2f\" \
                      style=\"filled\" color=\"#%02x%02x%02x\" \
                      image=\"%d.svg\"]\n"
