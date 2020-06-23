@@ -44,6 +44,9 @@ let to_string (m: t): string =
     m.value
     (Fp.to_string m.fp)
 
+let to_out out m =
+  fprintf out "%s\n" (to_string m)
+
 let molecules_of_file fn =
   Utls.mapi_on_lines_of_file fn parse_one
 
