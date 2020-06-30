@@ -83,7 +83,7 @@ let rgb_triplet min_pIC50 delta_pIC50 ic50 =
    int_of_float (ceil (255.0 *. blue_f)))
 
 (* write the MST edges to file in dot format *)
-let mst_edges_to_dot fn pIC50s edges =
+let mst_edges_to_dot fn pIC50s names edges =
   let min_pIC50, max_pIC50 = A.min_max pIC50s in
   let delta_pIC50 = max_pIC50 -. min_pIC50 in
   Log.info "pIC50: (min,max,delta): %g %g %g" min_pIC50 max_pIC50 delta_pIC50;
@@ -92,6 +92,7 @@ let mst_edges_to_dot fn pIC50s edges =
       let nb_nodes = A.length pIC50s in
       for i = 0 to nb_nodes - 1 do
         let ic50 = pIC50s.(i) in
+        let name = names.(i) in
         (* color molecule's node *)
         let red, green, blue = rgb_triplet min_pIC50 delta_pIC50 ic50 in
         assert(Utls.in_bounds 0 red   255 &&
@@ -99,8 +100,8 @@ let mst_edges_to_dot fn pIC50s edges =
                Utls.in_bounds 0 blue  255);
         fprintf out "\"%d\" [label=\"\" style=\"filled\" \
                      color=\"#%02x%02x%02x\" \
-                     image=\"%d.png\"]\n"
-          i red green blue i
+                     image=\"pix/%s.png\"]\n"
+          i red green blue name
       done;
       L.iter (fun e ->
           fprintf out "%d -- %d [label=\"%.2f\"]\n"
@@ -142,6 +143,7 @@ let main () =
   Log.info "reading molecules...";
   let all_mols = A.of_list (FpMol.molecules_of_file input_fn) in
   let pIC50s = A.map FpMol.get_value all_mols in
+  let names = A.map FpMol.get_name all_mols in
   let nb_mols = A.length all_mols in
   Log.info "read %d" nb_mols;
   let g = G.create ~size:nb_mols () in
@@ -181,6 +183,6 @@ let main () =
   let mst = minimum_spanning_tree g in
   (* dump to file *)
   Log.info "writing file %s ..." output_fn;
-  mst_edges_to_dot output_fn pIC50s mst
+  mst_edges_to_dot output_fn pIC50s names mst
 
 let () = main ()
