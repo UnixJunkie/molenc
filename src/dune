@@ -2,19 +2,21 @@
 (library
   (name molenc)
   (public_name molenc)
-  (modules ap_types atom_env fingerprint fpMol atom_pair mini_mol MSE_mol myList
-           node piEltHA scale utls WMH norm bloom)
+  (modules ap_types atom_env fingerprint fpMol atom_pair mini_mol MSE_mol
+           myList node piEltHA scale utls WMH norm bloom)
   (libraries batteries dolog bst))
 
 ;; installed executables / public targets
 (executables
   (names encoder decoder filter butina pubchem_decoder uniq to_dense get_mol
-         rank ap_encoder prune merge MST)
+         rank ap_encoder prune merge MST lean)
   (public_names molenc_e molenc_d molenc_filter molenc_cluster
                 molenc_pubchem_decoder molenc_uniq molenc_dense molenc_get
-                molenc_rank molenc_ap molenc_prune molenc_merge molenc_mst)
+                molenc_rank molenc_ap molenc_prune molenc_merge molenc_mst
+                molenc_lean)
   (modules encoder decoder filter butina pubchem_decoder uniq to_dense get_mol
-           sybyl syb_atom mol2 sdf smi rank ap_encoder prune merge MST gram palette)
+           sybyl syb_atom mol2 sdf smi rank ap_encoder prune merge MST gram
+           palette lean)
   (libraries molenc bst batteries dolog minicli parany cpm dokeysto_camltc
              ocamlgraph))
 

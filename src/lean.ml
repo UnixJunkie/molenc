@@ -11,6 +11,14 @@
    Communications of the ACM, 55(10), 78-87.
  *)
 
+open Printf
+
+module CLI = Minicli.CLI
+module Log = Dolog.Log
+module F = BatFloat
+module L = BatList
+module Rand = BatRandom
+
 let main () =
   Log.(set_log_level INFO);
   Log.color_on ();
@@ -25,13 +33,13 @@ let main () =
         Sys.argv.(0);
       exit 1
     end;
-  let sep = CLI.get_char_def ["-s"] args '\t' in
-  let field = CLI.get_int ["-f"] args in
+  let _sep = CLI.get_char_def ["-s"] args '\t' in
+  let _field = CLI.get_int ["-f"] args in
   let input_fn = CLI.get_string ["-i"] args in
   let rand_lines =
-    let all_lines = Utls.lines_of_file input_fn in
-    L.shuffle ~state:() all_lines in
-  let n = L.lenght rand_lines in
+    let all_lines = Molenc.Utls.lines_of_file input_fn in
+    L.shuffle ~state:(Rand.State.make_self_init ()) all_lines in
+  let n = L.length rand_lines in
   let batch_size =
     CLI.get_int_def ["-b"] args
       (int_of_float (F.ceil (0.05 *. (float n)))) in
