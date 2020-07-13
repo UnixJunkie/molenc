@@ -13,6 +13,7 @@ install: [
   ["cp" "bin/molenc_scan.py" "%{bin}%/molenc_scan.py"]
   ["cp" "bin/molenc.sh" "%{bin}%/molenc.sh"]
   ["cp" "bin/molenc_scan.sh" "%{bin}%/molenc_scan.sh"]
+  ["cp" "bin/smi2png.py" "%{bin}%/molenc_smi2png.py"]
 ]
 depends: [
   "batteries"

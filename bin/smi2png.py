@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 
 # One 2D picture SVG for each SMILES line
-# molecule images are named after the index of the molecule in the input file
-# they are created in the current directory
+# molecule images are created in a created pix/ directory
+# and named after their corresponding molecule
 
 import argparse
 import rdkit
+import os
 import sys
 from rdkit import Chem
 from rdkit.Chem import AllChem
@@ -29,6 +30,7 @@ if __name__ == '__main__':
         sys.stderr.write("usage: %s input.smi\n" % sys.argv[0])
         sys.exit(1)
     input_smi = sys.argv[1]
+    os.mkdir('pix')
     for i, name, mol in RobustMolSupplier(input_smi):
         if mol is None:
             continue
@@ -38,6 +40,6 @@ if __name__ == '__main__':
         caption = '%d %s' % (i, name)
         d.DrawMolecule(mol, legend = caption)
         d.FinishDrawing()
-        out_fn = '%d.png' % i
+        out_fn = 'pix/%s.png' % name
         with open(out_fn, 'wb') as out:
             out.write(d.GetDrawingText())

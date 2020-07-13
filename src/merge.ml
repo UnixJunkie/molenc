@@ -107,7 +107,7 @@ let main () =
   if argc = 1 then
     (eprintf "usage:\n\
               %s\n  \
-              -ifs <filename:sep_char:name_field:{-}score_field>,...: \
+              -ifs <filename:name_field:{-}score_field>,...: \
               input score files\n  \
               the optional '-' means lower scores are better \
               (like ranks or docking scores)\n  \

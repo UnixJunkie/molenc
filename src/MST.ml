@@ -82,10 +82,6 @@ let rgb_triplet min_pIC50 delta_pIC50 ic50 =
    int_of_float (ceil (255.0 *. green_f)),
    int_of_float (ceil (255.0 *. blue_f)))
 
-(* TODO *)
-(* FBR: we could use a threshold distance: if two molecules are further than
- *      this distance, we know they are not related (e.g. using DBBAD) *)
-
 (* write the MST edges to file in dot format *)
 let mst_edges_to_dot fn pIC50s edges =
   let min_pIC50, max_pIC50 = A.min_max pIC50s in
@@ -101,10 +97,10 @@ let mst_edges_to_dot fn pIC50s edges =
         assert(Utls.in_bounds 0 red   255 &&
                Utls.in_bounds 0 green 255 &&
                Utls.in_bounds 0 blue  255);
-        fprintf out "\"%d\" [label=\"%.2f\" \
-                     style=\"filled\" color=\"#%02x%02x%02x\" \
+        fprintf out "\"%d\" [label=\"\" style=\"filled\" \
+                     color=\"#%02x%02x%02x\" \
                      image=\"%d.png\"]\n"
-          i ic50 red green blue i
+          i red green blue i
       done;
       L.iter (fun e ->
           fprintf out "%d -- %d [label=\"%.2f\"]\n"
@@ -115,6 +111,13 @@ let mst_edges_to_dot fn pIC50s edges =
 
 let minimum_spanning_tree g =
   Kruskal.spanningtree g
+
+(* TODO *)
+(* FBR: we could use a threshold distance: if two molecules are further than
+ *      this distance, we know they are not related (e.g. using DBBAD) *)
+(* FBR: for safety, we should use <molecule_name>.png instead of
+        <molecule_index>.png because changing the input file means the
+   previous index is wrong *)
 
 let main () =
   Log.(set_log_level INFO);
