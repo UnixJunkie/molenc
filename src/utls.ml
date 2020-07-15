@@ -90,6 +90,14 @@ let lines_of_file (fn: filename): string list =
       else res
     )
 
+let lines_to_file fn l =
+  with_out_file fn (fun out ->
+      L.iter (fprintf out "%s\n") l
+    )
+
+(* alias *)
+let string_list_to_file = lines_to_file
+
 (* read 'nlines' from 'input' in_channel *)
 let read_n_lines nlines input =
   assert(nlines >= 0);
