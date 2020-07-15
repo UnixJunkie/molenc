@@ -56,13 +56,16 @@ let histo mini maxi n_steps lst =
     0.5 *. (x +. y) in
   let rec loop acc l = function
     | [] -> assert(false)
-    | [_] -> L.rev acc
+    | [_] -> acc
     | x :: y :: zs ->
       (* L.span is a kind of fold_while *)
       let this_bin, rest = L.span (fun x -> x < y) l in
       let n = L.length this_bin in
       loop ((avg x y, n) :: acc) rest (y :: zs) in
-  loop [] lst bins
+  let raw_histo = loop [] lst bins in
+  (* normalize it; the Y-axis should be a frequency *)
+  let total = float (L.length lst) in
+  L.rev_map (fun (x, y) -> (x, (float y) /. total)) raw_histo
 
 let histograms n_steps a1 a2 =
   let min1, max1 = A.min_max a1 in
@@ -72,17 +75,19 @@ let histograms n_steps a1 a2 =
   let histo2 = histo mini maxi n_steps (A.to_list a2) in
   (histo1, histo2)
 
-let plot_histograms h1 h2 =
-  (* dump them to a tmp data file *)
+let plot_histograms n_steps a1 a2 =
   let tmp_data_fn = Fn.temp_file "lean_histo_" ".txt" in
   Utls.with_out_file tmp_data_fn (fun out ->
+      (* compute histograms *)
+      let h1, h2 = histograms n_steps a1 a2 in
+      (* dump them to a tmp file *)
       L.iter2 (fun (x1, y1) (x2, y2) ->
           assert(x1 = x2);
           fprintf out "%g %g %g\n" x1 y1 y2
         ) h1 h2
     );
   Log.info "tmp histo data: %s" tmp_data_fn;
-  (* call the venerable and venerated gnuplot *)
+  (* FBR:TODO call the venerable and venerated gnuplot *)
   ()
 
 let main () =
@@ -133,6 +138,7 @@ let main () =
     in
     A.sort BatFloat.compare smaller_sample;
     A.sort BatFloat.compare bigger_sample;
+    plot_histograms 50 smaller_sample bigger_sample;
     let ks = Stats.ks2_test ~alpha smaller_sample bigger_sample in
     log_KS_test smaller_sample_size alpha ks
   done
