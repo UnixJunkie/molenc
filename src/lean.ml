@@ -46,6 +46,8 @@ let log_KS_test n alpha ks_res =
     Log.info "same N=%d KS: %.3f p: %.3f (a=%.3f) rej=%d"
       n ks_stat p_value alpha (Utls.int_of_bool null_rejected)
 
+(* FBR: show the histo of the distribution in gnuplot *)
+
 let main () =
   Log.(set_log_level INFO);
   Log.color_on ();
@@ -84,7 +86,8 @@ let main () =
            (L.take (if !total = 0 then batch_size0 else !total)
               (L.shuffle ~state:(Rand.State.make_self_init ()) all_lines)))
     in
-    total := (A.length smaller_sample) + batch_size;
+    let smaller_sample_size = A.length smaller_sample in
+    total := smaller_sample_size + batch_size;
     let bigger_sample =
       A.of_list
         (L.map (get_field_as_float sep field)
@@ -94,7 +97,7 @@ let main () =
     A.sort BatFloat.compare smaller_sample;
     A.sort BatFloat.compare bigger_sample;
     let ks = Stats.ks2_test ~alpha smaller_sample bigger_sample in
-    log_KS_test !total alpha ks
+    log_KS_test smaller_sample_size alpha ks
   done
 
 let () = main ()
