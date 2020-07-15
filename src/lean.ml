@@ -63,6 +63,14 @@ let histo mini maxi n_steps lst =
       loop ((avg x y, n) :: acc) rest (y :: zs) in
   loop [] lst bins
 
+let histograms n_steps a1 a2 =
+  let min1, max1 = A.min_max a1 in
+  let min2, max2 = A.min_max a2 in
+  let mini, maxi = (min min1 min2, max max1 max2) in
+  let histo1 = histo mini maxi n_steps (A.to_list a1) in
+  let histo2 = histo mini maxi n_steps (A.to_list a2) in
+  (histo1, histo2)
+
 (* FBR: show the histo of the distribution in gnuplot *)
 
 let main () =
