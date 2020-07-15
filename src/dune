@@ -16,7 +16,7 @@
                 molenc_lean)
   (modules encoder decoder filter butina pubchem_decoder uniq to_dense get_mol
            sybyl syb_atom mol2 sdf smi rank ap_encoder prune merge MST gram
-           palette lean)
+           palette lean gnuplot)
   (libraries molenc bst batteries dolog minicli parany cpm dokeysto_camltc
              ocamlgraph owl))
 
