@@ -54,21 +54,25 @@ def main():
         sys.exit(1)
     args = parser.parse_args()
     input_smi = args.input_smi
-    print("#name\tlogP\tMR\tMW\tHBA\HBD\RotB\tTPSA")
+    output_csv = args.output_csv
+    out_count = 0
     with open(output_csv, 'w') as out_file:
+        print("#name,MolW,cLogP,TPSA,RotB,HBA,HBD,FC", file=out_file)
         for mol, name in RobustSmilesMolSupplier(input_smi):
             if mol is not None:
-                molW = Descriptors.MolWt(mol)
+                MolW = Descriptors.MolWt(mol)
                 cLogP = Descriptors.MolLogP(mol)
-                molMR = Descriptors.MolMR(mol)
-                tpsa = Descriptors.TPSA(mol)
-                nbRotB = Descriptors.NumRotatableBonds(mol)
-                nbA = Descriptors.NumHAcceptors(mol)
-                nbD = Descriptors.NumHDonors(mol)
-                fc = Chem.rdmolops.GetFormalCharge(mol)
-                print("%s %f %f %f %d %d %d %f" %
-                      (name, logP, molMR, molW, nbA, nbD, nbRotB, tpsa),
-                      file=output_csv)
+                # molMR = Descriptors.MolMR(mol)
+                TPSA = Descriptors.TPSA(mol)
+                RotB = Descriptors.NumRotatableBonds(mol)
+                HBA = Descriptors.NumHAcceptors(mol)
+                HBD = Descriptors.NumHDonors(mol)
+                FC = Chem.rdmolops.GetFormalCharge(mol)
+                print("%s,%g,%g,%g,%d,%d,%d,%d" %
+                      (name, MolW, cLogP, TPSA, RotB, HBA, HBD, FC),
+                      file=out_file)
+                out_count += 1
+    print("encoded: %d" % out_count, file=sys.stderr)
 
 if __name__ == '__main__':
     main()
