@@ -83,10 +83,13 @@ def main():
         description = "Project molecules read from a SMILES file into a 7D \
         space whose dimensions are molecular descriptors: \
         (MolW, cLogP, TPSA, RotB, HBA, HBD, FC)")
-    parser.add_argument("-i", metavar = "input_smi", dest = "input_smi")
-    parser.add_argument("-o", metavar = "output_csv", dest = "output_csv")
+    parser.add_argument("-i", metavar = "input_smi", dest = "input_smi",
+                        help = "input SMILES file")
+    parser.add_argument("-o", metavar = "output_csv", dest = "output_csv",
+                        help = "output CSV file")
     parser.add_argument('--remove-aliens', dest='rm_aliens',
-                        action='store_true')
+                        action='store_true',
+                        help = "don't allow aliens in output file")
     parser.set_defaults(rm_aliens=False) # just warn about them by default
     # parse CLI
     if len(sys.argv) == 1:
