@@ -20,8 +20,6 @@
 # Journal of Chemical Information and Modeling.
 # https://doi.org/10.1021/acs.jcim.0c00155
 
-#from __future__ import print_function # FBR: relic of python2 ???
-
 import argparse, rdkit, sys
 from rdkit import Chem
 from rdkit.Chem import AllChem, Descriptors
@@ -37,7 +35,21 @@ def RobustSmilesMolSupplier(filename):
             name = words[1]
             yield (Chem.MolFromSmiles(smile), name)
 
-# FBR: add --remove-aliens CLI option
+# detect strange molecules
+def is_alien(MolW, cLogP, TPSA, RotB, HBA, HBD, FC):
+    # Step 1: TODO?
+    #         Organic compound filter. Molecules bearing at
+    #         least one atom other than H, C, N, O, P, S, F, Cl, Br, and I
+    #         were removed.
+    # Step 2: ignored; too complex (using IC50 curve shape + other things).
+    # Step 3: Molecular property range filter. Remaining
+    #         actives and inactives were kept if:
+    return (MolW <= 150 or MolW >= 800 or # 150 < MolW < 800 Da
+            cLogP <= -3.0 or cLogP >= 5.0 or # −3.0 < AlogP < 5.0
+            RotB >= 15 or # RotB < 15
+            HBA >= 10 or # HBA < 10
+            HBD >= 10 or # HBD < 10
+            FC <= -2 or FC > 2) # −2.0 < FC < 2.0
 
 def main():
     # CLI options parsing
@@ -47,6 +59,9 @@ def main():
         (MolW, cLogP, TPSA, RotB, HBA, HBD, FC)")
     parser.add_argument("-i", metavar = "input_smi", dest = "input_smi")
     parser.add_argument("-o", metavar = "output_csv", dest = "output_csv")
+    parser.add_argument('--remove-aliens', dest='rm_aliens',
+                        action='store_true')
+    parser.set_defaults(rm_aliens=False) # just warn about them by default
     # parse CLI
     if len(sys.argv) == 1:
         # show help in case user has no clue of what to do
@@ -55,11 +70,16 @@ def main():
     args = parser.parse_args()
     input_smi = args.input_smi
     output_csv = args.output_csv
+    rm_aliens = args.rm_aliens
     out_count = 0
+    alien_count = 0
+    error_count = 0
     with open(output_csv, 'w') as out_file:
         print("#name,MolW,cLogP,TPSA,RotB,HBA,HBD,FC", file=out_file)
         for mol, name in RobustSmilesMolSupplier(input_smi):
-            if mol is not None:
+            if mol is None:
+                error_count += 1
+            else:
                 MolW = Descriptors.MolWt(mol)
                 cLogP = Descriptors.MolLogP(mol)
                 # molMR = Descriptors.MolMR(mol)
@@ -68,11 +88,22 @@ def main():
                 HBA = Descriptors.NumHAcceptors(mol)
                 HBD = Descriptors.NumHDonors(mol)
                 FC = Chem.rdmolops.GetFormalCharge(mol)
-                print("%s,%g,%g,%g,%d,%d,%d,%d" %
-                      (name, MolW, cLogP, TPSA, RotB, HBA, HBD, FC),
-                      file=out_file)
-                out_count += 1
-    print("encoded: %d" % out_count, file=sys.stderr)
+                alien = is_alien(MolW, cLogP, TPSA, RotB, HBA, HBD, FC)
+                if alien:
+                    # FBR: show alien characteristics to the user
+                    print("WARN: alien: %s" % name, file=sys.stderr)
+                    alien_count += 1
+                if (not alien) or (not rm_aliens):
+                    csv_line = "%s,%g,%g,%g,%d,%d,%d,%d" % \
+                               (name, MolW, cLogP, TPSA, RotB, HBA, HBD, FC)
+                    print(csv_line, file=out_file)
+                    out_count += 1
+    total_count = out_count + error_count
+    if rm_aliens:
+        total_count += alien_count
+    print("encoded: %d aliens: %d errors: %d total: %d" % \
+          (out_count, alien_count, error_count, total_count),
+          file=sys.stderr)
 
 if __name__ == '__main__':
     main()
