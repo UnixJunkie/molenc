@@ -46,6 +46,23 @@ let log_KS_test n alpha ks_res =
     Log.info "same N=%d KS: %.3f p: %.3f (a=%.3f) rej=%d"
       n ks_stat p_value alpha (Utls.int_of_bool null_rejected)
 
+(* [lst] must be sorted in increasing order
+   [mini] must be <= min(lst)
+   [maxi] must be >= max(lst) *)
+let histo mini maxi n_steps lst =
+  let bins = L.frange mini `To maxi n_steps in
+  let avg x y =
+    0.5 *. (x +. y) in
+  let rec loop acc l = function
+    | [] -> assert(false)
+    | [_] -> L.rev acc
+    | x :: y :: zs ->
+      (* L.span is a kind of fold_while *)
+      let this_bin, rest = L.span (fun x -> x < y) l in
+      let n = L.length this_bin in
+      loop ((avg x y, n) :: acc) rest (y :: zs) in
+  loop [] lst bins
+
 (* FBR: show the histo of the distribution in gnuplot *)
 
 let main () =
