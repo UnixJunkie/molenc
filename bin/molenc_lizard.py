@@ -7,7 +7,7 @@
 # Kyushu Institute of Technology,
 # 680-4 Kawazu, Iizuka, Fukuoka, 820-8502, Japan.
 #
-# Simple molecular encoder using a handful of molecular descriptors
+# Simple molecular encoder using a handful of molecular descriptors.
 # type signature: molecule -> (MolW,cLogP,TPSA,RotB,HBA,HBD,FC)
 # Why is this script called molenc_lizard.py
 # First, because it is part of the molenc project.
@@ -20,10 +20,9 @@
 # Journal of Chemical Information and Modeling.
 # https://doi.org/10.1021/acs.jcim.0c00155
 
-from __future__ import print_function # FBR: relic of python2 ???
+#from __future__ import print_function # FBR: relic of python2 ???
 
-import rdkit
-import sys
+import argparse, rdkit, sys
 from rdkit import Chem
 from rdkit.Chem import AllChem, Descriptors
 from rdkit.Chem.AtomPairs import Pairs
@@ -38,36 +37,14 @@ def RobustSmilesMolSupplier(filename):
             name = words[1]
             yield (Chem.MolFromSmiles(smile), name)
 
-# FBR: add -i and -o CLI options
-#      also add --remove-aliens
-
-if len(sys.argv) != 2:
-    print("usage: %s input.smi" % sys.argv[0])
-    sys.exit(1)
-
-def nb_heavy_atom_neighbors(a):
-    neighbors = a.GetNeighbors()
-    res = 0
-    for n in neighbors:
-        if n.GetAtomicNum() != 1:
-            res = res + 1
-    return res
-
-def type_atom(a):
-    nb_pi_electrons = Pairs.Utils.NumPiElectrons(a)
-    symbol = PeriodicTable.GetElementSymbol(a.GetAtomicNum())
-    nbHA = nb_heavy_atom_neighbors(a)
-    res = ""
-    if nb_pi_electrons > 0:
-        res = "%d%s%d" % (nb_pi_electrons, symbol, nbHA)
-    else:
-        res = "%s%d" % (symbol, nbHA)
-    return res
+# FBR: add --remove-aliens CLI option
 
 def main():
     # CLI options parsing
     parser = argparse.ArgumentParser(
-        description = "project molecules from a SMILES file into a 7D space whose dimensions are molecular descriptors: (MolW,cLogP,TPSA,RotB,HBA,HBD,FC)")
+        description = "Project molecules read from a SMILES file into a 7D \
+        space whose dimensions are molecular descriptors: \
+        (MolW, cLogP, TPSA, RotB, HBA, HBD, FC)")
     parser.add_argument("-i", metavar = "input_smi", dest = "input_smi")
     parser.add_argument("-o", metavar = "output_csv", dest = "output_csv")
     # parse CLI
