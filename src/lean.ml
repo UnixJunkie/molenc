@@ -16,6 +16,7 @@ open Printf
 module A = BatArray
 module CLI = Minicli.CLI
 module F = BatFloat
+module Fn = Filename
 module L = BatList
 module Log = Dolog.Log
 module Rand = BatRandom
@@ -71,7 +72,18 @@ let histograms n_steps a1 a2 =
   let histo2 = histo mini maxi n_steps (A.to_list a2) in
   (histo1, histo2)
 
-(* FBR: show the histo of the distribution in gnuplot *)
+let plot_histograms h1 h2 =
+  (* dump them to a tmp data file *)
+  let tmp_data_fn = Fn.temp_file "lean_histo_" ".txt" in
+  Utls.with_out_file tmp_data_fn (fun out ->
+      L.iter2 (fun (x1, y1) (x2, y2) ->
+          assert(x1 = x2);
+          fprintf out "%g %g %g\n" x1 y1 y2
+        ) h1 h2
+    );
+  Log.info "tmp histo data: %s" tmp_data_fn;
+  (* call the venerable and venerated gnuplot *)
+  ()
 
 let main () =
   Log.(set_log_level INFO);
