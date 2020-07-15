@@ -86,9 +86,9 @@ let plot_histograms n_steps a1 a2 =
           fprintf out "%g %g %g\n" x1 y1 y2
         ) h1 h2
     );
-  Log.info "tmp histo data: %s" tmp_data_fn;
-  (* FBR:TODO call the venerable and venerated gnuplot *)
-  ()
+  Log.info "histo data: %s" tmp_data_fn;
+  (* call the venerable and venerated gnuplot *)
+  Gnuplot.plot_histograms tmp_data_fn (A.favg a1) (A.favg a2)
 
 let main () =
   Log.(set_log_level INFO);
@@ -98,13 +98,14 @@ let main () =
     begin
       eprintf "usage:\n\
                %s\n  \
-               -b0 <int>: first batch size\n  \
-               -b <int>: batch size (bootstrap size increment; \
+               [-b0 <int>]: first batch size (default=batch_size)\n  \
+               [-b <int>]: batch size (bootstrap size increment; \
                default=5%% of max)\n  \
                -i <filename>: input file\n  \
-               -s <char>: field separator (default=\\t)\n  \
+               [-s <char>]: field separator (default=\\t)\n  \
                -f <int>: field number (starts from 1)\n  \
-               -a <float>: KS-test alpha (default=0.05)\n"
+               [-a <float>]: KS-test alpha (default=0.05)\n  \
+               [--no-plot]: turn OFF gnuplot\n"
         Sys.argv.(0);
       exit 1
     end;
@@ -112,6 +113,7 @@ let main () =
   let sep = CLI.get_char_def ["-s"] args '\t' in
   let field = (CLI.get_int ["-f"] args) - 1 in
   let input_fn = CLI.get_string ["-i"] args in
+  let no_plot = CLI.get_set_bool ["--no-plot"] args in
   let all_lines = Utls.lines_of_file input_fn in
   let n = L.length all_lines in
   let batch_size =
@@ -138,7 +140,8 @@ let main () =
     in
     A.sort BatFloat.compare smaller_sample;
     A.sort BatFloat.compare bigger_sample;
-    plot_histograms 50 smaller_sample bigger_sample;
+    (if not no_plot then
+       plot_histograms 50 smaller_sample bigger_sample);
     let ks = Stats.ks2_test ~alpha smaller_sample bigger_sample in
     log_KS_test smaller_sample_size alpha ks
   done
