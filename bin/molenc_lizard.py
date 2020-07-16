@@ -44,7 +44,6 @@ def is_alien(MolW, cLogP, TPSA, RotB, HBA, HBD, FC):
     # Step 2: ignored; too complex (using IC50 curve shape + other things).
     # Step 3: Molecular property range filter. Remaining
     #         actives and inactives were kept if:
-    # FBR: !!! check rdkit's LogP Vs. pipeline pilot's AlogP !!!
     # rdkit's MolW unit seems to be g/mol
     # 1C -> 12Da = 12g/mol <=> 1Da = 1g/mol
     return (MolW <= 150 or MolW >= 800 or # 150 < MolW < 800 Da
