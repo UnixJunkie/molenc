@@ -19,27 +19,38 @@ def order_bonds_canonically(bonds):
     min_index_first.sort()
     return min_index_first
 
-def iterate(f, col):
-    for x in col:
-        f(x)
+def print_bonds(out, mol):
+    print("#bonds:%d" % mol.GetNumBonds(), file=out)
+    bonds = order_bonds_canonically(mol.GetBonds())
+    for b in bonds:
+        print("%d %d" % b, file=out)
 
-def print_bond(b):
-    print("%d %d" % b)
-
-def print_bonds(mol):
-    print("#bonds:%d" % mol.GetNumBonds())
-    iterate(print_bond, order_bonds_canonically(mol.GetBonds()))
-
-def print_distance_matrix(mol):
-    mat = Chem.GetDistanceMatrix(mol)
-    diam = numpy.max(mat)
-    print("#diameter:%d" % diam)
-    nb_atoms = mol.GetNumAtoms()
-    for i in range(nb_atoms):
-        for j in range(nb_atoms):
-            x = mat[i][j]
-            if j == 0:
-                print("%d" % x, end='')
-            else:
-                print(" %d" % x, end='')
-        print("") # newline
+def print_distance_matrix(out, mol, threeD):
+    if threeD:
+        # we use a histogram with bin width 1A
+        # this allows to work in 3D, at the cost of much more features
+        mat = Chem.Get3DDistanceMatrix(mol)
+        diam = int(numpy.max(mat))
+        print("#diameter:%d" % diam, file=out)
+        nb_atoms = mol.GetNumAtoms()
+        for i in range(nb_atoms):
+            for j in range(nb_atoms):
+                x = int(mat[i][j])
+                if j == 0:
+                    print("%d" % x, end='', file=out)
+                else:
+                    print(" %d" % x, end='', file=out)
+            print("", file=out) # newline
+    else:
+        mat = Chem.GetDistanceMatrix(mol)
+        diam = numpy.max(mat)
+        print("#diameter:%d" % diam, file=out)
+        nb_atoms = mol.GetNumAtoms()
+        for i in range(nb_atoms):
+            for j in range(nb_atoms):
+                x = mat[i][j]
+                if j == 0:
+                    print("%d" % x, end='', file=out)
+                else:
+                    print(" %d" % x, end='', file=out)
+            print("", file=out) # newline
