@@ -65,15 +65,16 @@ class AtomStereoCode(Enum):
     CIS_BOND_END = 7
     TRANS_BOND_END = 8
 
-to_atom_stereo = { '?': AtomStereoCode.ANY_CENTER,
-                   'R': AtomStereoCode.R_CENTER,
-                   'S': AtomStereoCode.S_CENTER,
-                   rdkit.Chem.rdchem.BondStereo.STEREONONE: AtomStereoCode.NONE,
-                   rdkit.Chem.rdchem.BondStereo.STEREOANY: AtomStereoCode.ANY_BOND_END,
-                   rdkit.Chem.rdchem.BondStereo.STEREOZ: AtomStereoCode.Z_BOND_END,
-                   rdkit.Chem.rdchem.BondStereo.STEREOE: AtomStereoCode.E_BOND_END,
-                   rdkit.Chem.rdchem.BondStereo.STEREOCIS: AtomStereoCode.CIS_BOND_END,
-                   rdkit.Chem.rdchem.BondStereo.STEREOTRANS: AtomStereoCode.TRANS_BOND_END }
+to_atom_stereo = \
+    { '?': AtomStereoCode.ANY_CENTER,
+    'R': AtomStereoCode.R_CENTER,
+    'S': AtomStereoCode.S_CENTER,
+    rdkit.Chem.rdchem.BondStereo.STEREONONE: AtomStereoCode.NONE,
+    rdkit.Chem.rdchem.BondStereo.STEREOANY: AtomStereoCode.ANY_BOND_END,
+    rdkit.Chem.rdchem.BondStereo.STEREOZ: AtomStereoCode.Z_BOND_END,
+rdkit.Chem.rdchem.BondStereo.STEREOE: AtomStereoCode.E_BOND_END,
+    rdkit.Chem.rdchem.BondStereo.STEREOCIS: AtomStereoCode.CIS_BOND_END,
+    rdkit.Chem.rdchem.BondStereo.STEREOTRANS: AtomStereoCode.TRANS_BOND_END }
 
 def get_stereo_codes(m):
     # by default, each atom has no stereo
