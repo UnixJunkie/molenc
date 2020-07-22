@@ -132,10 +132,14 @@ if __name__ == '__main__':
     output = open(args.output_fn, 'w')
     mol_supplier = None
     three_dimensions = args.three_dimensions
-    if input_fn.endswith(".smi"):
-        mol_supplier = RobustSmilesMolSupplier
-    if input_fn.endswith(".sdf"):
+    if three_dimensions or input_fn.endswith(".sdf"):
         mol_supplier = SdfMolSupplier
+    elif input_fn.endswith(".smi"):
+        mol_supplier = RobustSmilesMolSupplier
+    else:
+        print("molenc_type_atoms.py: input file not .smi or .sdf and no --3D",
+              file=sys.stderr)
+        sys.exit(1)
     count = 0
     for name, mol in mol_supplier(input_fn):
         print("#atoms:%d %s" % (mol.GetNumAtoms(), name), file=output)
