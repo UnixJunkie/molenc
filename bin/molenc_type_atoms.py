@@ -5,7 +5,7 @@
 # formal charges are ignored, as was the case in the seminal implementation
 # of atom pairs, not sure this is very smart though
 
-import molenc_common, os, rdkit, sys, time
+import argparse, molenc_common, os, rdkit, sys, time
 from enum import Enum
 from rdkit import Chem
 from rdkit import RDConfig
@@ -106,29 +106,44 @@ def get_stereo_codes(m):
 def encode_molecule(m):
     return map(type_atom, m.GetAtoms())
 
-def print_encoded_atoms(atoms):
+def print_encoded_atoms(out, atoms):
     for i, a in enumerate(atoms):
-        print("%d %s" % (i, a))
+        print("%d %s" % (i, a), file=out)
 
 if __name__ == '__main__':
     before = time.time()
-    argc = len(sys.argv)
-    if argc != 2:
-        print("usage: %s input.{smi|sdf}" % sys.argv[0])
+    # CLI options parsing
+    parser = argparse.ArgumentParser(
+        description = "compute atom types and distances")
+    parser.add_argument("-i", metavar = "input.{smi|sdf}", dest = "input_fn",
+                        help = "molecules input file")
+    parser.add_argument("-o", metavar = "output.txt", dest = "output_fn",
+                        help = "output file")
+    parser.add_argument('--3D', dest='three_dimensions', action='store_true',
+                        help = "consider molecules in 3D (requires SDF)")
+    parser.set_defaults(three_dimensions=False)
+    # parse CLI
+    if len(sys.argv) == 1:
+        # show help in case user has no clue of what to do
+        parser.print_help(sys.stderr)
         sys.exit(1)
-    input = sys.argv[1]
+    args = parser.parse_args()
+    input_fn = args.input_fn
+    output = open(args.output_fn, 'w')
     mol_supplier = None
-    if input.endswith(".smi"):
+    three_dimensions = args.three_dimensions
+    if input_fn.endswith(".smi"):
         mol_supplier = RobustSmilesMolSupplier
-    if input.endswith(".sdf"):
+    if input_fn.endswith(".sdf"):
         mol_supplier = SdfMolSupplier
     count = 0
-    for name, mol in mol_supplier(input):
-        print("#atoms:%d %s" % (mol.GetNumAtoms(), name))
-        print_encoded_atoms(encode_molecule(mol))
-        molenc_common.print_bonds(mol)
-        molenc_common.print_distance_matrix(mol)
+    for name, mol in mol_supplier(input_fn):
+        print("#atoms:%d %s" % (mol.GetNumAtoms(), name), file=output)
+        print_encoded_atoms(output, encode_molecule(mol))
+        molenc_common.print_bonds(output, mol)
+        molenc_common.print_distance_matrix(output, mol, three_dimensions)
         count += 1
     after = time.time()
     dt = after - before
     print("%d molecules at %.2f mol/s" % (count, count / dt), file=sys.stderr)
+    output.close()
