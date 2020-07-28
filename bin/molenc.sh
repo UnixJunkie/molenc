@@ -116,10 +116,10 @@ fi
 if [ $nprocs -gt 1 ] && [ "$there_is_pardi" != "" ]; then
     echo 'typing atoms in parallel...'
     pardi -p -n $nprocs -i $tmp_smi -o $tmp_types -c 100 -d l -ie '.smi' \
-          -w 'molenc_type_atoms.py %IN > %OUT 2>/dev/null'
+          -w 'molenc_type_atoms.py -i %IN -o %OUT 2>/dev/null'
 else
     echo 'typing atoms...'
-    molenc_type_atoms.py $tmp_smi > $tmp_types
+    molenc_type_atoms.py -i $tmp_smi -o $tmp_types
 fi
 
 echo "encoding molecules..."
