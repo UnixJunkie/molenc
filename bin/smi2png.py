@@ -30,7 +30,8 @@ if __name__ == '__main__':
         sys.stderr.write("usage: %s input.smi\n" % sys.argv[0])
         sys.exit(1)
     input_smi = sys.argv[1]
-    os.mkdir('pix')
+    if not (os.path.isdir('pix')):
+        os.mkdir('pix')
     for i, name, mol in RobustMolSupplier(input_smi):
         if mol is None:
             continue
