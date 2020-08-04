@@ -26,7 +26,9 @@ let of_dictionary_header fn =
   let header = Utls.get_first_line fn in
   let prfx = "#radius=" in
   let prfx_len = String.length prfx in
-  assert(BatString.starts_with header prfx);
+  Utls.enforce (BatString.starts_with header prfx)
+    "Scale.of_dictionary_header: not a circular FP dictionary header; \
+     --pairs CLI option probably missing";
   let s = BatString.lchop ~n:prfx_len header in
   of_string s
 
