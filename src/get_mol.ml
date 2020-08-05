@@ -64,6 +64,7 @@ let main () =
               %s -i molecules.{sdf|mol2|smi} \
               {-names \"mol1,mol2,...\"|-f names_file} [-v]\n  \
               -i <filename>: molecules input file\n  \
+              [-o <filename>]: molecules output file (default=stdout)\n  \
               [-names <string>,<string>,...]: molecule names\n  \
               [-f <filename>]: get molecule names from file\n  \
               [-if <filename>,<filename>,...]: several molecule input files\n  \
@@ -80,28 +81,35 @@ let main () =
     | (Some _, Some _) -> failwith "Get_mol: both -i and -if"
     | (Some fn, None) -> [fn]
     | (None, Some filenames) -> S.split_on_string filenames ~by:"," in
+  let maybe_output_fn = CLI.get_string_opt ["-o"] args in
   let force_db_creation = CLI.get_set_bool ["--force"] args in
   let names_provider = match CLI.get_string_opt ["-names"] args with
     | Some names -> On_cli names
     | None ->
-       let fn = CLI.get_string ["-f"] args in
-       From_file fn in
+      let fn = CLI.get_string ["-f"] args in
+      From_file fn in
   CLI.finalize ();
   let names = match names_provider with
     | On_cli names -> S.split_on_string names ~by:","
     | From_file fn -> Utls.lines_of_file fn in
   let dbs = L.map (db_open_or_create verbose force_db_creation) input_fns in
+  let out = match maybe_output_fn with
+    | None -> stdout
+    | Some output_fn -> open_out_bin output_fn in
   List.iter (fun name ->
       try
         (* find containing db, if any *)
         let db = L.find (fun db -> DB.mem db name) dbs in
         (* extract molecule from it *)
         let m = DB.find db name in
-        printf "%s" m
+        fprintf out "%s" m
       with Not_found ->
         (* no db contains this molecule *)
         Log.warn "not found: %s" name
     ) names;
-  L.iter DB.close dbs
+  L.iter DB.close dbs;
+  (match maybe_output_fn with
+   | Some _fn -> close_out out
+   | None -> ())
 
 let () = main ()
