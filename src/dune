@@ -18,7 +18,7 @@
            sybyl syb_atom mol2 sdf smi rank ap_encoder prune merge MST gram
            palette lean gnuplot)
   (libraries molenc bst batteries dolog minicli parany cpm dokeysto_camltc
-             ocamlgraph owl))
+             ocamlgraph))
 
 ;; never installed executables
 (executables

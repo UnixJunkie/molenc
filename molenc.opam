@@ -29,7 +29,6 @@ depends: [
   "minicli" {>= "5.0.0"}
   "ocaml"
   "ocamlgraph"
-  "owl"
   "parany" {>= "11.0.0"}
 ]
 synopsis: "Molecular encoder/featurizer using rdkit and OCaml"
