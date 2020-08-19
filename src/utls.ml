@@ -9,6 +9,7 @@
 open Printf
 
 module A = BatArray
+module Ht = BatHashtbl
 module L = BatList
 module Log = Dolog.Log
 
@@ -431,33 +432,23 @@ let stddev (l: float list): float =
   sqrt ((sx2 -. (sx *. sx) /. n) /. n)
 (* stddev [2.; 4.; 4.; 4.; 5.; 5.; 7.; 9.] = 2.0 *)
 
-let rank arr =
-  let arr = A.copy arr in
-  let arr = A.mapi (fun i a -> a,i) arr in
-  A.sort (fun (a,_) (b,_) -> Stdlib.compare a b) arr;
-  let g _ il ans =
-    let count = List.length il in
-    let n = count + (List.length ans) in
-    let hi = Float.of_int n in
-    let lo = Float.of_int (n - count + 1) in
-    let rank = (hi +. lo) /. 2. in
-    (List.map (fun i -> rank,i) il) @ ans
-  in
-  let f (prev, il, ans) (x,i) =   (* prev is the value that was equal *)
-    let count = List.length il in (* il is list of original indices in
-                                     reverse for items that were equal *)
-    if count = 0 then (* ans is list of ranks and original index pairs
-                         in reverse *)
-      x, [i], ans
-    else if x = prev then
-      x, i::il, ans
-    else
-      x, [i], g prev il ans
-  in
-  let prev,il,ans = A.fold_left f (0.,[],[]) arr in
-  let ans = g prev il ans in
-  let ans = List.sort (fun (_,a) (_,b) -> Stdlib.compare a b) ans in
-  A.of_list (List.map fst ans)
+(* elements ranks as floats *)
+let rank (arr: float array): float array =
+  let sorted = A.copy arr in
+  A.sort Float.compare sorted;
+  let n = A.length arr in
+  let elt2rank = Ht.create n in
+  let rank = ref 1 in
+  A.iter (fun x ->
+      if not (Ht.mem elt2rank x) then
+        (Ht.add elt2rank x !rank;
+         incr rank)
+    ) sorted;
+  A.iteri (fun i x ->
+      let rank = float_of_int (Ht.find elt2rank x) in
+      A.unsafe_set sorted i rank
+    ) arr;
+  sorted
 
 (* Code comes from Biocaml.Math *)
 let wilcoxon_rank_sum_to_z arr1 arr2 =
@@ -473,17 +464,17 @@ let wilcoxon_rank_sum_to_z arr1 arr2 =
 let cnd x =
   (* Modified from C++ code by David Koppstein. Found from
    www.sitmo.com/doc/Calculating_the_Cumulative_Normal_Distribution *)
-  let b1,b2,b3,b4,b5,p,c =
+  let b1, b2, b3, b4, b5, p, c =
     0.319381530, -0.356563782, 1.781477937, -1.821255978,
     1.330274429, 0.2316419, 0.39894228 in
   if x >= 0.0 then
     let t = 1. /. (1. +. (p *. x)) in
     (1. -. (c *. (exp (-.x *. x /. 2.)) *. t *.
-              (t *. (t *. (t *. ((t *. b5) +. b4) +. b3) +. b2) +. b1 )))
+              (t *. (t *. (t *. ((t *. b5) +. b4) +. b3) +. b2) +. b1)))
   else
     let t = 1. /. (1. -. p *. x) in
     c *. (exp (-.x *. x /. 2.)) *. t *.
-      (t *. (t *. (t *. ((t *. b5) +. b4) +. b3) +. b2) +. b1 )
+      (t *. (t *. (t *. ((t *. b5) +. b4) +. b3) +. b2) +. b1)
 
 let wilcoxon_rank_sum_to_p arr1 arr2 =
   (* assumes a two-tailed distribution *)
