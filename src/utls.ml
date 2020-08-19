@@ -432,7 +432,7 @@ let stddev (l: float list): float =
   sqrt ((sx2 -. (sx *. sx) /. n) /. n)
 (* stddev [2.; 4.; 4.; 4.; 5.; 5.; 7.; 9.] = 2.0 *)
 
-(* elements ranks as floats *)
+(* elements ranks as floats (in a new array) *)
 let rank (arr: float array): float array =
   let sorted = A.copy arr in
   A.sort Float.compare sorted;
