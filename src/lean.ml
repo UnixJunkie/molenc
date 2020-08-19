@@ -11,6 +11,8 @@
    Communications of the ACM, 55(10), 78-87.
  *)
 
+(* !!! THIS SHOULD BE COMPLETELY REPLACED BY AN R SCRIPT !!! *)
+
 open Printf
 
 module A = BatArray
@@ -20,7 +22,6 @@ module Fn = Filename
 module L = BatList
 module Log = Dolog.Log
 module Rand = BatRandom
-module Stats = Owl.Stats
 module Utls = Molenc.Utls
 
 let get_field_as_float s f line =
@@ -34,18 +35,10 @@ let get_field_as_float s f line =
                  in line: %s" f s line in
     raise exn
 
-let log_KS_test n alpha ks_res =
-  let null_rejected = Owl.Stats.(ks_res.reject) in
-  let p_value = Owl.Stats.(ks_res.p_value) in
-  let ks_stat = Owl.Stats.(ks_res.score) in
-  if p_value < alpha then
-    (* distributions differ *)
-    Log.warn "differ N=%d KS: %.3f p: %.3f (a=%.3f) rej=%d"
-      n ks_stat p_value alpha (Utls.int_of_bool null_rejected)
-  else
-    (* distributions are the same *)
-    Log.info "same N=%d KS: %.3f p: %.3f (a=%.3f) rej=%d"
-      n ks_stat p_value alpha (Utls.int_of_bool null_rejected)
+let log_wilcoxon_test n alpha p_val =
+  (if p_val < alpha then Log.warn
+   else Log.info)
+    "N=%d p=%.3f (a=%.2f)" n p_val alpha
 
 (* [lst] must be sorted in increasing order
    [mini] must be <= min(lst)
@@ -104,7 +97,7 @@ let main () =
                -i <filename>: input file\n  \
                [-s <char>]: field separator (default=\\t)\n  \
                -f <int>: field number (starts from 1)\n  \
-               [-a <float>]: KS-test alpha (default=0.05)\n  \
+               [-a <float>]: Wilcoxon test alpha (default=0.05)\n  \
                [--no-plot]: turn OFF gnuplot\n"
         Sys.argv.(0);
       exit 1
@@ -142,8 +135,8 @@ let main () =
     A.sort BatFloat.compare bigger_sample;
     (if not no_plot then
        plot_histograms 50 smaller_sample bigger_sample);
-    let ks = Stats.ks2_test ~alpha smaller_sample bigger_sample in
-    log_KS_test smaller_sample_size alpha ks
+    let p_val = Utls.wilcoxon_rank_sum_to_p smaller_sample bigger_sample in
+    log_wilcoxon_test smaller_sample_size alpha p_val
   done
 
 let () = main ()
