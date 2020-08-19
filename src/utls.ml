@@ -437,18 +437,30 @@ let rank (arr: float array): float array =
   let sorted = A.copy arr in
   A.sort Float.compare sorted;
   let n = A.length arr in
-  let elt2rank = Ht.create n in
-  let rank = ref 1 in
+  let ht = Ht.create n in
+  let rank = ref 1.0 in
   A.iter (fun x ->
-      if not (Ht.mem elt2rank x) then
-        (Ht.add elt2rank x !rank;
-         incr rank)
+      try
+        begin (* deal with ties *)
+          let ranks = Ht.find ht x in
+          Ht.replace ht x (!rank :: ranks);
+          rank := !rank +. 1.0
+        end
+      with Not_found ->
+        begin
+          Ht.add ht x [!rank];
+          rank := !rank +. 1.0
+        end
     ) sorted;
+  let elt2rank = Ht.map (fun _elt ranks -> L.favg ranks) ht in
   A.iteri (fun i x ->
-      let rank = float_of_int (Ht.find elt2rank x) in
-      A.unsafe_set sorted i rank
+      A.unsafe_set sorted i (Ht.find elt2rank x)
     ) arr;
   sorted
+
+(* (\* unit test for rank *\)
+ * let () =
+ *   assert(rank [|2.; 4.; 7.; 7.; 12.|] = [|1.0; 2.0; 3.5; 3.5; 5.0|]) *)
 
 (* Code comes from Biocaml.Math *)
 let wilcoxon_rank_sum_to_z arr1 arr2 =
