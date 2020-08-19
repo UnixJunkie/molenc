@@ -321,7 +321,7 @@ let one_or_more_spaces = Str.regexp "[ ]+"
 
 let string_of_floats_array fv =
   let buff = Buffer.create 80 in
-  Array.iter (fun f ->
+  A.iter (fun f ->
       Buffer.add_string buff (sprintf "%f " f)
     ) fv;
   Buffer.contents buff
@@ -341,9 +341,9 @@ let in_bounds lb x hb =
   x >= lb && x <= hb
 
 let list_medianf (l: float list): float =
-  let xs = Array.of_list l in
-  Array.sort BatFloat.compare xs;
-  let n = Array.length xs in
+  let xs = A.of_list l in
+  A.sort BatFloat.compare xs;
+  let n = A.length xs in
   if n mod 2 = 1 then
     xs.(n/2)
   else
@@ -357,7 +357,7 @@ let string_of_array ?pre:(pre = "[|") ?sep:(sep = ";") ?suf:(suf = "|]")
     to_str a =
   let buff = Buffer.create 80 in
   Buffer.add_string buff pre;
-  Array.iteri (fun i x ->
+  A.iteri (fun i x ->
       if i > 0 then Buffer.add_string buff sep;
       Buffer.add_string buff (to_str x)
     ) a;
@@ -432,9 +432,9 @@ let stddev (l: float list): float =
 (* stddev [2.; 4.; 4.; 4.; 5.; 5.; 7.; 9.] = 2.0 *)
 
 let rank arr =
-  let arr = Array.copy arr in
-  let arr = Array.mapi (fun i a -> a,i) arr in
-  Array.sort (fun (a,_) (b,_) -> Stdlib.compare a b) arr;
+  let arr = A.copy arr in
+  let arr = A.mapi (fun i a -> a,i) arr in
+  A.sort (fun (a,_) (b,_) -> Stdlib.compare a b) arr;
   let g _ il ans =
     let count = List.length il in
     let n = count + (List.length ans) in
@@ -454,20 +454,20 @@ let rank arr =
     else
       x, [i], g prev il ans
   in
-  let prev,il,ans = Array.fold_left f (0.,[],[]) arr in
+  let prev,il,ans = A.fold_left f (0.,[],[]) arr in
   let ans = g prev il ans in
   let ans = List.sort (fun (_,a) (_,b) -> Stdlib.compare a b) ans in
-  Array.of_list (List.map fst ans)
+  A.of_list (List.map fst ans)
 
 (* Code comes from Biocaml.Math *)
 let wilcoxon_rank_sum_to_z arr1 arr2 =
-  let l1,l2 = (Array.length arr1),(Array.length arr2) in
-  let ranked = rank (Array.append arr1 arr2) in
-  let arr1 = Array.sub ranked 0 l1 in
+  let l1,l2 = (A.length arr1),(A.length arr2) in
+  let ranked = rank (A.append arr1 arr2) in
+  let arr1 = A.sub ranked 0 l1 in
   let l1,l2 = (Float.of_int l1), (Float.of_int l2) in
   let sum1 =
     let f acc elem = elem +. acc in
-    Array.fold_left f 0.0 arr1
+    A.fold_left f 0.0 arr1
   in
   let expectation = (l1 *. (l1 +. l2 +. 1.)) /. 2. in
   let var = (l1 *. l2 *. ((l1 +. l2 +. 1.) /. 12.)) in
