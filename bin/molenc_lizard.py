@@ -86,10 +86,13 @@ def main():
                         help = "input SMILES file")
     parser.add_argument("-o", metavar = "output_csv", dest = "output_csv",
                         help = "output CSV file")
+    parser.add_argument('--no-header', dest='no_header',
+                        action='store_true', default=False,
+                        help = "no CSV header in output file")
+    # just warn about aliens by default
     parser.add_argument('--remove-aliens', dest='rm_aliens',
-                        action='store_true',
+                        action='store_true', default=False,
                         help = "don't allow aliens in output file")
-    parser.set_defaults(rm_aliens=False) # just warn about them by default
     # parse CLI
     if len(sys.argv) == 1:
         # show help in case user has no clue of what to do
@@ -99,11 +102,13 @@ def main():
     input_smi = args.input_smi
     output_csv = args.output_csv
     rm_aliens = args.rm_aliens
+    no_header = args.no_header
     out_count = 0
     alien_count = 0
     error_count = 0
     with open(output_csv, 'w') as out_file:
-        print("#name,MolW,cLogP,TPSA,RotB,HBA,HBD,FC", file=out_file)
+        if not no_header:
+            print("#name,MolW,cLogP,TPSA,RotB,HBA,HBD,FC", file=out_file)
         for i, mol, name in RobustSmilesMolSupplier(input_smi):
             if mol is None:
                 error_count += 1
