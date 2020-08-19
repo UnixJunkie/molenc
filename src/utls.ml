@@ -461,14 +461,11 @@ let rank arr =
 
 (* Code comes from Biocaml.Math *)
 let wilcoxon_rank_sum_to_z arr1 arr2 =
-  let l1,l2 = (A.length arr1),(A.length arr2) in
+  let l1, l2 = A.(length arr1, length arr2) in
   let ranked = rank (A.append arr1 arr2) in
   let arr1 = A.sub ranked 0 l1 in
-  let l1,l2 = (Float.of_int l1), (Float.of_int l2) in
-  let sum1 =
-    let f acc elem = elem +. acc in
-    A.fold_left f 0.0 arr1
-  in
+  let l1, l2 = Float.(of_int l1, of_int l2) in
+  let sum1 = A.fsum arr1 in
   let expectation = (l1 *. (l1 +. l2 +. 1.)) /. 2. in
   let var = (l1 *. l2 *. ((l1 +. l2 +. 1.) /. 12.)) in
   (sum1 -. expectation) /. (sqrt var)
