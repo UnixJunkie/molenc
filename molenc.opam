@@ -26,7 +26,7 @@ depends: [
   "dokeysto_camltc"
   "dolog" {>= "4.0.0"}
   "dune" {>= "1.11"}
-  "minicli"
+  "minicli" {>= "5.0.0"}
   "ocaml"
   "ocamlgraph"
   "owl"
@@ -37,14 +37,20 @@ description: """Chemical fingerprints are lossy encodings of molecules.
 molenc allows to encode molecules using unfolded-counted fingerprints
 (i.e. a potentially very long but sparse vector of positive integers).
 
-Currently, Faulon fingerprints are supported.
-In the future, atom pair fingerprints might be added.
+Currently, Faulon fingerprints and atom pairs are supported.
+
 Currently, atom types are the quadruplet
 (#pi-electrons, element symbol, #HA neighbors, formal charge).
 In the future, pharmacophore features might be supported (a more abstract/fuzzy
 atom typing scheme).
 
 Bibliography:
+=============
+
+Faulon, J. L., Visco, D. P., & Pophale, R. S. (2003).
+The signature molecular descriptor.
+1. Using extended valence sequences in QSAR and QSPR studies.
+Journal of chemical information and computer sciences, 43(3), 707-720.
 
 Carhart, R. E., Smith, D. H., & Venkataraghavan, R. (1985).
 Atom pairs as molecular features in structure-activity studies:
@@ -55,11 +61,6 @@ Kearsley, S. K., Sallamack, S., Fluder, E. M., Andose, J. D., Mosley, R. T., &
 Sheridan, R. P. (1996).
 Chemical similarity using physiochemical property descriptors.
 Journal of Chemical Information and Computer Sciences, 36(1), 118-127.
-
-Faulon, J. L., Visco, D. P., & Pophale, R. S. (2003).
-The signature molecular descriptor.
-1. Using extended valence sequences in QSAR and QSPR studies.
-Journal of chemical information and computer sciences, 43(3), 707-720.
 
 OpenSMILES specification. Craig A. James et. al. v1.0 2016-05-15.
 http://opensmiles.org/opensmiles.html
