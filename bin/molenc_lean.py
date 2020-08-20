@@ -47,6 +47,17 @@ def get_all_values(sep_char, field, lines):
         res.append(value)
     return res
 
+# ANSI terminal colors for UNIX
+black   = "\033[30m"
+red     = "\033[31m"
+green   = "\033[32m"
+yellow  = "\033[33m"
+blue    = "\033[34m"
+magenta = "\033[35m"
+cyan    = "\033[36m"
+white   = "\033[37m"
+color_reset = "\033[39m"
+
 def main():
     # CLI options parsing
     parser = argparse.ArgumentParser(
@@ -93,20 +104,39 @@ def main():
         init_batch = round(0.1 * nb_lines)
     if batch_incr == -1:
         batch_incr = round(0.05 * nb_lines)
-    print("N: %d b0: %d bi: %d" % (nb_lines, init_batch, batch_incr),
+    print("N_max: %d b0: %d b: %d" % (nb_lines, init_batch, batch_incr),
           file = stderr)
     # replace all lines by the values of interest
     all_values = get_all_values(sep_char, field, all_lines)
     # show some stats to the user for troubleshooting
-    min = np.min(all_values)
-    avg = np.average(all_values)
-    std = np.std(all_values)
-    max = np.max(all_values)
-    print("min,avg+/-std,max: %.3f,%.3f+/-%.3f,%.3f" % (min, avg, std, max),
-          file = stderr)
+    mini = np.min(all_values)
+    aveg = np.average(all_values)
+    stdv = np.std(all_values)
+    maxi = np.max(all_values)
+    print("min,avg+/-std,max: %.3f,%.3f+/-%.3f,%.3f" %
+          (mini, aveg, stdv, maxi), file = stderr)
     # repeat stats
-    for i in range(nb_repeats):
-        exit(1)
+    total = init_batch
+    random.shuffle(all_values)
+    smaller_sample = all_values[0:total]
+    bigger_sample = []
+    # FBR: TODO for i in range(nb_repeats):
+    while total < nb_lines:
+        total += batch_incr
+        total = min(total, nb_lines)
+        random.shuffle(all_values)
+        bigger_sample = all_values[0:total]
+        ks, p_val = stats.ks_2samp(smaller_sample, bigger_sample,
+                                   alternative='two-sided', mode='auto')
+        if p_val > 0.95:
+            color = green
+        else:
+            color = white
+        print("%sKS: %.3f p-val: %.3f N: %d%s" %
+              (color, ks, p_val, len(smaller_sample), color_reset),
+              file=stderr)
+        smaller_sample = bigger_sample
+    # END
 
 if __name__ == '__main__':
     main()
