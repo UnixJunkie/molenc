@@ -35,9 +35,9 @@ def main():
                         help = "line-oriented file containing the \
                         target variable (training-set)")
     parser.add_argument("-d", metavar = "DELIM_CHAR", dest = "sep_char",
-                        help = "field delimiter char", default = '\t')
+                        help = "field delimiter char (default=\\t)", default = '\t')
     parser.add_argument("-f", metavar = "FIELD_NUM", dest = "field",
-                        help = "target variable field number (from 1, not 0)")
+                        help = "target variable field number (starts from 1)")
     parser.add_argument("-b0", metavar = "INIT_BATCH_SIZE", dest = "init_batch",
                         help = "initial batch size (default=10%% of max)",
                         default = -1)
