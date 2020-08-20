@@ -117,26 +117,31 @@ def main():
           (mini, aveg, stdv, maxi), file = stderr)
     # repeat stats
     total = init_batch
-    random.shuffle(all_values)
-    smaller_sample = all_values[0:total]
+    smaller_sample = np.random.choice(
+        all_values, size = total, replace = False)
     bigger_sample = []
     # FBR: TODO for i in range(nb_repeats):
+    big_enough = -1
     while total < nb_lines:
+        smaller_size = total
         total += batch_incr
-        total = min(total, nb_lines)
-        random.shuffle(all_values)
-        bigger_sample = all_values[0:total]
+        total = min(total, nb_lines) # cap it to known max
+        bigger_sample = np.random.choice(
+            all_values, size = total, replace = False)
         ks, p_val = stats.ks_2samp(smaller_sample, bigger_sample,
                                    alternative='two-sided', mode='auto')
         if p_val > 0.95:
             color = green
+            if big_enough == -1:
+                big_enough = smaller_size
         else:
             color = white
+            big_enough = -1
         print("%sKS: %.3f p-val: %.3f N: %d%s" %
-              (color, ks, p_val, len(smaller_sample), color_reset),
+              (color, ks, p_val, smaller_size, color_reset),
               file=stderr)
         smaller_sample = bigger_sample
-    # END
+    print('big_enough: %d' % big_enough)
 
 if __name__ == '__main__':
     main()
