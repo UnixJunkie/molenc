@@ -27,6 +27,10 @@
 import argparse, scipy, sys
 from scipy import stats
 
+def lines_of_file(fn):
+    with open(fn) as f:
+        return f.readlines()
+
 def main():
     # CLI options parsing
     parser = argparse.ArgumentParser(
@@ -65,10 +69,14 @@ def main():
     batch_incr = args.batch_incr
     nb_repeats = args.nb_repeats
     # find default values
+    all_lines = lines_of_file(input_fn)
+    nb_lines = len(all_lines)
     if init_batch == -1:
-        exit(1)
+        init_batch = round(0.1 * nb_lines)
     if batch_incr == -1:
-        exit(1)
+        batch_incr = round(0.05 * nb_lines)
+    print("N: %d b0: %d bi: %d" % (nb_lines, init_batch, batch_incr),
+          file = sys.stderr)
     for i in range(nb_repeats):
         exit(1)
 
