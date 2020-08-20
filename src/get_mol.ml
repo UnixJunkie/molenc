@@ -5,9 +5,11 @@ open Printf
 
 module CLI = Minicli.CLI
 module DB = Dokeysto_camltc.Db_camltc.RW
+module Ht = BatHashtbl
 module L = BatList
 module Log = Dolog.Log
 module S = BatString
+module StringSet = BatSet.String
 module Utls = Molenc.Utls
 
 let db_name_of fn =
@@ -39,6 +41,30 @@ let populate_db db input_fn =
         done
       with End_of_file -> DB.sync db
     )
+
+(* almost copy/paste of populate_db above ... *)
+let populate_ht names input_fn =
+  let required_names = StringSet.of_list names in
+  let nb_names = StringSet.cardinal required_names in
+  let collected = Ht.create nb_names in
+  let read_one_mol, read_mol_name = mol_reader_for_file input_fn in
+  let count = ref 0 in
+  Utls.with_in_file input_fn (fun input ->
+      try
+        while true do
+          let m = read_one_mol input in
+          Log.debug "m: %s" m;
+          let name = read_mol_name m in
+          Log.debug "name: %s" name;
+          if StringSet.mem name required_names then
+            Ht.add collected name m;
+          incr count;
+          if (!count mod 10_000) = 0 then
+            eprintf "read %d\r%!" !count;
+        done
+      with End_of_file -> ()
+    );
+  collected
 
 let db_open_or_create verbose force input_fn =
   let db_fn = db_name_of input_fn in
@@ -94,27 +120,44 @@ let main () =
   let names = match names_provider with
     | On_cli names -> S.split_on_string names ~by:","
     | From_file fn -> Utls.lines_of_file fn in
-  if no_index then
-    failwith "not implemented yet"
-  else
-    begin
-      let dbs = L.map (db_open_or_create verbose force_db_creation) input_fns in
-      let out = match maybe_output_fn with
-        | None -> stdout
-        | Some output_fn -> open_out_bin output_fn in
-      List.iter (fun name ->
-          try
-            (* find containing db, if any *)
-            let db = L.find (fun db -> DB.mem db name) dbs in
-            (* extract molecule from it *)
-            let m = DB.find db name in
-            fprintf out "%s" m
-          with Not_found ->
-            (* no db contains this molecule *)
-            Log.warn "not found: %s" name
-        ) names;
-      L.iter DB.close dbs
-    end
+  let nb_names = L.length names in
+  let out = match maybe_output_fn with
+    | None -> stdout
+    | Some output_fn -> open_out_bin output_fn in
+  (if no_index then
+     begin
+       let collected = match input_fns with
+         | [input_fn] -> populate_ht names input_fn
+         | [] -> failwith "Get_mol: --no-index requires -i"
+         | _ :: _:: _ -> failwith "Get_mol: --no-index incompatible with -if" in
+       let ht_len = Ht.length collected in
+       if ht_len <> nb_names then
+         Log.warn "found %d; expected %d" ht_len nb_names;
+       L.iter (fun name ->
+           try (* extract molecule *)
+             let m = Ht.find collected name in
+             fprintf out "%s" m
+           with Not_found ->
+             Log.warn "not found: %s" name
+         ) names
+     end
+   else
+     begin
+       let dbs = L.map (db_open_or_create verbose force_db_creation) input_fns in
+       L.iter (fun name ->
+           try
+             (* find containing db, if any *)
+             let db = L.find (fun db -> DB.mem db name) dbs in
+             (* extract molecule from it *)
+             let m = DB.find db name in
+             fprintf out "%s" m
+           with Not_found ->
+             (* no db contains this molecule *)
+             Log.warn "not found: %s" name
+         ) names;
+       L.iter DB.close dbs
+     end
+  );
   (match maybe_output_fn with
    | Some _fn -> close_out out
    | None -> ())
