@@ -77,11 +77,6 @@ def main():
     parser.add_argument("-b", metavar = "BATCH_SIZE", dest = "batch_incr",
                         help = "batch increment (default=5%% of max)",
                         default = -1, type = int)
-    # since this is a randomized experiment, we need to run it several
-    # times to guarantee some robustness
-    parser.add_argument("-n", metavar = "NB_REPEATS", dest = "nb_repeats",
-                        help = "number of repetitions (default=50)",
-                        default = 50, type = int)
     # parse CLI
     args = parser.parse_args()
     if len(sys.argv) == 1:
@@ -96,7 +91,6 @@ def main():
         exit(1)
     init_batch = args.init_batch
     batch_incr = args.batch_incr
-    nb_repeats = args.nb_repeats
     # compute default params
     all_lines = lines_of_file(input_fn)
     nb_lines = len(all_lines)
@@ -120,7 +114,6 @@ def main():
     smaller_sample = np.random.choice(
         all_values, size = total, replace = False)
     bigger_sample = []
-    # FBR: TODO for i in range(nb_repeats):
     big_enough = -1
     while total < nb_lines:
         smaller_size = total
