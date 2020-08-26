@@ -7,7 +7,7 @@
 # Kyushu Institute of Technology,
 # 680-4 Kawazu, Iizuka, Fukuoka, 820-8502, Japan.
 #
-# Molecule standardization using rdkit/MolVS
+# Molecule standardization and unsalting using rdkit/MolVS
 
 import argparse, rdkit, sys
 from rdkit import Chem
@@ -20,6 +20,18 @@ def RobustSmilesMolSupplier(filename):
             smile = words[0]
             name = words[1]
             yield (name, Chem.MolFromSmiles(smile))
+
+# heuristic: just keep the longest sub string
+def unsalt_smiles_string(smi_str):
+    max_len = 0
+    longest = ""
+    components = smi_str.split('.')
+    for c in components:
+        n = len(c)
+        if n > max_len:
+            max_len = n
+            longest = c
+    return longest
 
 def main():
     # CLI options parsing
@@ -47,7 +59,8 @@ def main():
             else:
                 std_mol = std.standardize(mol)
                 std_smi = Chem.MolToSmiles(std_mol)
-                std_smi_line = "%s\t%s" % (std_smi, name)
+                std_smi_no_salt = unsalt_smiles_string(std_smi)
+                std_smi_line = "%s\t%s" % (std_smi_no_salt, name)
                 print(std_smi_line, file=out_file)
                 out_count += 1
     total_count = out_count + error_count
