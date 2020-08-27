@@ -34,8 +34,6 @@ let xyz_of_mol2_atom_line l =
     (Log.fatal "Lig_box.xyz_of_mol2_atom_line: cannot parse: %s" l;
      raise exn)
 
-(* FBR: TODO output all info graphically in the BILD format for chimera *)
-
 let fst3 (a, _, _) = a
 let snd3 (_, b, _) = b
 let trd3 (_, _, c) = c
@@ -48,6 +46,42 @@ let center xyz_l =
         V3.(add acc (of_triplet xyz))
       ) init xyz_l in
   V3.(to_triplet (div sum n))
+
+(* segments making the bounding box
+   (even a transparent box one hides the ligand center...) *)
+let draw_bbox out xmin ymin zmin xmax ymax zmax =
+  (* A: xmin ymin zmax
+   * B: xmin ymax zmax
+   * C: xmin ymax zmin
+   * D: xmin ymin zmin
+   * E: xmax ymin zmax
+   * F: xmax ymax zmax
+   * G: xmax ymax zmin
+   * H: xmax ymin zmin *)
+  fprintf out ".vector %f %f %f %f %f %f\n"
+    (* A *) xmin ymin zmax (* B *) xmin ymax zmax;
+  fprintf out ".vector %f %f %f %f %f %f\n"
+    (* A *) xmin ymin zmax (* D *) xmin ymin zmin;
+  fprintf out ".vector %f %f %f %f %f %f\n"
+    (* A *) xmin ymin zmax (* E *) xmax ymin zmax;
+  fprintf out ".vector %f %f %f %f %f %f\n"
+    (* C *) xmin ymax zmin (* B *) xmin ymax zmax;
+  fprintf out ".vector %f %f %f %f %f %f\n"
+    (* C *) xmin ymax zmin (* D *) xmin ymin zmin;
+  fprintf out ".vector %f %f %f %f %f %f\n"
+    (* C *) xmin ymax zmin (* G *) xmax ymax zmin;
+  fprintf out ".vector %f %f %f %f %f %f\n"
+    (* H *) xmax ymin zmin (* D *) xmin ymin zmin;
+  fprintf out ".vector %f %f %f %f %f %f\n"
+    (* H *) xmax ymin zmin (* E *) xmax ymin zmax;
+  fprintf out ".vector %f %f %f %f %f %f\n"
+    (* H *) xmax ymin zmin (* G *) xmax ymax zmin;
+  fprintf out ".vector %f %f %f %f %f %f\n"
+    (* F *) xmax ymax zmax (* B *) xmin ymax zmax;
+  fprintf out ".vector %f %f %f %f %f %f\n"
+    (* F *) xmax ymax zmax (* E *) xmax ymin zmax;
+  fprintf out ".vector %f %f %f %f %f %f\n"
+    (* F *) xmax ymax zmax (* G *) xmax ymax zmin
 
 let main () =
   let argc, args = CLI.init () in
@@ -89,6 +123,16 @@ let main () =
   let dx, dy, dz = xmax -. xmin, ymax -. ymin, zmax -. zmin in
   Log.info "dx dy dz: %.2f %.2f %.2f" dx dy dz;
   Log.info "englobing volume: %.2f A^3" (dx *. dy *. dz);
-  ()
+  let output_fn = input_fn ^ ".bild" in
+  (* output in chimera BILD format *)
+  Utls.with_out_file output_fn (fun out ->
+      (* center *)
+      fprintf out ".color red\n";
+      fprintf out ".marker %f %f %f\n" c_x c_y c_z;
+      (* tight bounding box *)
+      fprintf out ".color cyan\n";
+      draw_bbox out xmin ymin zmin xmax ymax zmax
+    );
+  Log.info "created %s" output_fn
 
 let () = main ()
