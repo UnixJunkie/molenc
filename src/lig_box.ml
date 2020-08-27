@@ -54,14 +54,14 @@ let main () =
   if argc = 1 then
     (eprintf "usage:\n\
               %s -i ligand.mol2\n  \
-              [-m <float>]: additional margin (in A) in each dimension\n"
+              [-m <float>]: margin (in A) for all dimensions (default=0)\n"
        Sys.argv.(0);
      exit 1);
   Log.set_log_level Log.INFO;
   Log.set_output stderr;
   Log.color_on ();
   let input_fn = CLI.get_string ["-i"] args in
-  let _maybe_margin = CLI.get_float_opt ["-m"] args in
+  let _margin = CLI.get_float_def ["-m"] args 0.0 in
   CLI.finalize ();
   let all_lines = Utls.lines_of_file input_fn in
   (* cout #molecules; enforce only 1 *)
@@ -81,10 +81,14 @@ let main () =
   let xmin, xmax = L.min_max xs in
   let ymin, ymax = L.min_max ys in
   let zmin, zmax = L.min_max zs in
-  Log.info "x_min/max y_min/max z_min/max:\n%.3f %.3f %.3f %.3f %.3f %.3f"
-    xmin xmax ymin ymax zmin zmax;
+  Log.info "x_{min|max}: %.2f %.2f" xmin xmax;
+  Log.info "y_{min|max}: %.2f %.2f" ymin ymax;
+  Log.info "z_{min|max}: %.2f %.2f" zmin zmax;
   let c_x, c_y, c_z = center triplets in
-  Log.info "center:\n%.3f %.3f %.3f" c_x c_y c_z;
+  Log.info "center: %.2f %.2f %.2f" c_x c_y c_z;
+  let dx, dy, dz = xmax -. xmin, ymax -. ymin, zmax -. zmin in
+  Log.info "dx dy dz: %.2f %.2f %.2f" dx dy dz;
+  Log.info "englobing volume: %.2f A^3" (dx *. dy *. dz);
   ()
 
 let () = main ()
