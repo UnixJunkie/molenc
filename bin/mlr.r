@@ -1,26 +1,26 @@
-## compute a Multiple Linear Regression model given a dataset
+# Train a Multiple Linear Regression model given a dataset (input CSV file)
+#
+# background on MLR: https://www.investopedia.com/terms/m/mlr.asp
+# R example: https://www.tutorialspoint.com/r/r_multiple_regression.htm
 
 # FBR: TODO
-# center and scale all dependant variables
+# center and scale all dependant variables, store the scaling parameters
+# with the model
 
-input <- mtcars[,c("mpg","disp","hp","wt")]
+# read data in
+train <- read.csv("data/gold_3clpro_std_forR.csv", header = T, sep = ",")
+# only keep interesting columns
+train <- train[,c("gold.3clpro.score","MolW","cLogP","RotB")]
 
-# Create the relationship model.
-model <- lm(mpg~disp+hp+wt, data = input)
+# train model
+model <- lm(gold.3clpro.score ~ MolW + cLogP + RotB, data = train)
 
 # Show the model.
 print(model)
 
-# Get the Intercept and coefficients as vector elements.
-cat("# # # # The Coefficient Values # # # ","\n")
-
 a <- coef(model)[1]
-print(a)
+b <- coef(model)[2]
+c <- coef(model)[3]
+d <- coef(model)[4]
 
-Xdisp <- coef(model)[2]
-Xhp <- coef(model)[3]
-Xwt <- coef(model)[4]
-
-print(Xdisp)
-print(Xhp)
-print(Xwt)
+print(c(a, b, c, d))
