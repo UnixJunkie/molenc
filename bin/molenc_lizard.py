@@ -79,9 +79,9 @@ def alien_diagnose(i, name, MolW, cLogP, TPSA, RotB, HBA, HBD, FC):
 def main():
     # CLI options parsing
     parser = argparse.ArgumentParser(
-        description = "Project molecules read from a SMILES file into a 7D \
+        description = "Project molecules read from a SMILES file into an 8D \
         space whose dimensions are molecular descriptors: \
-        (MolW, cLogP, TPSA, RotB, HBA, HBD, FC)")
+        (MolW, cLogP, MR, TPSA, RotB, HBA, HBD, FC)")
     parser.add_argument("-i", metavar = "input_smi", dest = "input_smi",
                         help = "input SMILES file")
     parser.add_argument("-o", metavar = "output_csv", dest = "output_csv",
@@ -108,14 +108,14 @@ def main():
     error_count = 0
     with open(output_csv, 'w') as out_file:
         if not no_header:
-            print("#name,MolW,cLogP,TPSA,RotB,HBA,HBD,FC", file=out_file)
+            print("#name,MolW,cLogP,MR,TPSA,RotB,HBA,HBD,FC", file=out_file)
         for i, mol, name in RobustSmilesMolSupplier(input_smi):
             if mol is None:
                 error_count += 1
             else:
                 MolW = Descriptors.MolWt(mol)
                 cLogP = Descriptors.MolLogP(mol)
-                # molMR = Descriptors.MolMR(mol)
+                MR = Descriptors.MolMR(mol)
                 TPSA = Descriptors.TPSA(mol)
                 RotB = Descriptors.NumRotatableBonds(mol)
                 HBA = Descriptors.NumHAcceptors(mol)
@@ -128,8 +128,8 @@ def main():
                     print("WARN: %s" % alien_str, file=sys.stderr)
                     alien_count += 1
                 if (not alien) or (not rm_aliens):
-                    csv_line = "%s,%g,%g,%g,%d,%d,%d,%d" % \
-                               (name, MolW, cLogP, TPSA, RotB, HBA, HBD, FC)
+                    csv_line = "%s,%g,%g,%g,%g,%d,%d,%d,%d" % \
+                               (name, MolW, cLogP, MR, TPSA, RotB, HBA, HBD, FC)
                     print(csv_line, file=out_file)
                     out_count += 1
     total_count = out_count + error_count
