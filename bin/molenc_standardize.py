@@ -13,14 +13,6 @@ import argparse, rdkit, sys
 from rdkit import Chem
 from rdkit.Chem.MolStandardize import Standardizer
 
-def RobustSmilesMolSupplier(filename):
-    with open(filename) as f:
-        for line in f.readlines():
-            words = line.split()
-            smile = words[0]
-            name = words[1]
-            yield (name, Chem.MolFromSmiles(smile))
-
 # heuristic: just keep the longest sub string
 def unsalt_smiles_string(smi_str):
     max_len = 0
@@ -32,6 +24,15 @@ def unsalt_smiles_string(smi_str):
             max_len = n
             longest = c
     return longest
+
+def RobustSmilesMolSupplier(filename):
+    with open(filename) as f:
+        for line in f.readlines():
+            words = line.split()
+            smile = words[0]
+            unsalted_smile = unsalt_smiles_string(smile)
+            name = words[1]
+            yield (name, Chem.MolFromSmiles(unsalted_smile))
 
 def main():
     # CLI options parsing
@@ -57,11 +58,9 @@ def main():
             if mol is None:
                 error_count += 1
             else:
-                unsalted = unsalt_mol(mol)
-                std_mol = std.standardize(unsalted)
+                std_mol = std.standardize(mol)
                 std_smi = Chem.MolToSmiles(std_mol)
-                std_smi_no_salt = unsalt_smiles_string(std_smi)
-                std_smi_line = "%s\t%s" % (std_smi_no_salt, name)
+                std_smi_line = "%s\t%s" % (std_smi, name)
                 print(std_smi_line, file=out_file)
                 out_count += 1
     total_count = out_count + error_count
