@@ -22,17 +22,10 @@
 
 import argparse, rdkit, sys
 from rdkit import Chem
-from rdkit.Chem import AllChem, Descriptors
+from rdkit.Chem import AllChem, Descriptors, Lipinski
 from rdkit.Chem.AtomPairs import Pairs
 
 PeriodicTable = Chem.GetPeriodicTable()
-
-def count_heavy_atoms(m):
-    res = 0
-    for a in m.GetAtoms():
-        if a.GetAtomicNum() != 1:
-            res += 1
-    return res
 
 def RobustSmilesMolSupplier(filename):
     with open(filename) as f:
@@ -121,7 +114,7 @@ def main():
                 error_count += 1
             else:
                 MolW = Descriptors.MolWt(mol)
-                HA = count_heavy_atoms(mol)
+                HA = Lipinski.HeavyAtomCount(mol)
                 cLogP = Descriptors.MolLogP(mol)
                 MR = Descriptors.MolMR(mol)
                 TPSA = Descriptors.TPSA(mol)
