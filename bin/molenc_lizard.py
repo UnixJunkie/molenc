@@ -108,7 +108,7 @@ def main():
     error_count = 0
     with open(output_csv, 'w') as out_file:
         if not no_header:
-            print("#name,MolW,HA,cLogP,MR,TPSA,RotB,HBA,HBD,FC", file=out_file)
+            print("#name,MolW,HA,cLogP,AR,MR,TPSA,RotB,HBA,HBD,FC", file=out_file)
         for i, mol, name in RobustSmilesMolSupplier(input_smi):
             if mol is None:
                 error_count += 1
@@ -116,6 +116,7 @@ def main():
                 MolW = Descriptors.MolWt(mol)
                 HA = Lipinski.HeavyAtomCount(mol)
                 cLogP = Descriptors.MolLogP(mol)
+                AR = Lipinski.NumAromaticRings(mol)
                 MR = Descriptors.MolMR(mol)
                 TPSA = Descriptors.TPSA(mol)
                 RotB = Descriptors.NumRotatableBonds(mol)
@@ -129,8 +130,8 @@ def main():
                     print("WARN: %s" % alien_str, file=sys.stderr)
                     alien_count += 1
                 if (not alien) or (not rm_aliens):
-                    csv_line = "%s,%g,%d,%g,%g,%g,%d,%d,%d,%d" % \
-                               (name, MolW, HA, cLogP, MR, TPSA, RotB,
+                    csv_line = "%s,%g,%d,%g,%d,%g,%g,%d,%d,%d,%d" % \
+                               (name, MolW, HA, cLogP, AR, MR, TPSA, RotB,
                                 HBA, HBD, FC)
                     print(csv_line, file=out_file)
                     out_count += 1
