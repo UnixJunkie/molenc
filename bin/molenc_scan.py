@@ -6,6 +6,7 @@
 
 import rdkit, sys, time
 from rdkit import Chem
+# from rdkit.Chem import rdChemReactions
 
 def RobustSmilesMolSupplier(filename):
     with open(filename) as f:
@@ -40,3 +41,18 @@ if __name__ == '__main__':
     after = time.time()
     dt = after - before
     print("%d molecules at %.2f mol/s" % (count, count / dt), file=sys.stderr)
+
+# # original code by @Iwatobipen
+# # replace any aromatic carbon to aromatic nitrogen.
+# # TODO: does not compile
+# def nitrogen_scan(mol_in):
+#     out_mol_list = []
+#     used = set()
+#     rxn = rdChemReactions.ReactionFromSmarts("[c:1][H]>>[n:1]")
+#     products = rxn.RunReactants([mol_in])
+#     for p in products:
+#         smi = Chem.MolToSmiles(Chem.RemoveHs(p))
+#         if smi not in used:
+#             used.add(smi)
+#             out_mol_list.append(p)
+#     return out_mol_list
