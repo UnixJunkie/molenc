@@ -9,6 +9,8 @@ if [ $# -eq 0 ]; then
     echo "         [-d encoding.dix]: reuse existing feature dictionary"
     echo "         [-r i:j]: fingerprint radius (default=0:1)"
     echo "         [--pairs]: use atom pairs instead of Faulon's FP"
+    echo "         [-m <int>]: maximum allowed atom-pair distance"
+    echo "                     (default: no limit)"
     echo "         [--seq]: sequential mode (disable parallelization)"
     echo "         [-v]: debug mode; keep temp files"
     echo "         [-n <int>]: max jobs in parallel"
@@ -28,6 +30,7 @@ debug=""
 nprocs="1"
 csize="1"
 pairs=""
+max_dist=""
 
 # parse CLI options
 while [[ $# -gt 0 ]]; do
@@ -45,6 +48,11 @@ while [[ $# -gt 0 ]]; do
             ;;
         -d)
             dico="$2"
+            shift
+            shift
+            ;;
+        -m)
+            max_dist="$2"
             shift
             shift
             ;;
@@ -124,10 +132,15 @@ fi
 
 echo "encoding molecules..."
 if [ "$pairs" != "" ]; then
+    if [ "$max_dist" != "" ]; then
+        max_dist = "-m "$max_dist
+    fi
     if [ "$dico" != "" ]; then
-        molenc_ap -np $nprocs -cs $csize -i $tmp_types -o $output -id $dico
+        molenc_ap -np $nprocs -cs $csize -i $tmp_types -o $output -id $dico \
+                  $max_dist
     else
-        molenc_ap -np $nprocs -cs $csize -i $tmp_types -o $output -od $input'.dix'
+        molenc_ap -np $nprocs -cs $csize -i $tmp_types -o $output \
+                  -od $input'.dix' $max_dist
     fi
 else
     if [ "$dico" != "" ]; then
