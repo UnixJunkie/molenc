@@ -30,7 +30,11 @@ let dist_from_feat feat_str =
      raise exn)
 
 (* reconstruct the map feat->featId from given file *)
-let dico_from_file fn =
+let dico_from_file maybe_max_dist fn =
+  (* max dist constraint/predicate *)
+  let dist_sat = match maybe_max_dist with
+    | None -> (fun _ -> true)
+    | Some d -> (fun x -> (dist_from_feat x) <= d) in
   let n = Utls.count_lines_of_file fn in
   assert(n > 1);
   let feat2id = Ht.create (n - 1) in
@@ -40,8 +44,13 @@ let dico_from_file fn =
   Utls.iter_on_lines_of_file fn (fun line ->
       if not (BatString.starts_with line "#") then
         Scanf.sscanf line "%d %s %d" (fun id feat _count ->
-            (* the binding defined in the dictionary should be unique *)
-            assert(not (Ht.mem feat2id feat));
+            (* the binding defined in the dictionary should be unique;
+               also, the dictionary should not contain atom pairs
+               with distance over max dist *)
+            Utls.enforce (not (Ht.mem feat2id feat))
+              ("Ap_encoder.dico_from_file: not uniq: " ^ feat);
+            Utls.enforce (dist_sat feat)
+              ("Ap_encoder.dico_from_file: dist > max: " ^ feat);
             Ht.add feat2id feat id
           )
     );
@@ -59,10 +68,14 @@ let read_one counter input () =
      raise Parany.End_of_input)
 
 (* create and store the feature dictionary *)
-let dico_to_file molecules_fn dico_fn =
+let dico_to_file molecules_fn maybe_max_dist dico_fn =
   (* How many times a given feature is seen when considering all
    * molecules (note that each molecule may have it several times) *)
   let feat_to_tot_count = Ht.create 100_000 in
+  (* max dist constraint/predicate *)
+  let dist_sat = match maybe_max_dist with
+    | None -> (fun _ -> true)
+    | Some d -> (fun x -> (Atom_pair.dist x) <= d) in
   Utls.with_in_file molecules_fn (fun input ->
       try
         let mol_counter = ref 0 in
@@ -70,9 +83,10 @@ let dico_to_file molecules_fn dico_fn =
           let mol = read_one mol_counter input () in
           let pair_counts = Mini_mol.atom_pairs mol in
           L.iter (fun (pair, curr_count) ->
-              let feat_str = Atom_pair.to_string pair in
-              let prev_count = Ht.find_default feat_to_tot_count feat_str 0 in
-              Ht.replace feat_to_tot_count feat_str (prev_count + curr_count)
+              if dist_sat pair then
+                let feat_str = Atom_pair.to_string pair in
+                let prev_count = Ht.find_default feat_to_tot_count feat_str 0 in
+                Ht.replace feat_to_tot_count feat_str (prev_count + curr_count)
             ) pair_counts
         done
       with Parany.End_of_input -> ()
@@ -143,6 +157,7 @@ let main () =
               (incompatible with -id)\n  \
               -id <filename>: read existing feature dictionary\n      \
               (incompatible with -od)\n  \
+              [-m <int>]: maximum atom pairs distance (in bonds)\n  \
               -np <int>: max number of cores (default=1)\n  \
               -cs <int>: chunk size (default=1)\n"
        Sys.argv.(0);
@@ -151,6 +166,7 @@ let main () =
   let output_fn = CLI.get_string ["-o"] args in
   let nprocs = CLI.get_int_def ["-np"] args 1 in
   let csize = CLI.get_int_def ["-cs"] args 1 in
+  let maybe_max_dist = CLI.get_int_opt ["-m"] args in
   let dico_mode =
     match (CLI.get_string_opt ["-id"] args,
            CLI.get_string_opt ["-od"] args) with
@@ -160,9 +176,8 @@ let main () =
     | (None, Some od_fn) -> Output_dictionary od_fn in
   CLI.finalize ();
   let dico = match dico_mode with
-    (* FBR: the max dist option should appear heare *)
-    | Input_dictionary id_fn -> dico_from_file id_fn
-    | Output_dictionary od_fn -> dico_to_file input_fn od_fn in
+    | Input_dictionary id_fn -> dico_from_file maybe_max_dist id_fn
+    | Output_dictionary od_fn -> dico_to_file input_fn maybe_max_dist od_fn in
   Utls.with_infile_outfile input_fn output_fn (fun input output ->
       Parany.run ~preserve:true ~csize nprocs
         ~demux:(read_one (ref 0) input)
