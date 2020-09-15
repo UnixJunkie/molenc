@@ -21,3 +21,6 @@ let create x y dist =
 
 let to_string { src; dst; dist } =
   Printf.sprintf "%s-%d-%s" src dist dst
+
+let dist x =
+  x.dist
