@@ -22,6 +22,13 @@ module Utls = Molenc.Utls
 type mode = Input_dictionary of string
           | Output_dictionary of string
 
+(* extract atom-pair distance *)
+let dist_from_feat feat_str =
+  try Scanf.sscanf feat_str "%s@-%d-%s" (fun _start dist _stop -> dist)
+  with exn ->
+    (Log.fatal "Ap_encoder.dist_from_feat: cannot parse: %s" feat_str;
+     raise exn)
+
 (* reconstruct the map feat->featId from given file *)
 let dico_from_file fn =
   let n = Utls.count_lines_of_file fn in
@@ -153,6 +160,7 @@ let main () =
     | (None, Some od_fn) -> Output_dictionary od_fn in
   CLI.finalize ();
   let dico = match dico_mode with
+    (* FBR: the max dist option should appear heare *)
     | Input_dictionary id_fn -> dico_from_file id_fn
     | Output_dictionary od_fn -> dico_to_file input_fn od_fn in
   Utls.with_infile_outfile input_fn output_fn (fun input output ->
