@@ -133,7 +133,7 @@ fi
 echo "encoding molecules..."
 if [ "$pairs" != "" ]; then
     if [ "$max_dist" != "" ]; then
-        max_dist = "-m "$max_dist
+        max_dist="-m "$max_dist
     fi
     if [ "$dico" != "" ]; then
         molenc_ap -np $nprocs -cs $csize -i $tmp_types -o $output -id $dico \
