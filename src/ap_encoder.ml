@@ -24,7 +24,9 @@ type mode = Input_dictionary of string
 
 (* extract atom-pair distance *)
 let dist_from_feat feat_str =
-  try Scanf.sscanf feat_str "%s@-%d-%s" (fun _start dist _stop -> dist)
+  (* 'abs dist' because we could read the number as negative:
+     "141 O1--0-O1- 13" *)
+  try Scanf.sscanf feat_str "%s@-%d-%s" (fun _start dist _stop -> abs dist)
   with exn ->
     (Log.fatal "Ap_encoder.dist_from_feat: cannot parse: %s" feat_str;
      raise exn)
