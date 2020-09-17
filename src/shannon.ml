@@ -10,15 +10,12 @@
 
 open Printf
 
-module Ap_types = Molenc.Ap_types
-module Atom_pair = Molenc.Atom_pair
-module FpMol = Molenc.FpMol
 module CLI = Minicli.CLI
 module Fp = Molenc.Fingerprint
+module FpMol = Molenc.FpMol
 module Ht = BatHashtbl
 module L = BatList
 module Log = Dolog.Log
-module Mini_mol = Molenc.Mini_mol
 module Utls = Molenc.Utls
 
 let log2_scale = 1.0 /. (log 2.0)
