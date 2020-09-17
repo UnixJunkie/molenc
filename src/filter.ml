@@ -83,16 +83,12 @@ let main () =
                [-t <float>]: Tanimoto threshold (default=1.0)\n  \
                [-e <filename>]: molecules to exclude from the ones to filter\n  \
                [-a <filename>]: molecules to annotate the ones to filter\n  \
-               [-np <int>]: nprocs; maximum number of cores (default=1)\n  \
-               [-c <int>]: chunk size (if -np; default=1)\n  \
                [-v]: verbose mode\n"
         Sys.argv.(0);
       exit 1
     end;
   let input_fn = CLI.get_string ["-i"] args in
   let output_fn = CLI.get_string ["-o"] args in
-  let ncores = CLI.get_int_def ["-np"] args 1 in
-  let csize = CLI.get_int_def ["-c"] args 1 in
   let query_fn = CLI.get_string_opt ["-q"] args in
   let repeat_query = CLI.get_set_bool ["-r"] args in
   let filtered_out_fn = output_fn ^ ".discarded" in
@@ -175,20 +171,16 @@ let main () =
   | Annotate train_fn ->
     begin
       Log.info "reading %s..." train_fn;
-      let annot_mols = FpMol.molecules_of_file train_fn in
+      let annot_mols =
+        let mols = FpMol.molecules_of_file train_fn in
+        Bstree.of_list mols in
       Log.info "done";
       Utls.with_out_file output_fn (fun out ->
           Utls.iteri_on_lines_of_file input_fn (fun i line ->
               let mol = FpMol.parse_one i line in
               let curr_name = FpMol.get_name mol in
               let nearest_train_mol, nearest_d =
-                Parany.Parmap.parfold ~csize ncores
-                  (fun annot_mol -> (annot_mol, FpMol.dist mol annot_mol))
-                  (fun (nearest_mol, nearest_dist) (annot_mol, annot_dist) ->
-                     if annot_dist < nearest_dist then
-                       (annot_mol, annot_dist)
-                     else
-                       (nearest_mol, nearest_dist)) (mol, 1.0) annot_mols in
+                Bstree.nearest_neighbor mol annot_mols in
               let nearest_name = FpMol.get_name nearest_train_mol in
               let nearest_tani = 1.0 -. nearest_d in
               fprintf out "%s %s %.2f\n" curr_name nearest_name nearest_tani;
