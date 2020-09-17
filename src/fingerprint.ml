@@ -184,6 +184,15 @@ let key_value_pairs fp =
   done;
   !res
 
+(* iterate given function on all key-value pairs *)
+let kv_iter f fp =
+  let len = BA1.dim fp in
+  let i = ref 0 in
+  while !i < len do
+    f (BA1.unsafe_get fp !i) (BA1.unsafe_get fp (!i + 1));
+    i := !i + 2
+  done
+
 let drop_features to_drop fp =
   let kept =
     let kvs = key_values fp in
