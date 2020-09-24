@@ -9,15 +9,15 @@
 
 # Short: tool to automatically find the necessary/minimal training set size
 
-# Long: find the size of the random partition from the training set that is enough
-# to train a model (can help avoiding overfitting, since we might not
+# Long: find the size of the random partition from the training set that is
+# enough to train a model (can help avoiding overfitting, since we might not
 # need to use the whole training set to tune the model).
 # However, note that for production you will still need to train your
 # model on the full training set.
 # In effect, we check that the distribution of the variable to model does not
 # significantly change by adding more training samples.
-# Usually, with a smaller dataset, you can get a model faster and hence accelerate
-# your computational experiments.
+# Usually, with a smaller dataset, you can get a model faster and hence
+# accelerate your computational experiments.
 #
 # Bibliography:
 # =============
@@ -58,6 +58,28 @@ cyan    = "\033[36m"
 white   = "\033[37m"
 color_reset = "\033[39m"
 
+def dichotomic_search(all_values, good_vals, low, curr, high):
+    smaller_sample = np.random.choice(all_values, size = curr, replace = False)
+    ks, p_val = stats.ks_2samp(smaller_sample, all_values,
+                               alternative='two-sided', mode='auto')
+    if p_val > 0.95:
+        # recurse lower
+        # print("%sbig_enough: %d" % (green, curr))
+        good_vals.append(curr)
+        curr_next = round((low + curr) / 2)
+        if curr_next != curr:
+            dichotomic_search(all_values, good_vals, low, curr_next, curr)
+        else:
+            return
+    else:
+        # recurse bigger
+        # print("%stoo small: %d" % (white, curr))
+        curr_next = round((curr + high) / 2)
+        if curr_next != curr:
+            dichotomic_search(all_values, good_vals, curr, curr_next, high)
+        else:
+            return
+
 def main():
     # CLI options parsing
     parser = argparse.ArgumentParser(
@@ -69,14 +91,11 @@ def main():
                         help = "field delimiter char (default=\\t)",
                         default = '\t', type = str)
     parser.add_argument("-f", metavar = "FIELD_NUM", dest = "field",
-                        help = "target variable field number (starts from 1)",
+                        help = "target variable field number (starts at 1)",
                         default = 1, type = int)
-    parser.add_argument("-b0", metavar = "INIT_BATCH_SIZE", dest = "init_batch",
-                        help = "initial batch size (default=10%% of max)",
-                        default = -1, type = int)
-    parser.add_argument("-b", metavar = "BATCH_SIZE", dest = "batch_incr",
-                        help = "batch increment (default=5%% of max)",
-                        default = -1, type = int)
+    parser.add_argument("-n", metavar = "REPEATS", dest = "repeats",
+                        help = "statistical test repeats (default=50)",
+                        default = 50, type = int)
     # parse CLI
     args = parser.parse_args()
     if len(sys.argv) == 1:
@@ -86,20 +105,13 @@ def main():
     input_fn = args.input_fn
     sep_char = args.sep_char
     field = args.field
+    repeats = args.repeats
     if field == -1:
         print("-f is mandatory", file = stderr)
         exit(1)
-    init_batch = args.init_batch
-    batch_incr = args.batch_incr
     # compute default params
     all_lines = lines_of_file(input_fn)
     nb_lines = len(all_lines)
-    if init_batch == -1:
-        init_batch = round(0.1 * nb_lines)
-    if batch_incr == -1:
-        batch_incr = round(0.05 * nb_lines)
-    print("N_max: %d b0: %d b: %d" % (nb_lines, init_batch, batch_incr),
-          file = stderr)
     # replace all lines by the values of interest
     all_values = get_all_values(sep_char, field, all_lines)
     # show some stats to the user for troubleshooting
@@ -108,33 +120,16 @@ def main():
     stdv = np.std(all_values)
     maxi = np.max(all_values)
     print("min,avg+/-std,max: %.3f,%.3f+/-%.3f,%.3f" %
-          (mini, aveg, stdv, maxi), file = stderr)
-    # repeat stats
-    total = init_batch
-    smaller_sample = np.random.choice(
-        all_values, size = total, replace = False)
-    bigger_sample = []
-    big_enough = -1
-    while total < nb_lines:
-        smaller_size = total
-        total += batch_incr
-        total = min(total, nb_lines) # cap it to known max
-        bigger_sample = np.random.choice(
-            all_values, size = total, replace = False)
-        ks, p_val = stats.ks_2samp(smaller_sample, bigger_sample,
-                                   alternative='two-sided', mode='auto')
-        if p_val > 0.95:
-            color = green
-            if big_enough == -1:
-                big_enough = smaller_size
-        else:
-            color = white
-            big_enough = -1
-        print("%sKS: %.3f p-val: %.3f N: %d%s" %
-              (color, ks, p_val, smaller_size, color_reset),
-              file=stderr)
-        smaller_sample = bigger_sample
-    print('big_enough: %d' % big_enough)
+          (mini, aveg, stdv, maxi))
+    acc = []
+    for i in range(repeats):
+        good_vals = []
+        dichotomic_search(all_values, good_vals, 0, round(nb_lines / 2), nb_lines)
+        best = min(good_vals)
+        print("smallest: %d" % best)
+        acc.append(best)
+    upper_bound = max(acc)
+    print("REQUIRED: %d" % upper_bound)
 
 if __name__ == '__main__':
     main()
