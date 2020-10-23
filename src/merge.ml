@@ -80,7 +80,13 @@ let populate_ht spec =
 let string_set_of_keys ht =
   StringSet.of_list (L.map fst (Ht.to_list ht))
 
-let merge_hts l =
+type merge_policy = Min | Avg | Max
+
+let merge_hts policy l =
+  let reducer = match policy with
+    | Min -> L.min
+    | Avg -> Utls.faverage
+    | Max -> L.max in
   let all_names = L.map string_set_of_keys l in
   let common_names = match all_names with
     | [] -> failwith "Merge.merge_hts: no names"
@@ -92,7 +98,7 @@ let merge_hts l =
   let name_avg_scores =
     StringSet.fold (fun name acc ->
         let scores = L.map (fun ht -> Ht.find ht name) l in
-        (name, Utls.faverage scores) :: acc
+        (name, reducer scores) :: acc
       ) common_names [] in
   (* decreasing sort: we want high scores first *)
   L.sort (fun (_n1, s1) (_n2, s2) -> BatFloat.compare s2 s1) name_avg_scores
@@ -109,6 +115,9 @@ let main () =
               the optional '-' means lower scores are better \
               (like ranks or docking scores)\n  \
               (field indexes start at 1)\n  \
+              --avg: average score (default merging policy)\n  \
+              --min: minimum score (merging policy)\n  \
+              --max: maximum score (merging policy)\n  \
               -o <filename>: output scores file\n  \
               -n <int>: keep only top N\n  \
               -d <char>: field separator (default=\\t)\n"
@@ -118,11 +127,19 @@ let main () =
   let output_fn = CLI.get_string ["-o"] args in
   let maybe_top = CLI.get_int_opt ["-n"] args in
   let sep = CLI.get_char_def ["-d"] args '\t' in
+  let policy = match (CLI.get_set_bool ["--min"] args,
+                      CLI.get_set_bool ["--avg"] args,
+                      CLI.get_set_bool ["--max"] args) with
+  | (false, false, false) -> Avg (* default policy *)
+  | (true, false, false) -> Min
+  | (false, true, false) -> Avg
+  | (false, false, true) -> Max
+  | _ -> failwith "incompatible options: --min, --avg, --max" in
   CLI.finalize();
   let specs = parse_ifs sep input_spec in
   Utls.with_out_file output_fn (fun out ->
       let hts = L.map populate_ht specs in
-      let rescored = merge_hts hts in
+      let rescored = merge_hts policy hts in
       let to_write = match maybe_top with
         | None -> rescored
         | Some n -> Utls.list_really_take n rescored in
