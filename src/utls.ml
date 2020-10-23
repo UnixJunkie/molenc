@@ -153,6 +153,18 @@ let map_on_lines_of_file (fn: filename) (f: string -> 'a): 'a list =
       else raise exn
     )
 
+let maybe_map_on_lines_of_file (fn: filename) (f: string -> 'a option) =
+  with_in_file fn (fun input ->
+      let res, exn = L.unfold_exc (fun () ->
+          let line = input_line input in
+          match f line with
+          | Some x -> x
+          | None -> Log.warn "line: '%s'" line
+        ) in
+      if exn = End_of_file then res
+      else raise exn
+    )
+
 let mapi_on_lines_of_file (fn: filename) (f: int -> string -> 'a): 'a list =
   with_in_file fn (fun input ->
       let i = ref 0 in
