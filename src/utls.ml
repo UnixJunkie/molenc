@@ -153,17 +153,15 @@ let map_on_lines_of_file (fn: filename) (f: string -> 'a): 'a list =
       else raise exn
     )
 
-let maybe_map_on_lines_of_file (fn: filename) (f: string -> 'a option) =
-  with_in_file fn (fun input ->
-      let res, exn = L.unfold_exc (fun () ->
-          let line = input_line input in
-          match f line with
-          | Some x -> x
-          | None -> Log.warn "line: '%s'" line
-        ) in
-      if exn = End_of_file then res
-      else raise exn
-    )
+(* Murphy's law: very big files always have problematic lines... *)
+let maybe_map_on_lines_of_file (fn: filename) (f: string -> 'a option): 'a list =
+  let res = ref [] in
+  iter_on_lines_of_file fn (fun line ->
+      match f line with
+      | Some x -> res := x :: !res
+      | None -> Log.warn "line: '%s'" line
+    );
+  L.rev !res
 
 let mapi_on_lines_of_file (fn: filename) (f: int -> string -> 'a): 'a list =
   with_in_file fn (fun input ->
