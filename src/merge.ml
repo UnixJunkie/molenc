@@ -38,16 +38,13 @@ let parse_ifs sep s =
 
 let normalize_scores spec =
   let name_raw_scores =
-    Utls.map_on_lines_of_file spec.fn (fun line ->
-        let name = String.cut_on_char spec.sep spec.name_field line in
-        let score_field = String.cut_on_char spec.sep spec.score_field line in
-        let score =
-          try Scanf.sscanf score_field "%f" (fun x -> x)
-          with exn -> (Log.fatal "Merge.normalize_scores: line: %s \
-                                  cannot parse float: %s"
-                         line score_field;
-                       raise exn) in
-        (name, score)
+    Utls.maybe_map_on_lines_of_file spec.fn (fun line ->
+        try
+          let name = String.cut_on_char spec.sep spec.name_field line in
+          let score_field = String.cut_on_char spec.sep spec.score_field line in
+          let score = Scanf.sscanf score_field "%f" (fun x -> x) in
+          Some (name, score)
+        with _exn -> None
       ) in
   let raw_scores = L.map snd name_raw_scores in
   let mini, maxi = L.min_max raw_scores in
@@ -114,7 +111,7 @@ let main () =
               (field indexes start at 1)\n  \
               -o <filename>: output scores file\n  \
               -n <int>: keep only top N\n  \
-              -d <char>: field separator (default=\t)\n"
+              -d <char>: field separator (default=\\t)\n"
        Sys.argv.(0);
      exit 1);
   let input_spec = CLI.get_string ["-ifs"] args in
