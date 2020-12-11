@@ -51,15 +51,12 @@ def find_cuttable_bonds(mol):
             res.append(b)
     return res
 
-def encode_molecule(m):
-    return map(type_atom, m.GetAtoms())
-
-def print_encoded_atoms(out, atoms):
-    for i, a in enumerate(atoms):
-        print("%d %s" % (i, a), file=out)
+def print_typed_atoms(out, mol):
+    for i, a in enumerate(mol.GetAtoms()):
+        t = type_atom(a)
+        print("%d %s" % (i, t), file=out)
 
 def char_of_bond_type(bond):
-    print(type(bond))
     t = bond.GetBondType()
     if t == rdkit.Chem.rdchem.BondType.SINGLE:
         return '-'
@@ -76,17 +73,17 @@ def char_of_bond_type(bond):
 def print_bonds(out, mol):
     print("#bonds:%d" % mol.GetNumBonds(), file=out)
     bonds = mol.GetBonds()
-    for b in bonds:
-        a = b.GetBeginAtomIdx()
-        b = b.GetEndAtomIdx()
-        t = char_of_bond_type(b)
+    for bond in bonds:
+        a = bond.GetBeginAtomIdx()
+        b = bond.GetEndAtomIdx()
+        t = char_of_bond_type(bond)
         print("%d %c %d" % (a, t, b), file=out)
 
 # print which bonds are cuttable and the suggested number of cuts
 def print_cuttable_bonds(out, mol):
     cuttable_bonds = find_cuttable_bonds(mol)
     total_weight = Descriptors.MolWt(mol)
-    # 150Da: suggested max fragment weight
+    # 150 Da: suggested max fragment weight
     nb_frags = round(total_weight / 150)
     max_cuts = min(len(cuttable_bonds), nb_frags)
     print("#cut_bonds:%d:%d" % (len(cuttable_bonds), max_cuts), file=out)
@@ -96,8 +93,7 @@ def print_cuttable_bonds(out, mol):
         print("%d %d" % (a, b), file=out)
 
 # FBR: test on all KEGG drugs
-
-# FBR: the program has two modes: fragment | assemble
+# FBR: the program has two modes: fragment (DOING) | assemble (TODO)
 
 if __name__ == '__main__':
     before = time.time()
@@ -119,8 +115,8 @@ if __name__ == '__main__':
     count = 0
     for name, mol in mol_supplier:
         print("#atoms:%d %s" % (mol.GetNumAtoms(), name), file=output)
-        print_encoded_atoms(output, encode_molecule(mol))
-        # print_bonds(output, mol)
+        print_typed_atoms(output, mol)
+        print_bonds(output, mol)
         print_cuttable_bonds(output, mol)
         count += 1
     after = time.time()
