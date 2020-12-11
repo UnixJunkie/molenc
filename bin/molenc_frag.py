@@ -7,8 +7,7 @@
 # Kyushu Institute of Technology,
 # 680-4 Kawazu, Iizuka, Fukuoka, 820-8502, Japan.
 
-# type atoms of a molecule a la atom pairs
-# then randomly fragment each input molecule a number of times
+# atom typing and molecule fragmentation hints
 
 import argparse, molenc_common, os, random, rdkit, sys, time
 
