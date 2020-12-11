@@ -59,19 +59,19 @@ type fragmentable =
 
 let parse_mol_header header =
   (* "^#atoms:19 NCGC00261763-01$" *)
-  Scanf.sscanf header "%s@:%d %s" (fun _atoms nb_atoms mol_name ->
+  Scanf.sscanf header "#atoms:%d %s" (fun nb_atoms mol_name ->
       (nb_atoms, mol_name)
     )
 
 let parse_bonds_header header =
   (* "^#bonds:33$" *)
-  Scanf.sscanf header "%s@:%d" (fun _bonds nb_bonds ->
+  Scanf.sscanf header "#bonds:%d" (fun nb_bonds ->
       nb_bonds
     )
 
 let parse_cut_bonds header =
   (* "^cut_bonds:%d:%d$" *)
-  Scanf.sscanf header "%s@:%d:%d" (fun _cut_bonds nb_cuttable cut_hint ->
+  Scanf.sscanf header "#cut_bonds:%d:%d" (fun nb_cuttable cut_hint ->
       (nb_cuttable, cut_hint)
     )
 
