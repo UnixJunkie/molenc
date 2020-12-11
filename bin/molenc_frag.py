@@ -46,7 +46,8 @@ def type_atom(a):
 def find_cuttable_bonds(mol):
     res = []
     for b in mol.GetBonds():
-        if b.GetBondType() == rdkit.Chem.rdchem.BondType.SINGLE and (not b.IsInRing()):
+        if ((b.GetBondType() == rdkit.Chem.rdchem.BondType.SINGLE) and
+            (not b.IsInRing())):
             res.append(b)
     return res
 
@@ -87,9 +88,8 @@ def print_cuttable_bonds(out, mol):
     max_cuts = min(len(cuttable_bonds), nb_frags)
     print("#cut_bonds:%d:%d" % (len(cuttable_bonds), max_cuts), file=out)
     for bond in cuttable_bonds:
-        a = bond.GetBeginAtomIdx()
-        b = bond.GetEndAtomIdx()
-        print("%d %d" % (a, b), file=out)
+        i = bond.GetIdx()
+        print("%d" % i, file=out)
 
 # FBR: test on all KEGG drugs
 # FBR: the program has two modes: fragment | assemble (TODO)
