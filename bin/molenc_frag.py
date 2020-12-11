@@ -1,9 +1,17 @@
 #!/usr/bin/env python3
 
-# type atoms of a molecule a la atom pairs
-# then fragment each input molecule a number of times
+# Copyright (C) 2020, Francois Berenger
+# Yamanishi laboratory,
+# Department of Bioscience and Bioinformatics,
+# Faculty of Computer Science and Systems Engineering,
+# Kyushu Institute of Technology,
+# 680-4 Kawazu, Iizuka, Fukuoka, 820-8502, Japan.
 
-import argparse, molenc_common, os, rdkit, sys, time
+# type atoms of a molecule a la atom pairs
+# then randomly fragment each input molecule a number of times
+
+import argparse, molenc_common, os, random, rdkit, sys, time
+
 from enum import Enum
 from rdkit import Chem
 from rdkit import RDConfig
@@ -35,12 +43,61 @@ def type_atom(a):
     res = "%d,%d,%d,%d" % (nb_pi_electrons, atom_num, nbHA, formal_charge)
     return res
 
+# single bonds not in rings
+def find_cuttable_bonds(mol):
+    res = []
+    for b in mol.GetBonds():
+        if b.GetBondType() == rdkit.Chem.rdchem.BondType.SINGLE and (not b.IsInRing()):
+            res.append(b)
+    return res
+
 def encode_molecule(m):
     return map(type_atom, m.GetAtoms())
 
 def print_encoded_atoms(out, atoms):
     for i, a in enumerate(atoms):
         print("%d %s" % (i, a), file=out)
+
+def char_of_bond_type(bond):
+    print(type(bond))
+    t = bond.GetBondType()
+    if t == rdkit.Chem.rdchem.BondType.SINGLE:
+        return '-'
+    elif t == rdkit.Chem.rdchem.BondType.AROMATIC:
+        return '~'
+    elif t == rdkit.Chem.rdchem.BondType.DOUBLE:
+        return '='
+    elif t == rdkit.Chem.rdchem.BondType.TRIPLE:
+        return '#'
+    else:
+        assert("molenc_frag.py: char_of_bond_type" == "")
+
+# print all bonds with their type
+def print_bonds(out, mol):
+    print("#bonds:%d" % mol.GetNumBonds(), file=out)
+    bonds = mol.GetBonds()
+    for b in bonds:
+        a = b.GetBeginAtomIdx()
+        b = b.GetEndAtomIdx()
+        t = char_of_bond_type(b)
+        print("%d %c %d" % (a, t, b), file=out)
+
+# print which bonds are cuttable and the suggested number of cuts
+def print_cuttable_bonds(out, mol):
+    cuttable_bonds = find_cuttable_bonds(mol)
+    total_weight = Descriptors.MolWt(mol)
+    # 150Da: suggested max fragment weight
+    nb_frags = round(total_weight / 150)
+    max_cuts = min(len(cuttable_bonds), nb_frags)
+    print("#cut_bonds:%d:%d" % (len(cuttable_bonds), max_cuts), file=out)
+    for bond in cuttable_bonds:
+        a = bond.GetBeginAtomIdx()
+        b = bond.GetEndAtomIdx()
+        print("%d %d" % (a, b), file=out)
+
+# FBR: test on all KEGG drugs
+
+# FBR: the program has two modes: fragment | assemble
 
 if __name__ == '__main__':
     before = time.time()
@@ -63,7 +120,8 @@ if __name__ == '__main__':
     for name, mol in mol_supplier:
         print("#atoms:%d %s" % (mol.GetNumAtoms(), name), file=output)
         print_encoded_atoms(output, encode_molecule(mol))
-        molenc_common.print_bonds(output, mol)
+        # print_bonds(output, mol)
+        print_cuttable_bonds(output, mol)
         count += 1
     after = time.time()
     dt = after - before
