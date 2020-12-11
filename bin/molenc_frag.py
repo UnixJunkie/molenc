@@ -52,9 +52,9 @@ def find_cuttable_bonds(mol):
     return res
 
 def print_typed_atoms(out, mol):
-    for i, a in enumerate(mol.GetAtoms()):
+    for a in mol.GetAtoms():
         t = type_atom(a)
-        print("%d %s" % (i, t), file=out)
+        print("%s" % t, file=out)
 
 def char_of_bond_type(bond):
     t = bond.GetBondType()
