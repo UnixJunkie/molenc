@@ -92,7 +92,7 @@ def print_cuttable_bonds(out, mol):
         print("%d %d" % (a, b), file=out)
 
 # FBR: test on all KEGG drugs
-# FBR: the program has two modes: fragment (DOING) | assemble (TODO)
+# FBR: the program has two modes: fragment | assemble (TODO)
 
 if __name__ == '__main__':
     before = time.time()
