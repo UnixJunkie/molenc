@@ -1,6 +1,8 @@
 
 module A = BatArray
 module CLI = Minicli.CLI
+module Ht = BatHashtbl
+module IS = BatSet.Int
 module L = BatList
 module Log = Dolog.Log
 module Utls = Molenc.Utls
@@ -142,6 +144,51 @@ let edit_bonds (mol: fragmentable) (to_cut: int array): fragmented =
   { atoms = mol.atoms;
     bonds = curr_bonds;
     anchors }
+
+(* needed for computing connectivity later on *)
+let directed_to_undirected_bonds (m: fragmented): bond array =
+  let rev_bonds = A.map (fun orig ->
+      { start = orig.stop; btype = orig.btype; stop = orig.start }
+    ) m.bonds in
+  A.append m.bonds rev_bonds
+
+(* instant access to all successors of a node; query by its index *)
+type succs_ht = (int, IS.t) Hashtbl.t
+
+(* extract connectivity info *)
+let compute_successors (m: fragmented): succs_ht =
+  let res = Ht.create (A.length m.atoms) in
+  let all_bonds = directed_to_undirected_bonds m in
+  A.iter (fun (b: bond) ->
+      let curr = b.start in
+      let next = b.stop in
+      try
+        let prev_succs = Ht.find res curr in
+        Ht.replace res curr (IS.add next prev_succs)
+      with Not_found -> Ht.add res curr (IS.singleton next)
+    ) all_bonds;
+  res
+
+(* extract whole connected fragment; starting from a single seed atom *)
+let connected_component (seed: int) (succs: succs_ht): IS.t =
+  let rec loop to_visit visited acc =
+    if IS.is_empty to_visit then
+      acc
+    else
+      let x, to_visit' = IS.pop to_visit in
+      let visited' = IS.add x visited in
+      let acc' = IS.add x acc in
+      let successors = Ht.find succs x in
+      let to_visit'' =
+        IS.diff (IS.union to_visit' successors) visited' in
+      let acc'' = IS.union acc' successors in
+      loop to_visit'' visited' acc''
+  in
+  loop (IS.singleton seed) IS.empty IS.empty
+
+(* cut a fragmented molecule into its disconnected fragments *)
+let reconcile (_frag: fragmented): fragmented list =
+  failwith "not implemented yet"
 
 (* we fragment the molecule just once;
    larger molecules give rise to more fragments *)
