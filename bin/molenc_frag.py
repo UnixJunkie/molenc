@@ -16,6 +16,7 @@ from rdkit import Chem
 from rdkit import RDConfig
 from rdkit.Chem import AllChem, Descriptors
 from rdkit.Chem.AtomPairs import Pairs
+from rdkit.Chem.Draw import rdMolDraw2D
 
 def RobustSmilesMolSupplier(filename):
     with open(filename) as f:
@@ -103,6 +104,9 @@ if __name__ == '__main__':
                         help = "molecules input file")
     parser.add_argument("-o", metavar = "output.txt", dest = "output_fn",
                         help = "output file")
+    parser.add_argument("--draw", dest = "draw_mol", action ='store_true',
+                        default = False,
+                        help = "output PNG for each molecule w/ atom indexes")
     # parse CLI
     if len(sys.argv) == 1:
         # show help in case user has no clue of what to do
@@ -110,6 +114,7 @@ if __name__ == '__main__':
         sys.exit(1)
     args = parser.parse_args()
     input_fn = args.input_fn
+    draw_mol = args.draw_mol
     output = open(args.output_fn, 'w')
     mol_supplier = RobustSmilesMolSupplier(input_fn)
     count = 0
@@ -119,6 +124,14 @@ if __name__ == '__main__':
         print_bonds(output, mol)
         print_cuttable_bonds(output, mol)
         count += 1
+        if draw_mol:
+            d = rdMolDraw2D.MolDraw2DCairo(500, 500)
+            d.drawOptions().addAtomIndices = True
+            d.DrawMolecule(mol)
+            d.FinishDrawing()
+            png_fn = '%s.png' % name
+            with open(png_fn, 'wb') as fn:
+                fn.write(d.GetDrawingText())
     after = time.time()
     dt = after - before
     print("%d molecules at %.2f mol/s" % (count, count / dt), file=sys.stderr)
