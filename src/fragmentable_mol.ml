@@ -254,9 +254,6 @@ let fragment_molecule rng m =
   (* this freshly cut molecule needs to be "reconciliated" *)
   reconcile edited
 
-(* FBR: atoms of a fragment must have explicit indexes;
-        keep the ones from the parent molecules to ease debugging *)
-
 let main () =
   (* read in a file *)
   Log.(set_log_level DEBUG);
