@@ -69,7 +69,8 @@ let string_of_bond b =
 
 (* a molecule with fragmentation hints *)
 type fragmentable =
-  { atoms: atom array;
+  { name: string;
+    atoms: atom array;
     bonds: bond array;
     cut_bonds: int array; (* indexes in the bonds array *)
     frag_hint: int } (* how many bonds are suggested to be broken *)
@@ -88,8 +89,9 @@ type fragmented =
     bonds: bond array;
     anchors: attach array }
 
-let write_one_fragment out frag =
-  fprintf out "atoms:%d\n" (A.length frag.atoms);
+let write_one_fragment out name index frag =
+  fprintf out "atoms:%d %s_%02d\n" (A.length frag.atoms) name !index;
+  incr index;
   A.iter (fun a -> fprintf out "%s\n" (string_of_atom a)) frag.atoms;
   fprintf out "bonds:%d\n" (A.length frag.bonds);
   A.iter (fun b -> fprintf out "%s\n" (string_of_bond b)) frag.bonds;
@@ -116,8 +118,8 @@ let parse_cut_bonds header =
 
 let read_one_molecule (input: in_channel): fragmentable =
   let header = input_line input in
-  let nb_atoms, mol_name = parse_mol_header header in
-  Log.debug "%d %s" nb_atoms mol_name;
+  let nb_atoms, name = parse_mol_header header in
+  Log.debug "%d %s" nb_atoms name;
   (* read atoms *)
   let atoms =
     A.init nb_atoms (fun _i ->
@@ -138,7 +140,8 @@ let read_one_molecule (input: in_channel): fragmentable =
         int_of_string (input_line input)
       ) in
   (* return res *)
-  { atoms;
+  { name;
+    atoms;
     bonds;
     cut_bonds;
     frag_hint }
@@ -204,7 +207,8 @@ let connected_component (seed: int) (succs: succs_ht): IS.t =
       let x, to_visit' = IS.pop to_visit in
       let visited' = IS.add x visited in
       let acc' = IS.add x acc in
-      let successors = Ht.find succs x in
+      (* isolated heavy atom (smallest possible fragment) --> IS.empty *)
+      let successors = Ht.find_default succs x IS.empty in
       let to_visit'' =
         IS.diff (IS.union to_visit' successors) visited' in
       let acc'' = IS.union acc' successors in
@@ -273,8 +277,9 @@ let main () =
   (* FBR: parallelizable, if needed *)
   Utls.with_out_file output_fn (fun out ->
       L.iter (fun mol ->
+          let index = ref 0 in
           let frags = fragment_molecule rng mol in
-          L.iter (write_one_fragment out) frags
+          L.iter (write_one_fragment out mol.name index) frags
         ) all_molecules
     )
 
