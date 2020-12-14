@@ -9,26 +9,30 @@ module Utls = Molenc.Utls
 
 open Printf
 
-type atom = { pi_electrons: int;
+type atom = { index: int;
+              pi_electrons: int;
               atomic_num: int;
               heavy_neighbors: int;
               formal_charge: int }
 
-let dummy_atom = { pi_electrons = -1;
+let dummy_atom = { index = -1;
+                   pi_electrons = -1;
                    atomic_num = -1;
                    heavy_neighbors = -1;
                    formal_charge = -1 }
 
 let atom_of_string s =
-  Scanf.sscanf s "%d,%d,%d,%d" (fun i j k l ->
-      { pi_electrons = i;
-        atomic_num = j;
-        heavy_neighbors = k;
-        formal_charge = l }
+  Scanf.sscanf s "%d %d,%d,%d,%d" (fun a b c d e ->
+      { index = a;
+        pi_electrons = b;
+        atomic_num = c;
+        heavy_neighbors = d;
+        formal_charge = e }
     )
 
 let string_of_atom a =
-  sprintf "%d,%d,%d,%d"
+  sprintf "%d %d,%d,%d,%d"
+    a.index
     a.pi_electrons
     a.atomic_num
     a.heavy_neighbors
@@ -249,6 +253,9 @@ let fragment_molecule rng m =
   let edited = edit_bonds m to_cut in
   (* this freshly cut molecule needs to be "reconciliated" *)
   reconcile edited
+
+(* FBR: atoms of a fragment must have explicit indexes;
+        keep the ones from the parent molecules to ease debugging *)
 
 let main () =
   (* read in a file *)
