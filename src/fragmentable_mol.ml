@@ -90,7 +90,7 @@ type fragmented =
     anchors: attach array }
 
 let write_one_fragment out name index frag =
-  fprintf out "atoms:%d %s_%02d\n" (A.length frag.atoms) name !index;
+  fprintf out "atoms:%d %s_f%02d\n" (A.length frag.atoms) name !index;
   incr index;
   A.iter (fun a -> fprintf out "%s\n" (string_of_atom a)) frag.atoms;
   fprintf out "bonds:%d\n" (A.length frag.bonds);
