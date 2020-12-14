@@ -6,13 +6,12 @@ module Log = Dolog.Log
 module Utls = Molenc.Utls
 
 open Printf
-               
+
 type atom = { pi_electrons: int;
               atomic_num: int;
               heavy_neighbors: int;
               formal_charge: int }
 
-(* unused *)
 let dummy_atom = { pi_electrons = -1;
                    atomic_num = -1;
                    heavy_neighbors = -1;
@@ -57,6 +56,17 @@ type fragmentable =
     cut_bonds: int array; (* indexes in the bonds array *)
     frag_hint: int } (* how many bonds are suggested to be broken *)
 
+type attachment_point = { start: int; (* atom index *)
+                          dest: atom } (* end-point allowed atom type *)
+
+let dummy_attachment_point = { start = -1;
+                               dest = dummy_atom }
+
+type fragmented =
+  { atoms: atom array;
+    bonds: bond array;
+    anchors: attachment_point array }
+
 let parse_mol_header header =
   (* "^#atoms:19 NCGC00261763-01$" *)
   Scanf.sscanf header "#atoms:%d %s" (fun nb_atoms mol_name ->
@@ -75,7 +85,7 @@ let parse_cut_bonds header =
       (nb_cuttable, cut_hint)
     )
 
-let read_one_molecule input =
+let read_one_molecule (input: in_channel): fragmentable =
   let header = input_line input in
   let nb_atoms, mol_name = parse_mol_header header in
   Log.debug "%d %s" nb_atoms mol_name;
@@ -103,6 +113,50 @@ let read_one_molecule input =
     bonds;
     cut_bonds;
     frag_hint }
+
+(* translate bonds to cut into attachment points *)
+let attach_points (mol: fragmentable) (cut_bonds: int array)
+  : attachment_point array =
+  let n = A.length cut_bonds in
+  let res = A.make (2*n) dummy_attachment_point in
+  A.iteri (fun i to_cut ->
+      let j = 2*i in
+      let k = j + 1 in
+      let bond = mol.bonds.(to_cut) in
+      assert(bond.btype = Single); (* only those are "cuttable" *)
+      res.(j) <- { start = bond.start;
+                   dest = mol.atoms.(bond.stop) };
+      res.(k) <- { start = bond.stop;
+                   dest = mol.atoms.(bond.start) }
+    ) cut_bonds;
+  res
+
+(* remove those bonds from the list of bonds;
+   compute corresp. attachment points *)
+let edit_bonds (mol: fragmentable) (to_cut: int array): fragmented =
+  let anchors = attach_points mol to_cut in
+  let prev_bonds = A.to_list mol.bonds in
+  (* remove those bonds *)
+  let curr_bonds =
+    A.of_list (L.filteri (fun i _x -> not (A.mem i to_cut)) prev_bonds) in
+  { atoms = mol.atoms;
+    bonds = curr_bonds;
+    anchors }
+
+(* we fragment the molecule just once;
+   larger molecules give rise to more fragments *)
+let fragment_molecule rng m =
+  let cuttable = A.copy m.cut_bonds in
+  let nb_cuts = m.frag_hint in
+  assert(A.length cuttable >= nb_cuts);
+  A.shuffle ~state:rng cuttable;
+  let to_cut = A.left cuttable nb_cuts in
+  let _edited = edit_bonds m to_cut in
+  (* this freshly cut molecule needs to be "reconciliated" *)
+  (* compute connected components *)
+  (* renumber nodes *)
+  (* translate edges *)
+  failwith "not implemented yet"
 
 let main () =
   (* read in a file *)
