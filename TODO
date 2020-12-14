@@ -1,0 +1,8 @@
+#!/bin/bash
+time ./bin/molenc_frag.py -i data/all_kegg_drugs_20112019_std.smi \
+                          -o data/all_kegg_drugs_20112019_std.to_frag
+#7605 molecules at 1045.63 molecule/s
+#real    0m7.595s
+time ./molenc_frag -i data/all_kegg_drugs_20112019_std.to_frag \
+                   -o data/all_kegg_drugs_20112019_std.frags -s 1234
+#real    0m1.158s i.e. ~= 6567 molecule/s
