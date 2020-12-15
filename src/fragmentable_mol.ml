@@ -436,20 +436,25 @@ let molecule_from_tree (name_prfx: string) (t: mol_tree): molecule =
   A.sort compare_bond_indexes bonds;
   { name; atoms; bonds }
 
+type state = Seed
+           | Grow
+
 (* WARNING: not tail rec *)
-let rec get_frag_with_anchor_type rng typ frags_ht =
+let rec get_frag_with_anchor_type rng state typ frags_ht =
   let candidate = Utls.array_random_elt rng (Ht.find frags_ht typ) in
-  if A.length candidate.anchors = 1 then
-    Leaf candidate
+  if state = Grow && A.length candidate.anchors = 1 then
+    Leaf candidate (* terminal fragment *)
   else
     (* extract types of anchor points *)
     let all_types = get_anchor_types candidate in
-    (* remove the one we just connected *)
-    let rem_types = Utls.list_remove_first typ all_types in
+    (* remove the one we just connected, if applicable *)
+    let rem_types = match state with
+      | Seed -> all_types
+      | Grow -> Utls.list_remove_first typ all_types in
     (* rec call *)
     Branch (candidate,
             L.map (fun typ' ->
-                get_frag_with_anchor_type rng typ' frags_ht
+                get_frag_with_anchor_type rng Grow typ' frags_ht
               ) rem_types)
 
 let connect_fragments rng name_prfx frags_a frags_ht =
@@ -457,7 +462,7 @@ let connect_fragments rng name_prfx frags_a frags_ht =
   let seed_frag = Utls.array_random_elt rng frags_a in
   let anchor = Utls.array_random_elt rng seed_frag.anchors in
   let typ = get_atom_type anchor.dest in
-  let fragments = get_frag_with_anchor_type rng typ frags_ht in
+  let fragments = get_frag_with_anchor_type rng Seed typ frags_ht in
   let reindexed = reindex_mol_tree fragments in
   molecule_from_tree name_prfx reindexed
 
