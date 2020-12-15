@@ -105,6 +105,12 @@ type molecule =
     atoms: atom array;
     bonds: bond array }
 
+let write_one_molecule out mol =
+  fprintf out "#atoms:%d %s\n" (A.length mol.atoms) mol.name;
+  A.iter (fun a -> fprintf out "%s\n" (string_of_atom a)) mol.atoms;
+  fprintf out "#bonds:%d\n" (A.length mol.bonds);
+  A.iter (fun b -> fprintf out "%s\n" (string_of_bond b)) mol.bonds
+
 type anchor = { start: int; (* atom index *)
                 dest: atom } (* end-point allowed atom type *)
 
@@ -384,6 +390,9 @@ let organize_fragments frags_a =
 type mol_tree = Branch of fragment * mol_tree list
               | Leaf of fragment
 
+(* TODO: fragments needs to be linked !!! *)
+(* TODO: a generated molecule could be named after its fragments *)
+
 (* prepare for final molecule *)
 let reindex_mol_tree t =
   let count = ref 0 in
@@ -504,14 +513,13 @@ let main () =
     let dt1, frags_ht =
       Utls.time_it (fun () -> organize_fragments all_fragments) in
     Log.info "compiled fragments in %1.2fs" dt1;
-    Utls.with_out_file output_fn (fun _out ->
+    Utls.with_out_file output_fn (fun out ->
         let dt2, () =
           Utls.time_it (fun () ->
               for i = 1 to n do
-                let name = sprintf "mol_%06d" i in
-                let _mol = connect_fragments rng name all_fragments frags_ht in
-                (* FBR: write it out *)
-                ()
+                let name = sprintf "genmol_%06d" i in
+                let mol = connect_fragments rng name all_fragments frags_ht in
+                write_one_molecule out mol
               done
             ) in
         Log.info "gen %d mols in %1.2fs" n dt2
