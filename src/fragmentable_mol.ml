@@ -123,21 +123,22 @@ type fragment =
     bonds: bond array;
     anchors: attach array }
 
+(* FBR: rename some _attach to _anchor *)
+
 (* renumber all atoms, bonds and anchors *)
 let reindex offset frag =
   let n = A.length frag.atoms in
   let ht = Ht.create n in
   A.iteri (fun i at ->
       let old_index = at.index in
-      let new_index = i + offset in
+      let new_index = i + !offset in
       Ht.add ht old_index new_index
     ) frag.atoms;
   let atoms' = A.map (reindex_atom ht) frag.atoms in
   let bonds' = A.map (reindex_bond ht) frag.bonds in
   let anchors' = A.map (reindex_attach ht) frag.anchors in
-  let new_frag = { atoms = atoms'; bonds = bonds'; anchors = anchors' } in
-  let new_offset = offset + n in
-  (new_offset, new_frag)
+  offset := !offset + n; (* update offset *)
+  { atoms = atoms'; bonds = bonds'; anchors = anchors' }
 
 let get_anchor_types (f: fragment): (int * int * int * int) list =
   (* in the right order *)
@@ -373,6 +374,15 @@ let organize_fragments frags_a =
 (* we need a tree data structure to construct a molecule *)
 type mol_tree = Branch of fragment * mol_tree list
               | Leaf of fragment
+
+(* prepare for final molecule *)
+let reindex_mol_tree t =
+  let count = ref 0 in
+  let rec loop = function
+    | Leaf leaf -> Leaf (reindex count leaf)
+    | Branch (core, branches) -> Branch (reindex count core,
+                                         L.map loop branches) in
+  loop t
 
 (* WARNING: not tail rec *)
 let rec get_frag_with_anchor_type rng typ frags_ht =
