@@ -566,3 +566,16 @@ let list_really_take n l =
   let took = L.take n l in
   assert(L.length took = n);
   took
+
+let array_random_elt rng a =
+  let n = A.length a in
+  let i = BatRandom.State.int rng n in
+  a.(i)
+
+(* WARNING: not tail rec *)
+(* remove first element equal to x *)
+let rec list_remove_first x = function
+  | [] -> []
+  | y :: ys ->
+    if y = x then ys
+    else y :: (list_remove_first x ys)
