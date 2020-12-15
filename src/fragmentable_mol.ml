@@ -15,6 +15,12 @@ type atom = { index: int;
               heavy_neighbors: int;
               formal_charge: int }
 
+let get_atom_type at =
+  (at.pi_electrons,
+   at.atomic_num,
+   at.heavy_neighbors,
+   at.formal_charge)
+
 let dummy_atom = { index = -1;
                    pi_electrons = -1;
                    atomic_num = -1;
@@ -252,10 +258,8 @@ let compute_successors (m: fragment): succs_ht =
   A.iter (fun (b: bond) ->
       let curr = b.start in
       let next = b.stop in
-      try
-        let prev_succs = Ht.find res curr in
-        Ht.replace res curr (IS.add next prev_succs)
-      with Not_found -> Ht.add res curr (IS.singleton next)
+      let prev_succs = Ht.find_default res curr (IS.singleton next) in
+      Ht.replace res curr (IS.add next prev_succs)
     ) all_bonds;
   res
 
@@ -313,6 +317,25 @@ let fragment_molecule rng m =
 
 type mode = Fragment of string * string (* (in_mols_fn, out_frags_fn) *)
           | Assemble of string * string (* (in_frags_fn, out_mols_fn) *)
+
+(* organize them in a way such that generating a molecule
+   is efficient and easy; at least drawing its fragments... *)
+let compile_fragments frags =
+  let ht = Ht.create (L.length frags) in
+  (* list all atom types of attachment points *)
+  (* for each atom type, count the number of fragments *)
+  L.iter (fun frag ->
+      let anchors = frag.anchors in
+      A.iter (fun anchor ->
+          let at_type = get_atom_type anchor.dest in
+          let prev_frags = Ht.find_default ht at_type [] in
+          Ht.replace ht at_type (frag :: prev_frags)
+        ) anchors
+    ) frags;
+  (* create Ht atom_type -> fragments array *)
+  Ht.map (fun _at_type frags_lst ->
+      A.of_list frags_lst
+    ) ht
 
 let main () =
   Log.(set_log_level DEBUG);
