@@ -6,6 +6,7 @@ module IS = BatSet.Int
 module L = BatList
 module Log = Dolog.Log
 module RNG = BatRandom.State
+module S = BatString
 module Utls = Molenc.Utls
 
 open Printf
@@ -136,9 +137,13 @@ let anchor_of_string s =
     )
 
 type fragment =
-  { atoms: atom array;
+  { name: string;
+    atoms: atom array;
     bonds: bond array;
     anchors: anchor array }
+
+let append_index_to_frag_name (index: int) (frag: fragment): fragment =
+  { frag with name = sprintf "%s_%03d" frag.name index }
 
 (* renumber all atoms, bonds and anchors *)
 let reindex offset frag =
@@ -153,7 +158,7 @@ let reindex offset frag =
   let bonds' = A.map (reindex_bond ht) frag.bonds in
   let anchors' = A.map (reindex_anchor ht) frag.anchors in
   offset := !offset + n; (* update offset *)
-  { atoms = atoms'; bonds = bonds'; anchors = anchors' }
+  { name = frag.name; atoms = atoms'; bonds = bonds'; anchors = anchors' }
 
 let get_anchor_types (f: fragment): (int * int * int * int) list =
   (* in the right order *)
@@ -242,8 +247,8 @@ let read_one_molecule (input: in_channel): fragmentable =
 --- *)
 let read_one_fragment (input: in_channel): fragment =
   (* read atoms *)
+  let nb_atoms, name = parse_mol_header (input_line input) in
   let atoms =
-    let nb_atoms, _name = parse_mol_header (input_line input) in
     A.init nb_atoms (fun _i ->
         atom_of_string (input_line input)
       ) in
@@ -261,7 +266,7 @@ let read_one_fragment (input: in_channel): fragment =
       ) in
   (* return res *)
   Log.debug "%d %d %d" (A.length atoms) (A.length bonds) (A.length anchors);
-  { atoms; bonds; anchors }
+  { name; atoms; bonds; anchors }
 
 (* translate bonds to cut into attachment points *)
 let anchor_points (mol: fragmentable) (cut_bonds: int array): anchor array =
@@ -287,7 +292,9 @@ let edit_bonds (mol: fragmentable) (to_cut: int array): fragment =
   (* remove those bonds *)
   let curr_bonds =
     A.of_list (L.filteri (fun i _x -> not (A.mem i to_cut)) prev_bonds) in
-  { atoms = mol.atoms;
+  (* inherit parent molecule name; an index will be appended later *)
+  { name = mol.name;
+    atoms = mol.atoms;
     bonds = curr_bonds;
     anchors }
 
@@ -332,25 +339,29 @@ let connected_component (seed: int) (succs: succs_ht): IS.t =
   loop (IS.singleton seed) IS.empty IS.empty
 
 let enforce_conn_comp (comp: IS.t) (frag: fragment): fragment =
-  { atoms = A.filteri (fun i _x -> IS.mem i comp) frag.atoms;
+  { name = frag.name;
+    atoms = A.filteri (fun i _x -> IS.mem i comp) frag.atoms;
     bonds =
       A.filter (fun (b: bond) ->
           (IS.mem b.start comp) && (IS.mem b.stop comp)
         ) frag.bonds;
     anchors = A.filter (fun a -> IS.mem a.start comp) frag.anchors }
 
-(* cut a fragmented molecule into its disconnected fragments *)
+(* cut fragmented molecule into its fragments *)
 let reconcile (frag: fragment): fragment list =
   let succs = compute_successors frag in
   let processed = ref IS.empty in
+  let count = ref 0 in
   A.fold_left (fun acc (a: anchor) ->
       if IS.mem a.start !processed then
         acc
       else
         let conn = connected_component a.start succs in
         let res = enforce_conn_comp conn frag in
+        let res' = append_index_to_frag_name !count res in
+        incr count;
         processed := IS.union conn !processed;
-        res :: acc
+        res' :: acc
     ) [] frag.anchors
 
 (* we fragment the molecule just once;
@@ -368,7 +379,7 @@ let fragment_molecule rng m =
 type mode = Fragment of string * string (* (in_mols_fn, out_frags_fn) *)
           | Assemble of string * string (* (in_frags_fn, out_mols_fn) *)
 
-(* organize fragments in such a way that drawing fragments is efficient *)
+(* organize fragments in such a way that drawing some is efficient *)
 let organize_fragments frags_a =
   let ht = Ht.create (A.length frags_a) in
   (* list all atom types of attachment points *)
@@ -390,8 +401,7 @@ let organize_fragments frags_a =
 type mol_tree = Branch of fragment * mol_tree list
               | Leaf of fragment
 
-(* TODO: fragments needs to be linked !!! *)
-(* TODO: a generated molecule could be named after its fragments *)
+(* TODO: fragments need to be linked together !!! *)
 
 (* prepare for final molecule *)
 let reindex_mol_tree t =
@@ -402,22 +412,26 @@ let reindex_mol_tree t =
                                          L.map loop branches) in
   loop t
 
-let molecule_from_tree (name: string) (t: mol_tree): molecule =
+let molecule_from_tree (name_prfx: string) (t: mol_tree): molecule =
   let atoms_acc: atom array ref = ref [||] in
   let bonds_acc: bond array ref = ref [||] in
+  let names_acc: string list ref = ref [] in
   let rec loop = function
     | Leaf leaf -> (atoms_acc := A.append !atoms_acc leaf.atoms;
-                    bonds_acc := A.append !bonds_acc leaf.bonds)
+                    bonds_acc := A.append !bonds_acc leaf.bonds;
+                    names_acc := leaf.name :: !names_acc)
     | Branch (core, branches) ->
-      begin
-        atoms_acc := A.append !atoms_acc core.atoms;
-        bonds_acc := A.append !bonds_acc core.bonds;
-        L.iter loop branches
-      end in
+      (atoms_acc := A.append !atoms_acc core.atoms;
+       bonds_acc := A.append !bonds_acc core.bonds;
+       names_acc := core.name :: !names_acc;
+       L.iter loop branches) in
   loop t;
-  (* sort atoms and bonds to ease debugging later *)
+  (* sort atoms, bonds and names to ease debugging later *)
   let atoms = !atoms_acc in
   let bonds = !bonds_acc in
+  let names = L.sort BatString.compare !names_acc in
+  let frag_names = S.concat "," names in
+  let name = sprintf "%s_%s" name_prfx frag_names in
   A.sort compare_atom_indexes atoms;
   A.sort compare_bond_indexes bonds;
   { name; atoms; bonds }
@@ -438,14 +452,14 @@ let rec get_frag_with_anchor_type rng typ frags_ht =
                 get_frag_with_anchor_type rng typ' frags_ht
               ) rem_types)
 
-let connect_fragments rng name frags_a frags_ht =
+let connect_fragments rng name_prfx frags_a frags_ht =
   (* draw uniformly seed fragment *)
   let seed_frag = Utls.array_random_elt rng frags_a in
   let anchor = Utls.array_random_elt rng seed_frag.anchors in
   let typ = get_atom_type anchor.dest in
   let fragments = get_frag_with_anchor_type rng typ frags_ht in
   let reindexed = reindex_mol_tree fragments in
-  molecule_from_tree name reindexed
+  molecule_from_tree name_prfx reindexed
 
 let main () =
   Log.(set_log_level DEBUG);
@@ -517,8 +531,8 @@ let main () =
         let dt2, () =
           Utls.time_it (fun () ->
               for i = 1 to n do
-                let name = sprintf "genmol_%06d" i in
-                let mol = connect_fragments rng name all_fragments frags_ht in
+                let name_prfx = sprintf "genmol_%06d" i in
+                let mol = connect_fragments rng name_prfx all_fragments frags_ht in
                 write_one_molecule out mol
               done
             ) in
