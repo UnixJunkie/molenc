@@ -22,6 +22,9 @@ let get_atom_type at =
    at.heavy_neighbors,
    at.formal_charge)
 
+let reindex_atom ht (at: atom): atom =
+  { at with index = Ht.find ht at.index }
+
 let dummy_atom = { index = -1;
                    pi_electrons = -1;
                    atomic_num = -1;
@@ -68,6 +71,11 @@ type bond = { start: int;
               btype: bond_type;
               stop: int }
 
+let reindex_bond ht (b: bond): bond =
+  { b with
+    start = Ht.find ht b.start;
+    stop = Ht.find ht b.stop }
+
 let bond_of_string s =
   Scanf.sscanf s "%d %c %d" (fun start bchar stop ->
       { start;
@@ -88,6 +96,9 @@ type fragmentable =
 
 type attach = { start: int; (* atom index *)
                 dest: atom } (* end-point allowed atom type *)
+
+let reindex_attach ht (a: attach): attach =
+  { a with start = Ht.find ht a.start }
 
 let dummy_attach = { start = -1;
                      dest = dummy_atom }
@@ -112,9 +123,21 @@ type fragment =
     bonds: bond array;
     anchors: attach array }
 
-(* renumber all atoms, bonds and anchor start points *)
-let reindex _from _frag =
-  failwith "not implemented yet"
+(* renumber all atoms, bonds and anchors *)
+let reindex offset frag =
+  let n = A.length frag.atoms in
+  let ht = Ht.create n in
+  A.iteri (fun i at ->
+      let old_index = at.index in
+      let new_index = i + offset in
+      Ht.add ht old_index new_index
+    ) frag.atoms;
+  let atoms' = A.map (reindex_atom ht) frag.atoms in
+  let bonds' = A.map (reindex_bond ht) frag.bonds in
+  let anchors' = A.map (reindex_attach ht) frag.anchors in
+  let new_frag = { atoms = atoms'; bonds = bonds'; anchors = anchors' } in
+  let new_offset = offset + n in
+  (new_offset, new_frag)
 
 let get_anchor_types (f: fragment): (int * int * int * int) list =
   (* in the right order *)
@@ -387,14 +410,14 @@ let main () =
               [-if <molecules.frags>]: input fragments file\n  \
               [-om <molecules.txt>]: generated molecules output file\n  \
               [-s <rng_seed:int>]: for reproducibility\n  \
-              [-n <int>]: nb. molecules to generate (default=50)\n"
+              [-n <int>]: nb. molecules to generate (default=1)\n"
        Sys.argv.(0);
      exit 1);
   let maybe_in_mols_fn = CLI.get_string_opt ["-im"] args in
   let maybe_out_frags_fn = CLI.get_string_opt ["-of"] args in
   let maybe_in_frags_fn = CLI.get_string_opt ["-if"] args in
   let maybe_out_mols_fn = CLI.get_string_opt ["-om"] args in
-  let _n = CLI.get_int_def ["-n"] args 50 in
+  let n = CLI.get_int_def ["-n"] args 1 in
   let rng = match CLI.get_int_opt ["-s"] args with
     | Some s -> RNG.make [|s|] (* repeatable *)
     | None -> RNG.make_self_init () in
@@ -425,18 +448,30 @@ let main () =
             L.iter (write_one_fragment out mol.name index) frags
           ) all_molecules
       )
-  | Assemble (input_fn, _output_fn) ->
+  | Assemble (input_fn, output_fn) ->
     (* read in fragments *)
-    let start = Unix.gettimeofday () in
-    let all_fragments =
-      Utls.with_in_file input_fn (fun input ->
-          let res, exn = L.unfold_exn (fun () -> read_one_fragment input) in
-          (if exn <> End_of_file then raise exn);
-          res
+    let dt0, all_fragments =
+      Utls.time_it (fun () ->
+          Utls.with_in_file input_fn (fun input ->
+              let res, exn = L.unfold_exn (fun () -> read_one_fragment input) in
+              (if exn <> End_of_file then raise exn);
+              A.of_list res
+            )
         ) in
-    let stop = Unix.gettimeofday () in
-    let nb_fragments = L.length all_fragments in
-    Log.info "read %d fragments in %1.2fs" nb_fragments (stop -. start);
-    ()
+    let nb_fragments = A.length all_fragments in
+    Log.info "read %d fragments in %1.2fs" nb_fragments dt0;
+    let dt1, frags_ht =
+      Utls.time_it (fun () -> organize_fragments all_fragments) in
+    Log.info "compiled fragments in %1.2fs" dt1;
+    Utls.with_out_file output_fn (fun _out ->
+        let dt2, () =
+          Utls.time_it (fun () ->
+              for _i = 1 to n do
+                let _mol_tree = connect_fragments rng all_fragments frags_ht in
+                ()
+              done
+            ) in
+        Log.info "gen %d mols in %1.2fs" n dt2
+      )
 
 let () = main ()
