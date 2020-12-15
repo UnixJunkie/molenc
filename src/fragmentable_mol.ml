@@ -5,6 +5,7 @@ module Ht = BatHashtbl
 module IS = BatSet.Int
 module L = BatList
 module Log = Dolog.Log
+module RNG = BatRandom.State
 module Utls = Molenc.Utls
 
 open Printf
@@ -110,6 +111,16 @@ type fragment =
   { atoms: atom array;
     bonds: bond array;
     anchors: attach array }
+
+(* renumber all atoms, bonds and anchor start points *)
+let reindex _from _frag =
+  failwith "not implemented yet"
+
+let get_anchor_types (f: fragment): (int * int * int * int) list =
+  (* in the right order *)
+  A.fold_right (fun x acc ->
+      (get_atom_type x.dest) :: acc
+    ) f.anchors []
 
 let write_one_fragment out name index frag =
   fprintf out "#atoms:%d %s_f%02d\n" (A.length frag.atoms) name !index;
@@ -318,24 +329,50 @@ let fragment_molecule rng m =
 type mode = Fragment of string * string (* (in_mols_fn, out_frags_fn) *)
           | Assemble of string * string (* (in_frags_fn, out_mols_fn) *)
 
-(* organize them in a way such that generating a molecule
-   is efficient and easy; at least drawing its fragments... *)
-let compile_fragments frags =
-  let ht = Ht.create (L.length frags) in
+(* organize fragments in such a way that drawing fragments is efficient *)
+let organize_fragments frags_a =
+  let ht = Ht.create (A.length frags_a) in
   (* list all atom types of attachment points *)
   (* for each atom type, count the number of fragments *)
-  L.iter (fun frag ->
+  A.iter (fun frag ->
       let anchors = frag.anchors in
       A.iter (fun anchor ->
           let at_type = get_atom_type anchor.dest in
           let prev_frags = Ht.find_default ht at_type [] in
           Ht.replace ht at_type (frag :: prev_frags)
         ) anchors
-    ) frags;
+    ) frags_a;
   (* create Ht atom_type -> fragments array *)
   Ht.map (fun _at_type frags_lst ->
       A.of_list frags_lst
     ) ht
+
+(* we need a tree data structure to construct a molecule *)
+type mol_tree = Branch of fragment * mol_tree list
+              | Leaf of fragment
+
+(* WARNING: not tail rec *)
+let rec get_frag_with_anchor_type rng typ frags_ht =
+  let candidate = Utls.array_random_elt rng (Ht.find frags_ht typ) in
+  if A.length candidate.anchors = 1 then
+    Leaf candidate
+  else
+    (* extract types of anchor points *)
+    let all_types = get_anchor_types candidate in
+    (* remove the one we just connected *)
+    let rem_types = Utls.list_remove_first typ all_types in
+    (* rec call *)
+    Branch (candidate,
+            L.map (fun typ' ->
+                get_frag_with_anchor_type rng typ' frags_ht
+              ) rem_types)
+
+let connect_fragments rng frags_a frags_ht =
+  (* draw uniformly seed fragment *)
+  let seed_frag = Utls.array_random_elt rng frags_a in
+  let anchor = Utls.array_random_elt rng seed_frag.anchors in
+  let typ = get_atom_type anchor.dest in
+  get_frag_with_anchor_type rng typ frags_ht
 
 let main () =
   Log.(set_log_level DEBUG);
@@ -359,8 +396,8 @@ let main () =
   let maybe_out_mols_fn = CLI.get_string_opt ["-om"] args in
   let _n = CLI.get_int_def ["-n"] args 50 in
   let rng = match CLI.get_int_opt ["-s"] args with
-    | Some s -> BatRandom.State.make [|s|] (* repeatable *)
-    | None -> BatRandom.State.make_self_init () in
+    | Some s -> RNG.make [|s|] (* repeatable *)
+    | None -> RNG.make_self_init () in
   CLI.finalize();
   let mode = match maybe_in_mols_fn, maybe_out_frags_fn with
     | (Some ifn, Some ofn) -> Fragment (ifn, ofn)
