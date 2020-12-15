@@ -25,6 +25,9 @@ let get_atom_type at =
 let reindex_atom ht (at: atom): atom =
   { at with index = Ht.find ht at.index }
 
+let compare_atom_indexes a1 a2 =
+  compare a1.index a2.index
+
 let dummy_atom = { index = -1;
                    pi_electrons = -1;
                    atomic_num = -1;
@@ -76,6 +79,9 @@ let reindex_bond ht (b: bond): bond =
     start = Ht.find ht b.start;
     stop = Ht.find ht b.stop }
 
+let compare_bond_indexes b1 b2 =
+  compare (b1.start, b1.stop) (b2.start, b2.stop)
+
 let bond_of_string s =
   Scanf.sscanf s "%d %c %d" (fun start bchar stop ->
       { start;
@@ -93,6 +99,11 @@ type fragmentable =
     bonds: bond array;
     cut_bonds: int array; (* indexes in the bonds array *)
     frag_hint: int } (* how many bonds are suggested to be broken *)
+
+type molecule =
+  { name: string;
+    atoms: atom array;
+    bonds: bond array }
 
 type anchor = { start: int; (* atom index *)
                 dest: atom } (* end-point allowed atom type *)
@@ -382,6 +393,26 @@ let reindex_mol_tree t =
                                          L.map loop branches) in
   loop t
 
+let molecule_from_tree (name: string) (t: mol_tree): molecule =
+  let atoms_acc: atom array ref = ref [||] in
+  let bonds_acc: bond array ref = ref [||] in
+  let rec loop = function
+    | Leaf leaf -> (atoms_acc := A.append !atoms_acc leaf.atoms;
+                    bonds_acc := A.append !bonds_acc leaf.bonds)
+    | Branch (core, branches) ->
+      begin
+        atoms_acc := A.append !atoms_acc core.atoms;
+        bonds_acc := A.append !bonds_acc core.bonds;
+        L.iter loop branches
+      end in
+  loop t;
+  (* sort atoms and bonds to ease debugging later *)
+  let atoms = !atoms_acc in
+  let bonds = !bonds_acc in
+  A.sort compare_atom_indexes atoms;
+  A.sort compare_bond_indexes bonds;
+  { name; atoms; bonds }
+
 (* WARNING: not tail rec *)
 let rec get_frag_with_anchor_type rng typ frags_ht =
   let candidate = Utls.array_random_elt rng (Ht.find frags_ht typ) in
@@ -398,12 +429,14 @@ let rec get_frag_with_anchor_type rng typ frags_ht =
                 get_frag_with_anchor_type rng typ' frags_ht
               ) rem_types)
 
-let connect_fragments rng frags_a frags_ht =
+let connect_fragments rng name frags_a frags_ht =
   (* draw uniformly seed fragment *)
   let seed_frag = Utls.array_random_elt rng frags_a in
   let anchor = Utls.array_random_elt rng seed_frag.anchors in
   let typ = get_atom_type anchor.dest in
-  get_frag_with_anchor_type rng typ frags_ht
+  let fragments = get_frag_with_anchor_type rng typ frags_ht in
+  let reindexed = reindex_mol_tree fragments in
+  molecule_from_tree name reindexed
 
 let main () =
   Log.(set_log_level DEBUG);
@@ -474,8 +507,10 @@ let main () =
     Utls.with_out_file output_fn (fun _out ->
         let dt2, () =
           Utls.time_it (fun () ->
-              for _i = 1 to n do
-                let _mol_tree = connect_fragments rng all_fragments frags_ht in
+              for i = 1 to n do
+                let name = sprintf "mol_%06d" i in
+                let _mol = connect_fragments rng name all_fragments frags_ht in
+                (* FBR: write it out *)
                 ()
               done
             ) in
