@@ -94,19 +94,19 @@ type fragmentable =
     cut_bonds: int array; (* indexes in the bonds array *)
     frag_hint: int } (* how many bonds are suggested to be broken *)
 
-type attach = { start: int; (* atom index *)
+type anchor = { start: int; (* atom index *)
                 dest: atom } (* end-point allowed atom type *)
 
-let reindex_attach ht (a: attach): attach =
+let reindex_anchor ht (a: anchor): anchor =
   { a with start = Ht.find ht a.start }
 
-let dummy_attach = { start = -1;
+let dummy_anchor = { start = -1;
                      dest = dummy_atom }
 
-let string_of_attach a =
+let string_of_anchor a =
   sprintf "%d %s" a.start (string_of_atom a.dest)
 
-let attach_of_string s =
+let anchor_of_string s =
   Scanf.sscanf s "%d %d %d,%d,%d,%d"
     (fun start a b c d e ->
        { start;
@@ -121,9 +121,7 @@ let attach_of_string s =
 type fragment =
   { atoms: atom array;
     bonds: bond array;
-    anchors: attach array }
-
-(* FBR: rename some _attach to _anchor *)
+    anchors: anchor array }
 
 (* renumber all atoms, bonds and anchors *)
 let reindex offset frag =
@@ -136,7 +134,7 @@ let reindex offset frag =
     ) frag.atoms;
   let atoms' = A.map (reindex_atom ht) frag.atoms in
   let bonds' = A.map (reindex_bond ht) frag.bonds in
-  let anchors' = A.map (reindex_attach ht) frag.anchors in
+  let anchors' = A.map (reindex_anchor ht) frag.anchors in
   offset := !offset + n; (* update offset *)
   { atoms = atoms'; bonds = bonds'; anchors = anchors' }
 
@@ -153,7 +151,7 @@ let write_one_fragment out name index frag =
   fprintf out "#bonds:%d\n" (A.length frag.bonds);
   A.iter (fun b -> fprintf out "%s\n" (string_of_bond b)) frag.bonds;
   fprintf out "#anchors:%d\n" (A.length frag.anchors);
-  A.iter (fun a -> fprintf out "%s\n" (string_of_attach a)) frag.anchors
+  A.iter (fun a -> fprintf out "%s\n" (string_of_anchor a)) frag.anchors
 
 let parse_mol_header header =
   (* "^#atoms:19 NCGC00261763-01$" *)
@@ -242,16 +240,16 @@ let read_one_fragment (input: in_channel): fragment =
   let anchors =
     let nb_anchors = parse_anchors (input_line input) in
     A.init nb_anchors (fun _i ->
-        attach_of_string (input_line input)
+        anchor_of_string (input_line input)
       ) in
   (* return res *)
   Log.debug "%d %d %d" (A.length atoms) (A.length bonds) (A.length anchors);
   { atoms; bonds; anchors }
 
 (* translate bonds to cut into attachment points *)
-let attach_points (mol: fragmentable) (cut_bonds: int array): attach array =
+let anchor_points (mol: fragmentable) (cut_bonds: int array): anchor array =
   let n = A.length cut_bonds in
-  let res = A.make (2*n) dummy_attach in
+  let res = A.make (2*n) dummy_anchor in
   A.iteri (fun i to_cut ->
       let j = 2*i in
       let k = j + 1 in
@@ -267,7 +265,7 @@ let attach_points (mol: fragmentable) (cut_bonds: int array): attach array =
 (* remove those bonds from the list of bonds;
    compute corresp. attachment points *)
 let edit_bonds (mol: fragmentable) (to_cut: int array): fragment =
-  let anchors = attach_points mol to_cut in
+  let anchors = anchor_points mol to_cut in
   let prev_bonds = A.to_list mol.bonds in
   (* remove those bonds *)
   let curr_bonds =
@@ -328,7 +326,7 @@ let enforce_conn_comp (comp: IS.t) (frag: fragment): fragment =
 let reconcile (frag: fragment): fragment list =
   let succs = compute_successors frag in
   let processed = ref IS.empty in
-  A.fold_left (fun acc (a: attach) ->
+  A.fold_left (fun acc (a: anchor) ->
       if IS.mem a.start !processed then
         acc
       else
