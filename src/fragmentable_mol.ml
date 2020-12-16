@@ -17,6 +17,8 @@ type atom = { index: int;
               heavy_neighbors: int;
               formal_charge: int }
 
+type atom_type = int * int * int * int
+
 let get_atom_type at =
   (at.pi_electrons,
    at.atomic_num,
@@ -118,8 +120,11 @@ type anchor = { start: int; (* atom index *)
 let reindex_anchor ht (a: anchor): anchor =
   { a with start = Ht.find ht a.start }
 
-let get_anchor_type a =
+let get_anchor_type (a: anchor): atom_type =
   get_atom_type a.dest
+
+let get_anchor_start (a: anchor): int =
+  a.start
 
 let dummy_anchor = { start = -1;
                      dest = dummy_atom }
@@ -145,6 +150,36 @@ type fragment =
     bonds: bond array;
     anchors: anchor array }
 
+(* we need a tree data structure to construct a molecule *)
+type mol_tree = Branch of fragment * mol_tree list
+              | Leaf of fragment
+
+(* if there are several adequate anchors, we need to choose
+ * one randomly (and allow for repeatibility) so that the fragment
+ * linking process is not biased *)
+let rand_select_anchor rng typ (tree: mol_tree): int * mol_tree =
+  let frag = match tree with
+    | Leaf l -> l
+    | Branch (core, _branches) -> core in
+  (* find anchor indexes with the right type *)
+  let indexes =
+    A.fold_righti (fun i x acc ->
+        if get_anchor_type x = typ then
+          i :: acc
+        else
+          acc
+      ) frag.anchors [] in
+  (* draw one *)
+  let i = Utls.array_random_elt rng (A.of_list indexes) in
+  let target = frag.anchors.(i) in
+  let anchors' = Utls.array_without_elt_at i frag.anchors in
+  (* return target atom index and update anchors list *)
+  let frag' = { frag with anchors = anchors' } in
+  let tree' = match tree with
+    | Leaf _ -> Leaf frag'
+    | Branch (_core, branches) -> Branch (frag', branches) in
+  (target.start, tree')
+
 let append_index_to_frag_name (index: int) (frag: fragment): fragment =
   { frag with name = sprintf "%s_%03d" frag.name index }
 
@@ -163,10 +198,16 @@ let reindex offset frag =
   offset := !offset + n; (* update offset *)
   { name = frag.name; atoms = atoms'; bonds = bonds'; anchors = anchors' }
 
-let get_anchor_types (f: fragment): (int * int * int * int) list =
+let get_anchor_types (f: fragment): atom_type list =
   (* in the right order *)
   A.fold_right (fun x acc ->
       (get_anchor_type x) :: acc
+    ) f.anchors []
+
+let get_anchor_starts (f: fragment): int list =
+  (* in the right order *)
+  A.fold_right (fun x acc ->
+      (get_anchor_start x) :: acc
     ) f.anchors []
 
 let write_one_fragment out name index frag =
@@ -400,10 +441,6 @@ let organize_fragments frags_a =
       A.of_list frags_lst
     ) ht
 
-(* we need a tree data structure to construct a molecule *)
-type mol_tree = Branch of fragment * mol_tree list
-              | Leaf of fragment
-
 (* prepare for final molecule *)
 let reindex_mol_tree t =
   let count = ref 0 in
@@ -413,17 +450,29 @@ let reindex_mol_tree t =
                                          L.map loop branches) in
   loop t
 
-(* TODO: fragments need to be linked together *)
-let molecule_from_tree (name_prfx: string) (t: mol_tree): molecule =
+let molecule_from_tree rng (name_prfx: string) (t: mol_tree): molecule =
   let rec loop (atoms, bonds, names) = function
-    | Leaf leaf -> (Utls.prepend_list_with_array leaf.atoms atoms,
-                    Utls.prepend_list_with_array leaf.bonds bonds,
-                    leaf.name :: names)
+    | Leaf leaf ->
+      (* alredy linked to its parent fragment *)
+      (Utls.prepend_list_with_array leaf.atoms atoms,
+       Utls.prepend_list_with_array leaf.bonds bonds,
+       leaf.name :: names)
     | Branch (core, branches) ->
-      let acc = (Utls.prepend_list_with_array core.atoms atoms,
-                 Utls.prepend_list_with_array core.bonds bonds,
-                 core.name :: names) in
-      L.fold_left loop acc branches in
+      let atoms' = Utls.prepend_list_with_array core.atoms atoms in
+      let bonds' = Utls.prepend_list_with_array core.bonds bonds in
+      let names' = core.name :: names in
+      let starts = get_anchor_starts core in
+      let typs = get_anchor_types core in
+      let target_indexes_trees = L.map2 (rand_select_anchor rng) typs branches in
+      let stops, branches' = L.split target_indexes_trees in
+      (* add bonds *)
+      let new_bonds =
+        L.rev_map2 (fun start stop ->
+            { start; btype = Single; stop }
+          ) starts stops in
+      let bonds'' = L.rev_append new_bonds bonds' in
+      let acc = (atoms', bonds'', names') in
+      L.fold_left loop acc branches' in
   let atoms_acc, bonds_acc, names_acc = loop ([], [], []) t in
   (* sort atoms, bonds and names to ease debugging later on *)
   let atoms = A.of_list atoms_acc in
@@ -464,7 +513,7 @@ let connect_fragments rng name_prfx frags_a frags_ht =
   let typ = get_atom_type anchor.dest in
   let fragments = get_frag_with_anchor_type rng Seed typ frags_ht in
   let reindexed = reindex_mol_tree fragments in
-  molecule_from_tree name_prfx reindexed
+  molecule_from_tree rng name_prfx reindexed
 
 let main () =
   Log.(set_log_level DEBUG);
