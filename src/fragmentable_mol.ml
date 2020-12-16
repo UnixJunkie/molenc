@@ -19,6 +19,8 @@ type atom = { index: int;
 
 type atom_type = int * int * int * int
 
+let dummy_atom_type = (-1,-1,-1,-1)
+
 let get_atom_type at =
   (at.pi_electrons,
    at.atomic_num,
@@ -53,6 +55,9 @@ let string_of_atom a =
     a.atomic_num
     a.heavy_neighbors
     a.formal_charge
+
+let string_of_atom_type (a, b, c, d) =
+  sprintf "%d,%d,%d,%d" a b c d
 
 type bond_type = Single
                | Aromatic
@@ -115,33 +120,28 @@ let write_one_molecule out mol =
   A.iter (fun b -> fprintf out "%s\n" (string_of_bond b)) mol.bonds
 
 type anchor = { start: int; (* atom index *)
-                dest: atom } (* end-point allowed atom type *)
+                dst_typ: atom_type } (* end-point allowed atom type *)
 
 let reindex_anchor ht (a: anchor): anchor =
   { a with start = Ht.find ht a.start }
 
 let get_anchor_type (a: anchor): atom_type =
-  get_atom_type a.dest
+  a.dst_typ
 
 let get_anchor_start (a: anchor): int =
   a.start
 
 let dummy_anchor = { start = -1;
-                     dest = dummy_atom }
+                     dst_typ = dummy_atom_type }
 
 let string_of_anchor a =
-  sprintf "%d %s" a.start (string_of_atom a.dest)
+  sprintf "%d %s" a.start (string_of_atom_type a.dst_typ)
 
+(* this is _not_ the reverse of the previous *)
 let anchor_of_string s =
   Scanf.sscanf s "%d %d %d,%d,%d,%d"
-    (fun start a b c d e ->
-       { start;
-         dest = { index = a;
-                  pi_electrons = b;
-                  atomic_num = c;
-                  heavy_neighbors = d;
-                  formal_charge = e }
-       }
+    (fun start _a b c d e ->
+       { start; dst_typ = (b, c, d, e) }
     )
 
 type fragment =
@@ -322,9 +322,9 @@ let anchor_points (mol: fragmentable) (cut_bonds: int array): anchor array =
       let bond = mol.bonds.(to_cut) in
       assert(bond.btype = Single); (* only those are "cuttable" *)
       res.(j) <- { start = bond.start;
-                   dest = mol.atoms.(bond.stop) };
+                   dst_typ = get_atom_type mol.atoms.(bond.stop) };
       res.(k) <- { start = bond.stop;
-                   dest = mol.atoms.(bond.start) }
+                   dst_typ = get_atom_type mol.atoms.(bond.start) }
     ) cut_bonds;
   res
 
@@ -431,7 +431,7 @@ let organize_fragments frags_a =
   A.iter (fun frag ->
       let anchors = frag.anchors in
       A.iter (fun anchor ->
-          let at_type = get_atom_type anchor.dest in
+          let at_type = anchor.dst_typ in
           let prev_frags = Ht.find_default ht at_type [] in
           Ht.replace ht at_type (frag :: prev_frags)
         ) anchors
@@ -510,10 +510,15 @@ let connect_fragments rng name_prfx frags_a frags_ht =
   (* draw uniformly seed fragment *)
   let seed_frag = Utls.array_random_elt rng frags_a in
   let anchor = Utls.array_random_elt rng seed_frag.anchors in
-  let typ = get_atom_type anchor.dest in
+  let typ = anchor.dst_typ in
   let fragments = get_frag_with_anchor_type rng Seed typ frags_ht in
   let reindexed = reindex_mol_tree fragments in
   molecule_from_tree rng name_prfx reindexed
+
+(* FBR: double check anchors type matching *)
+(* FBR: some generated molecules are way too big *)
+(* FBR: check some with reasonable size *)
+(* FBR: maybe rename input fragments to simplify the process *)
 
 let main () =
   Log.(set_log_level DEBUG);
