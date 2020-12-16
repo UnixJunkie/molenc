@@ -118,6 +118,9 @@ type anchor = { start: int; (* atom index *)
 let reindex_anchor ht (a: anchor): anchor =
   { a with start = Ht.find ht a.start }
 
+let typ_of_anchor a =
+  get_atom_type a.dest
+
 let dummy_anchor = { start = -1;
                      dest = dummy_atom }
 
@@ -163,7 +166,7 @@ let reindex offset frag =
 let get_anchor_types (f: fragment): (int * int * int * int) list =
   (* in the right order *)
   A.fold_right (fun x acc ->
-      (get_atom_type x.dest) :: acc
+      (typ_of_anchor x) :: acc
     ) f.anchors []
 
 let write_one_fragment out name index frag =
@@ -401,8 +404,6 @@ let organize_fragments frags_a =
 type mol_tree = Branch of fragment * mol_tree list
               | Leaf of fragment
 
-(* TODO: fragments need to be linked together !!! *)
-
 (* prepare for final molecule *)
 let reindex_mol_tree t =
   let count = ref 0 in
@@ -438,6 +439,8 @@ let molecule_from_tree (name_prfx: string) (t: mol_tree): molecule =
 
 type state = Seed
            | Grow
+
+(* TODO: fragments need to be linked together !!! *)
 
 (* WARNING: not tail rec *)
 let rec get_frag_with_anchor_type rng state typ frags_ht =
