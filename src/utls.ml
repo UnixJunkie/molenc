@@ -585,3 +585,16 @@ let prepend_list_with_array a l =
   Array.fold_right (fun x acc ->
       x :: acc
     ) a l
+
+let array_without_elt_at i a =
+  let n = (Array.length a) - 1 in
+  let res = Array.make n a.(0) in
+  let dest = ref 0 in
+  for j = 0 to n do
+    if j <> i then
+      begin
+        res.(!dest) <- a.(j);
+        incr dest
+      end
+  done;
+  res
