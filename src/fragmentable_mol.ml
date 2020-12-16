@@ -118,7 +118,7 @@ type anchor = { start: int; (* atom index *)
 let reindex_anchor ht (a: anchor): anchor =
   { a with start = Ht.find ht a.start }
 
-let typ_of_anchor a =
+let get_anchor_type a =
   get_atom_type a.dest
 
 let dummy_anchor = { start = -1;
@@ -166,7 +166,7 @@ let reindex offset frag =
 let get_anchor_types (f: fragment): (int * int * int * int) list =
   (* in the right order *)
   A.fold_right (fun x acc ->
-      (typ_of_anchor x) :: acc
+      (get_anchor_type x) :: acc
     ) f.anchors []
 
 let write_one_fragment out name index frag =
@@ -413,24 +413,22 @@ let reindex_mol_tree t =
                                          L.map loop branches) in
   loop t
 
+(* TODO: fragments need to be linked together *)
 let molecule_from_tree (name_prfx: string) (t: mol_tree): molecule =
-  let atoms_acc: atom array ref = ref [||] in
-  let bonds_acc: bond array ref = ref [||] in
-  let names_acc: string list ref = ref [] in
-  let rec loop = function
-    | Leaf leaf -> (atoms_acc := A.append !atoms_acc leaf.atoms;
-                    bonds_acc := A.append !bonds_acc leaf.bonds;
-                    names_acc := leaf.name :: !names_acc)
+  let rec loop (atoms, bonds, names) = function
+    | Leaf leaf -> (Utls.prepend_list_with_array leaf.atoms atoms,
+                    Utls.prepend_list_with_array leaf.bonds bonds,
+                    leaf.name :: names)
     | Branch (core, branches) ->
-      (atoms_acc := A.append !atoms_acc core.atoms;
-       bonds_acc := A.append !bonds_acc core.bonds;
-       names_acc := core.name :: !names_acc;
-       L.iter loop branches) in
-  loop t;
-  (* sort atoms, bonds and names to ease debugging later *)
-  let atoms = !atoms_acc in
-  let bonds = !bonds_acc in
-  let names = L.sort BatString.compare !names_acc in
+      let acc = (Utls.prepend_list_with_array core.atoms atoms,
+                 Utls.prepend_list_with_array core.bonds bonds,
+                 core.name :: names) in
+      L.fold_left loop acc branches in
+  let atoms_acc, bonds_acc, names_acc = loop ([], [], []) t in
+  (* sort atoms, bonds and names to ease debugging later on *)
+  let atoms = A.of_list atoms_acc in
+  let bonds = A.of_list bonds_acc in
+  let names = L.sort BatString.compare names_acc in
   let frag_names = S.concat "," names in
   let name = sprintf "%s_%s" name_prfx frag_names in
   A.sort compare_atom_indexes atoms;
@@ -440,8 +438,7 @@ let molecule_from_tree (name_prfx: string) (t: mol_tree): molecule =
 type state = Seed
            | Grow
 
-(* TODO: fragments need to be linked together !!! *)
-
+(* draw all necessary fragments *)
 (* WARNING: not tail rec *)
 let rec get_frag_with_anchor_type rng state typ frags_ht =
   let candidate = Utls.array_random_elt rng (Ht.find frags_ht typ) in
