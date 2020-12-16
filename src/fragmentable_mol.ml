@@ -119,7 +119,8 @@ let write_one_molecule out mol =
   fprintf out "#bonds:%d\n" (A.length mol.bonds);
   A.iter (fun b -> fprintf out "%s\n" (string_of_bond b)) mol.bonds
 
-type anchor = { start: int; (* atom index *)
+type anchor = { src_typ: atom_type; (* src atom type *)
+                start: int; (* src atom index *)
                 dst_typ: atom_type } (* end-point allowed atom type *)
 
 let reindex_anchor ht (a: anchor): anchor =
@@ -131,17 +132,21 @@ let get_anchor_type (a: anchor): atom_type =
 let get_anchor_start (a: anchor): int =
   a.start
 
-let dummy_anchor = { start = -1;
+let dummy_anchor = { src_typ = dummy_atom_type;
+                     start = -1;
                      dst_typ = dummy_atom_type }
 
 let string_of_anchor a =
   sprintf "%d %s" a.start (string_of_atom_type a.dst_typ)
 
 (* this is _not_ the reverse of the previous *)
-let anchor_of_string s =
+let anchor_of_string atoms s =
   Scanf.sscanf s "%d %d %d,%d,%d,%d"
     (fun start _a b c d e ->
-       { start; dst_typ = (b, c, d, e) }
+       (* ignore original destination atom *)
+       { src_typ = get_atom_type atoms.(start);
+         start;
+         dst_typ = (b, c, d, e) }
     )
 
 type fragment =
@@ -306,7 +311,7 @@ let read_one_fragment (input: in_channel): fragment =
   let anchors =
     let nb_anchors = parse_anchors (input_line input) in
     A.init nb_anchors (fun _i ->
-        anchor_of_string (input_line input)
+        anchor_of_string atoms (input_line input)
       ) in
   (* return res *)
   Log.debug "%d %d %d" (A.length atoms) (A.length bonds) (A.length anchors);
@@ -321,9 +326,11 @@ let anchor_points (mol: fragmentable) (cut_bonds: int array): anchor array =
       let k = j + 1 in
       let bond = mol.bonds.(to_cut) in
       assert(bond.btype = Single); (* only those are "cuttable" *)
-      res.(j) <- { start = bond.start;
+      res.(j) <- { src_typ = get_atom_type mol.atoms.(bond.start);
+                   start = bond.start;
                    dst_typ = get_atom_type mol.atoms.(bond.stop) };
-      res.(k) <- { start = bond.stop;
+      res.(k) <- { src_typ = get_atom_type mol.atoms.(bond.stop);
+                   start = bond.stop;
                    dst_typ = get_atom_type mol.atoms.(bond.start) }
     ) cut_bonds;
   res
