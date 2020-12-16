@@ -187,16 +187,22 @@ let rand_select_anchor
         else
           acc
       ) frag.anchors [] in
-  (* draw one *)
-  let i = Utls.array_random_elt rng (A.of_list indexes) in
-  let target = frag.anchors.(i) in
-  let anchors' = Utls.array_without_elt_at i frag.anchors in
-  (* return target atom index and update anchors list *)
-  let frag' = { frag with anchors = anchors' } in
-  let tree' = match tree with
-    | Leaf _ -> Leaf frag'
-    | Branch (_core, branches) -> Branch (frag', branches) in
-  (target.start, tree')
+  match indexes with
+  | [] ->
+    failwith (sprintf "Fragmentable_mol.rand_select_anchor: \
+                       no compatible anchor for (%s) in %s"
+                (string_of_anchor a) frag.name)
+  | _ ->
+    (* draw one *)
+    let i = Utls.array_random_elt rng (A.of_list indexes) in
+    let target = frag.anchors.(i) in
+    let anchors' = Utls.array_without_elt_at i frag.anchors in
+    (* return target atom index and update anchors list *)
+    let frag' = { frag with anchors = anchors' } in
+    let tree' = match tree with
+      | Leaf _ -> Leaf frag'
+      | Branch (_core, branches) -> Branch (frag', branches) in
+    (target.start, tree')
 
 let append_index_to_frag_name (index: int) (frag: fragment): fragment =
   { frag with name = sprintf "%s_%03d" frag.name index }
@@ -534,13 +540,10 @@ let connect_fragments rng name_prfx frags_a frags_ht =
   let reindexed = reindex_mol_tree fragments in
   molecule_from_tree rng name_prfx reindexed
 
-(* FBR: double check anchors type matching *)
-(* FBR: some generated molecules are way too big *)
-(* FBR: check some with reasonable size *)
-(* FBR: maybe rename input fragments to simplify verification *)
+(* FBR: check some generated mols; create regression test suite *)
 
 let main () =
-  Log.(set_log_level DEBUG);
+  Log.(set_log_level INFO);
   Log.color_on ();
   let argc, args = CLI.init () in
   if argc = 1 then
@@ -552,7 +555,8 @@ let main () =
               [-if <molecules.frags>]: input fragments file\n  \
               [-om <molecules.txt>]: generated molecules output file\n  \
               [-s <rng_seed:int>]: for reproducibility\n  \
-              [-n <int>]: nb. molecules to generate (default=1)\n"
+              [-n <int>]: nb. molecules to generate (default=1)\n  \
+              [-v]: verbose log\n"
        Sys.argv.(0);
      exit 1);
   let maybe_in_mols_fn = CLI.get_string_opt ["-im"] args in
@@ -563,6 +567,9 @@ let main () =
   let rng = match CLI.get_int_opt ["-s"] args with
     | Some s -> RNG.make [|s|] (* repeatable *)
     | None -> RNG.make_self_init () in
+  if CLI.get_set_bool ["-v"] args then
+    Log.(set_log_level DEBUG)
+  ;
   CLI.finalize();
   let mode = match maybe_in_mols_fn, maybe_out_frags_fn with
     | (Some ifn, Some ofn) -> Fragment (ifn, ofn)
