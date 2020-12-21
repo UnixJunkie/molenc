@@ -69,32 +69,61 @@ class End_of_file(Exception):
     """End of file was reached"""
     pass
 
+# create a fake molecule for the corresp. fragment
 def read_one_fragment(input):
-    atoms_header = input.readline()
+    res_mol = Chem.RWMol()
+    atoms_header = input.readline().strip()
     if atoms_header == '':
-        raise End_of_file
+        raise End_of_file # no EOF in Python...
     nb_atoms, frag_name = read_atoms_header(atoms_header)
-    atoms = []
-    for i in range(nb_atoms):
-        line = input.readline()
-        atom = read_atom(line)
-        atoms.append(atom)
-    bonds_header = input.readline()
+    old2new = {}
+    for _i in range(nb_atoms):
+        line = input.readline().strip()
+        (index, nb_pi, atomic_num, nb_HA, charge) = read_atom(line)
+        # add atom
+        a = Chem.Atom(atomic_num)
+        if nb_pi == 1:
+            a.SetIsAromatic(True)
+        a.SetFormalCharge(charge)
+        j = res_mol.AddAtom(a)
+        # we need to convert atom indexes
+        old2new[index] = j
+    bonds_header = input.readline().strip()
     nb_bonds = read_bonds_header(bonds_header)
-    bonds = []
     for i in range(nb_bonds):
-        line = input.readline()
-        bond = read_bond(line)
-        bonds.append(bond)
-    anchors_header = input.readline()
+        line = input.readline().strip()
+        (start_i, bt, stop_i) = read_bond(line)
+        start = old2new[start_i]
+        stop = old2new[stop_i]
+        # print('%d %d' % (start, stop))
+        # add bond
+        res_mol.AddBond(start, stop, bt)
+    anchors_header = input.readline().strip()
     nb_anchors = read_anchors_header(anchors_header)
     anchors = []
-    for i in range(nb_anchors):
-        line = input.readline()
+    # unset aromaticity flag if atom not in ring
+    for a in res_mol.GetAtoms():
+        if not a.IsInRing():
+            a.SetIsAromatic(False)
+    for _i in range(nb_anchors):
+        line = input.readline().strip()
         anchor = read_anchor(line)
+        start = old2new[anchor]
+        # dandling attachment point: dummy atom
+        a = Chem.Atom('*')
+        j = res_mol.AddAtom(a)
+        res_mol.AddBond(start, j, Chem.rdchem.BondType.SINGLE)
         anchors.append(anchor)
-    print('%s %d %d %d' % (frag_name, nb_atoms, nb_bonds, nb_anchors),
-          file=sys.stderr)
+    ## debug log
+    # print('%s %d %d %d' % (frag_name, nb_atoms, nb_bonds, nb_anchors),
+    #       file=sys.stderr)
+    # smi for mol
+    #try:
+    Chem.SanitizeMol(res_mol)
+    #except rdkit.Chem.rdchem.AtomKekulizeException:
+    #    print("AtomKekulizeException in %s" % frag_name, file=sys.stderr)
+    smi = Chem.MolToSmiles(res_mol)
+    return (smi, frag_name)
 
 if __name__ == '__main__':
     before = time.time()
@@ -116,8 +145,9 @@ if __name__ == '__main__':
     with open(input_fn) as input:
         try:
             while True:
-                read_one_fragment(input)
+                smi, name = read_one_fragment(input)
                 count += 1
+                print('%s\t%s' % (smi, name), file=output)
         except End_of_file:
             pass
     after = time.time()
