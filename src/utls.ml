@@ -572,14 +572,6 @@ let array_random_elt rng a =
   let i = BatRandom.State.int rng n in
   a.(i)
 
-(* WARNING: not tail rec *)
-(* remove first element equal to x *)
-let rec list_remove_first x = function
-  | [] -> []
-  | y :: ys ->
-    if y = x then ys
-    else y :: (list_remove_first x ys)
-
 (* [|1;2;3|] [4;5;6] -> [1;2;3;4;5;6] *)
 let prepend_list_with_array a l =
   Array.fold_right (fun x acc ->
@@ -598,3 +590,7 @@ let array_without_elt_at i a =
       end
   done;
   res
+
+let list_really_remove_one l x =
+  assert(L.mem x l); (* BatList.remove doesn't enforce this *)
+  L.remove l x
