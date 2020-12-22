@@ -21,7 +21,7 @@ type atom_type = int * int * int * int
 
 type atom_type_pair = atom_type * atom_type
 
-let dummy_atom_type = (-1,-1,-1,-1)
+let dummy_atom_type = (-1, -1, -1, -1)
 
 let get_atom_type at =
   (at.pi_electrons,
@@ -42,13 +42,12 @@ let dummy_atom = { index = -1;
                    formal_charge = -1 }
 
 let atom_of_string s =
-  Scanf.sscanf s "%d %d,%d,%d,%d" (fun a b c d e ->
-      { index = a;
-        pi_electrons = b;
-        atomic_num = c;
-        heavy_neighbors = d;
-        formal_charge = e }
-    )
+  Scanf.sscanf s "%d %d,%d,%d,%d"
+    (fun a b c d e -> { index = a;
+                        pi_electrons = b;
+                        atomic_num = c;
+                        heavy_neighbors = d;
+                        formal_charge = e })
 
 let string_of_atom a =
   sprintf "%d %d,%d,%d,%d"
@@ -68,7 +67,7 @@ type bond_type = Single
 
 let bond_of_char = function
   | '-' -> Single
-  | '~' -> Aromatic
+  | ':' -> Aromatic
   | '=' -> Double
   | '#' -> Triple
   | c -> failwith ("Fragmentable_mol.bond_of_char: unsupported: " ^
@@ -76,7 +75,7 @@ let bond_of_char = function
 
 let char_of_bond = function
   | Single -> '-'
-  | Aromatic -> '~'
+  | Aromatic -> ':'
   | Double -> '='
   | Triple -> '#'
 

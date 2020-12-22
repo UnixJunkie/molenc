@@ -63,7 +63,7 @@ def char_of_bond_type(bond):
     if t == rdkit.Chem.rdchem.BondType.SINGLE:
         return '-'
     elif t == rdkit.Chem.rdchem.BondType.AROMATIC:
-        return '~'
+        return ':'
     elif t == rdkit.Chem.rdchem.BondType.DOUBLE:
         return '='
     elif t == rdkit.Chem.rdchem.BondType.TRIPLE:
