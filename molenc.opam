@@ -26,7 +26,7 @@ depends: [
   "conf-rdkit"
   "cpm"
   "dokeysto_camltc"
-  "dolog" {>= "4.0.0"}
+  "dolog" {>= "5.0.0"}
   "dune" {>= "1.11"}
   "minicli" {>= "5.0.0"}
   "ocaml"
