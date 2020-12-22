@@ -92,11 +92,10 @@ let compare_bond_indexes b1 b2 =
   compare (b1.start, b1.stop) (b2.start, b2.stop)
 
 let bond_of_string s =
-  Scanf.sscanf s "%d %c %d" (fun start bchar stop ->
-      { start;
-        btype = bond_of_char bchar;
-        stop }
-    )
+  Scanf.sscanf s "%d %c %d"
+    (fun start bchar stop -> { start;
+                               btype = bond_of_char bchar;
+                               stop })
 
 let string_of_bond b =
   sprintf "%d %c %d" b.start (char_of_bond b.btype) b.stop
@@ -157,8 +156,7 @@ let anchor_of_string s =
     (fun a b c d start i j k l ->
        { src_typ = (a, b, c, d);
          start;
-         dst_typ = (i, j, k, l) }
-    )
+         dst_typ = (i, j, k, l) })
 
 type fragment =
   { name: string;
@@ -166,7 +164,7 @@ type fragment =
     bonds: bond array;
     anchors: anchor array }
 
-(* we need a tree data structure to construct a molecule *)
+(* tree data structure to construct a molecule *)
 type mol_tree = Branch of fragment * mol_tree list
               | Leaf of fragment
 
@@ -489,7 +487,7 @@ let molecule_from_tree rng (name_prfx: string) (t: mol_tree): molecule =
       let target_indexes_trees =
         L.map2 (rand_select_anchor rng) (A.to_list core.anchors) branches in
       let stops, branches' = L.split target_indexes_trees in
-      (* add bonds *)
+      (* add new bonds *)
       let new_bonds =
         L.rev_map2 (fun start stop ->
             { start; btype = Single; stop }
@@ -498,7 +496,7 @@ let molecule_from_tree rng (name_prfx: string) (t: mol_tree): molecule =
       let acc = (atoms', bonds'', names') in
       L.fold_left loop acc branches' in
   let atoms_acc, bonds_acc, names_acc = loop ([], [], []) t in
-  (* sort atoms, bonds and names to ease debugging later on *)
+  (* sort atoms, bonds and names to ease verification *)
   let atoms = A.of_list atoms_acc in
   let bonds = A.of_list bonds_acc in
   let names = L.sort BatString.compare names_acc in
