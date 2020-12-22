@@ -555,6 +555,7 @@ let main () =
               [-if <molecules.frags>]: input fragments file\n  \
               [-om <molecules.txt>]: generated molecules output file\n  \
               [-s <rng_seed:int>]: for reproducibility\n  \
+              [-p <int>]: number of fragmentation passes (default=1)\n  \
               [-n <int>]: nb. molecules to generate (default=1)\n  \
               [-v]: verbose log\n"
        Sys.argv.(0);
@@ -563,7 +564,8 @@ let main () =
   let maybe_out_frags_fn = CLI.get_string_opt ["-of"] args in
   let maybe_in_frags_fn = CLI.get_string_opt ["-if"] args in
   let maybe_out_mols_fn = CLI.get_string_opt ["-om"] args in
-  let n = CLI.get_int_def ["-n"] args 1 in
+  let nb_frag_passes = CLI.get_int_def ["-p"] args 1 in
+  let nb_mols = CLI.get_int_def ["-n"] args 1 in
   let rng = match CLI.get_int_opt ["-s"] args with
     | Some s -> RNG.make [|s|] (* repeatable *)
     | None -> RNG.make_self_init () in
@@ -593,8 +595,10 @@ let main () =
     Utls.with_out_file output_fn (fun out ->
         L.iter (fun mol ->
             let index = ref 0 in
-            let frags = fragment_molecule rng mol in
-            L.iter (write_one_fragment out mol.name index) frags
+            for _i = 1 to nb_frag_passes do
+              let frags = fragment_molecule rng mol in
+              L.iter (write_one_fragment out mol.name index) frags
+            done
           ) all_molecules
       )
   | Assemble (input_fn, output_fn) ->
@@ -615,13 +619,13 @@ let main () =
     Utls.with_out_file output_fn (fun out ->
         let dt2, () =
           Utls.time_it (fun () ->
-              for i = 1 to n do
+              for i = 1 to nb_mols do
                 let name_prfx = sprintf "genmol_%06d" i in
                 let mol = connect_fragments rng name_prfx all_fragments frags_ht in
                 write_one_molecule out mol
               done
             ) in
-        Log.info "gen %d mols in %1.2fs" n dt2
+        Log.info "gen %d mols in %1.2fs" nb_mols dt2
       )
 
 let () = main ()
