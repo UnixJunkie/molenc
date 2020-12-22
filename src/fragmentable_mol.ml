@@ -164,9 +164,47 @@ type fragment =
     bonds: bond array;
     anchors: anchor array }
 
+(* remove one compatible (randomly selected) anchor from
+   the fragments' anchors *)
+let rand_remove_anchor rng (src_typ, dst_typ) frag =
+  let fake_anchor = { src_typ; start = -1; dst_typ } in
+  let indexes =
+    A.fold_righti (fun i x acc ->
+        if compatible_anchors fake_anchor x then
+          i :: acc
+        else
+          acc
+      ) frag.anchors [] in
+  match indexes with
+  | [] -> failwith "Fragmentable_mol.rand_remove_anchor: should never happen"
+  | _ ->
+    (* draw one *)
+    let i = Utls.array_random_elt rng (A.of_list indexes) in
+    let anchors' = Utls.array_without_elt_at i frag.anchors in
+    { frag with anchors = anchors' }
+
+let rand_select_compat_anchor rng (src_typ, dst_typ) frag =
+  let fake_anchor = { src_typ; start = -1; dst_typ } in
+  let indexes =
+    A.fold_righti (fun i x acc ->
+        if compatible_anchors fake_anchor x then
+          i :: acc
+        else
+          acc
+      ) frag.anchors [] in
+  match indexes with
+  | [] -> assert(false)
+  | _ -> Utls.array_random_elt rng (A.of_list indexes)
+
 (* tree data structure to construct a molecule *)
 type mol_tree = Branch of fragment * mol_tree list
               | Leaf of fragment
+
+let get_name = function
+  | Branch (b, _) -> b.name
+  | Leaf l -> l.name
+
+exception No_such_anchor of string
 
 (* if there are several adequate anchors, we need to choose
  * one randomly (and allow for repeatibility) so that the fragment
@@ -185,10 +223,9 @@ let rand_select_anchor
           acc
       ) frag.anchors [] in
   match indexes with
-  | [] ->
-    failwith (sprintf "Fragmentable_mol.rand_select_anchor: \
-                       no compatible anchor for (%s) in %s"
-                (string_of_anchor a) frag.name)
+  | [] -> raise (No_such_anchor
+                   (sprintf "no compatible anchor for (%s) in %s"
+                      (string_of_anchor a) frag.name))
   | _ ->
     (* draw one *)
     let i = Utls.array_random_elt rng (A.of_list indexes) in
@@ -213,11 +250,11 @@ let reindex offset frag =
       let new_index = i + !offset in
       Ht.add ht old_index new_index
     ) frag.atoms;
-  let atoms' = A.map (reindex_atom ht) frag.atoms in
-  let bonds' = A.map (reindex_bond ht) frag.bonds in
-  let anchors' = A.map (reindex_anchor ht) frag.anchors in
+  let atoms = A.map (reindex_atom ht) frag.atoms in
+  let bonds = A.map (reindex_bond ht) frag.bonds in
+  let anchors = A.map (reindex_anchor ht) frag.anchors in
   offset := !offset + n; (* update offset *)
-  { name = frag.name; atoms = atoms'; bonds = bonds'; anchors = anchors' }
+  { name = frag.name; atoms; bonds; anchors }
 
 let get_anchor_types (f: fragment): atom_type_pair list =
   (* in the right order *)
@@ -472,6 +509,20 @@ let reindex_mol_tree t =
                                          L.map loop branches) in
   loop t
 
+(* extract all fragment names from the tree *)
+let string_of_mol_tree t =
+  let buff = Buffer.create 1024 in
+  let rec loop = function
+    | Leaf l -> bprintf buff "%s\n" l.name
+    | Branch (core, branches) ->
+      let branch_names = L.map get_name branches in
+      L.iter (fun name ->
+          bprintf buff "%s -> %s\n" core.name name
+        ) branch_names;
+      L.iter loop branches in
+  loop t;
+  Buffer.contents buff
+
 let molecule_from_tree rng (name_prfx: string) (t: mol_tree): molecule =
   let rec loop (atoms, bonds, names) = function
     | Leaf leaf ->
@@ -484,8 +535,9 @@ let molecule_from_tree rng (name_prfx: string) (t: mol_tree): molecule =
       let bonds' = Utls.prepend_list_with_array core.bonds bonds in
       let names' = core.name :: names in
       let starts = get_anchor_starts core in
+      let anchors = A.to_list core.anchors in
       let target_indexes_trees =
-        L.map2 (rand_select_anchor rng) (A.to_list core.anchors) branches in
+        L.map2 (rand_select_anchor rng) anchors branches in
       let stops, branches' = L.split target_indexes_trees in
       (* add new bonds *)
       let new_bonds =
@@ -495,7 +547,15 @@ let molecule_from_tree rng (name_prfx: string) (t: mol_tree): molecule =
       let bonds'' = L.rev_append new_bonds bonds' in
       let acc = (atoms', bonds'', names') in
       L.fold_left loop acc branches' in
-  let atoms_acc, bonds_acc, names_acc = loop ([], [], []) t in
+  let atoms_acc, bonds_acc, names_acc =
+    try loop ([], [], []) t with
+    | No_such_anchor s ->
+      begin
+        Log.fatal "%s" s;
+        let tree_str = string_of_mol_tree t in
+        Log.fatal "\n%s" tree_str;
+        exit 1
+      end in
   (* sort atoms, bonds and names to ease verification *)
   let atoms = A.of_list atoms_acc in
   let bonds = A.of_list bonds_acc in
@@ -506,34 +566,78 @@ let molecule_from_tree rng (name_prfx: string) (t: mol_tree): molecule =
   A.sort compare_bond_indexes bonds;
   { name; atoms; bonds }
 
-type state = Seed
-           | Grow
+(* (* draw all necessary fragments *)
+ * (* WARNING: not tail rec *)
+ * let rec get_frag_for_anchor_type rng state typ frags_ht =
+ *   let candidate = Utls.array_random_elt rng (Ht.find frags_ht typ) in
+ *   if state = Grow && A.length candidate.anchors = 1 then
+ *     Leaf candidate (* terminal fragment *)
+ *   else
+ *     let compat_typ = flip_pair typ in
+ *     (* extract types of anchor points *)
+ *     let all_types = get_anchor_types candidate in
+ *     (* remove the one we just connected, if applicable *)
+ *     let candidate', rem_types = match state with
+ *       | Seed -> (candidate, all_types)
+ *       | Grow -> (rand_remove_anchor rng typ candidate,
+ *                  Utls.list_really_remove_one all_types compat_typ) in
+ *     (* rec call *)
+ *     Branch (candidate',
+ *             L.map (fun typ' ->
+ *                 get_frag_for_anchor_type rng Grow typ' frags_ht
+ *               ) rem_types) *)
 
-(* draw all necessary fragments *)
-(* WARNING: not tail rec *)
-let rec get_frag_for_anchor_type rng state typ frags_ht =
-  let candidate = Utls.array_random_elt rng (Ht.find frags_ht typ) in
-  if state = Grow && A.length candidate.anchors = 1 then
-    Leaf candidate (* terminal fragment *)
-  else
-    (* extract types of anchor points *)
-    let all_types = get_anchor_types candidate in
-    (* remove the one we just connected, if applicable *)
-    let rem_types = match state with
-      | Seed -> all_types
-      | Grow -> Utls.list_remove_first (flip_pair typ) all_types in
-    (* rec call *)
-    Branch (candidate,
-            L.map (fun typ' ->
-                get_frag_for_anchor_type rng Grow typ' frags_ht
-              ) rem_types)
+(* let connect_fragments rng name_prfx frags_a frags_ht =
+ *   (* draw uniformly seed fragment *)
+ *   let seed_frag = Utls.array_random_elt rng frags_a in
+ *   let anchor = Utls.array_random_elt rng seed_frag.anchors in
+ *   let typ = get_anchor_type anchor in
+ *   let fragments = get_frag_for_anchor_type rng Seed typ frags_ht in
+ *   let reindexed = reindex_mol_tree fragments in
+ *   molecule_from_tree rng name_prfx reindexed *)
 
+type state = Seed of fragment (* fragment with no ancestor in the tree *)
+           | Grow of int * fragment (* fragment with already one anchor used *)
+
+(* draw fragments to build molecule starting from seed fragment *)
+let grow rng seed_frag frags_ht =
+  let rec loop = function
+    | Seed frag ->
+      let anchors = A.to_list frag.anchors in
+      let children_frags =
+        L.map (fun anchor ->
+            let typ = get_anchor_type anchor in
+            (* draw one compatible fragment *)
+            let cand_frag = Utls.array_random_elt rng (Ht.find frags_ht typ) in
+            (* random choose index of compatible anchor in cand_frag *)
+            let i = rand_select_compat_anchor rng typ cand_frag in
+            Grow (i, cand_frag)
+          ) anchors in
+      Branch (frag, L.map loop children_frags)
+    | Grow (i, frag) ->
+      let anchors = frag.anchors in
+      let n = A.length anchors in
+      assert(n > 0);
+      if n = 1 then
+        Leaf frag
+      else
+        let anchors' = A.to_list (Utls.array_without_elt_at i anchors) in
+        let children_frags =
+          L.map (fun anchor ->
+              let typ = get_anchor_type anchor in
+              (* draw one compatible fragment *)
+              let cand_frag = Utls.array_random_elt rng (Ht.find frags_ht typ) in
+              (* random choose index of compatible anchor in cand_frag *)
+              let j = rand_select_compat_anchor rng typ cand_frag in
+              Grow (j, cand_frag)
+            ) anchors' in
+        Branch (frag, L.map loop children_frags) in
+  loop (Seed seed_frag)
+    
 let connect_fragments rng name_prfx frags_a frags_ht =
   (* draw uniformly seed fragment *)
   let seed_frag = Utls.array_random_elt rng frags_a in
-  let anchor = Utls.array_random_elt rng seed_frag.anchors in
-  let typ = get_anchor_type anchor in
-  let fragments = get_frag_for_anchor_type rng Seed typ frags_ht in
+  let fragments = grow rng seed_frag frags_ht in
   let reindexed = reindex_mol_tree fragments in
   molecule_from_tree rng name_prfx reindexed
 
@@ -541,6 +645,7 @@ let connect_fragments rng name_prfx frags_a frags_ht =
 
 let main () =
   Log.(set_log_level INFO);
+  Log.(set_prefix_builder short_prefix_builder);
   Log.color_on ();
   let argc, args = CLI.init () in
   if argc = 1 then
