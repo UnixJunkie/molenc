@@ -534,10 +534,31 @@ let draw_and_connect_fragments rng all_frags frags_ht: mol_tree =
   let seed_frag = Utls.array_rand_elt rng all_frags in
   loop (Seed seed_frag)
 
-let connect_fragments rng name_prfx all_fragments frags_ht =
+let molecule_of_tree t =
+  let rec loop (names, atoms, bonds) = function
+    | Leaf l -> (l.name :: names,
+                 Utls.array_prepend_to_list l.atoms atoms,
+                 Utls.array_prepend_to_list l.bonds bonds)
+    | Branch (b, branches) ->
+      let acc = (b.name :: names,
+                 Utls.array_prepend_to_list b.atoms atoms,
+                 Utls.array_prepend_to_list b.bonds bonds) in
+      L.fold_left loop acc branches in
+  let names, atoms, bonds = loop ([], [], []) t in
+  let names_a = A.of_list names in
+  let atoms_a = A.of_list atoms in
+  let bonds_a = A.of_list bonds in
+  (* sort things to ease verification later *)
+  A.sort BatString.compare names_a;
+  A.sort compare_atom_indexes atoms_a;
+  A.sort compare_bond_indexes bonds_a;
+  let name = Utls.string_array_concat "," names_a in
+  { name; atoms = atoms_a; bonds = bonds_a }
+
+let create_molecule rng name_prfx all_fragments frags_ht =
   let tree = draw_and_connect_fragments rng all_fragments frags_ht in
-  (* TODO: convert to molecule *)
-  failwith "not implemented yet"
+  let mol = molecule_of_tree tree in
+  { mol with name = name_prfx ^ mol.name }
 
 let main () =
   Log.(set_log_level INFO);
@@ -618,10 +639,9 @@ let main () =
         let dt2, () =
           Utls.time_it (fun () ->
               for i = 1 to nb_mols do
-                let name_prfx = sprintf "genmol_%06d" i in
-                failwith "not implemented yet"
-                (* let mol = connect_fragments rng name_prfx all_fragments frags_ht in
-                 * write_one_molecule out mol *)
+                let name_prfx = sprintf "genmol_%06d_" i in
+                let mol = create_molecule rng name_prfx all_fragments frags_ht in
+                write_one_molecule out mol
               done
             ) in
         Log.info "gen %d mols in %1.2fs" nb_mols dt2
