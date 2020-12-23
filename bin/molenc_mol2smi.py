@@ -79,5 +79,5 @@ if __name__ == '__main__':
             pass
     after = time.time()
     dt = after - before
-    print("%d molecules at %.2f frag/s" % (count, count / dt), file=sys.stderr)
+    print("%d molecules at %.2f molecule/s" % (count, count / dt), file=sys.stderr)
     output.close()
