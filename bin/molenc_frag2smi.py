@@ -7,7 +7,7 @@
 # Kyushu Institute of Technology,
 # 680-4 Kawazu, Iizuka, Fukuoka, 820-8502, Japan.
 
-# molecule txt fragment to SMILES
+# txt fragment to smi
 
 import argparse, rdkit, re, sys, time
 from rdkit import Chem
@@ -36,7 +36,7 @@ def read_bonds_header(line):
 def bond_type_of_char(c):
     if c == '-':
         return rdkit.Chem.rdchem.BondType.SINGLE
-    elif c == '~':
+    elif c == ':':
         return rdkit.Chem.rdchem.BondType.AROMATIC
     elif c == '=':
         return rdkit.Chem.rdchem.BondType.DOUBLE
@@ -118,10 +118,10 @@ def read_one_fragment(input):
     # print('%s %d %d %d' % (frag_name, nb_atoms, nb_bonds, nb_anchors),
     #       file=sys.stderr)
     # smi for mol
-    #try:
-    Chem.SanitizeMol(res_mol)
-    #except rdkit.Chem.rdchem.AtomKekulizeException:
-    #    print("AtomKekulizeException in %s" % frag_name, file=sys.stderr)
+    try:
+        Chem.SanitizeMol(res_mol)
+    except rdkit.Chem.rdchem.AtomKekulizeException:
+        print("AtomKekulizeException in %s" % frag_name, file=sys.stderr)
     smi = Chem.MolToSmiles(res_mol)
     return (smi, frag_name)
 
