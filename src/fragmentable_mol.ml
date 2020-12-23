@@ -471,18 +471,11 @@ type state =
 let draw_compat_frag rng frags_ht typ =
   Utls.array_rand_elt rng (Ht.find frags_ht typ)
 
-let draw_compat_anchor rng (src_typ, dst_typ) frag: int =
+(* find index of the first compatible anchor *)
+let compat_anchor_index (src_typ, dst_typ) frag: int =
   let dummy_anchor = { src_typ; start = -1; dst_typ } in
-  let allowed_indexes =
-    A.fold_lefti (fun acc i x ->
-        if compatible_anchors dummy_anchor x then
-          i :: acc
-        else
-          acc
-      ) [] frag.anchors in
-  let arr = A.of_list allowed_indexes in
-  assert(A.length arr > 0); (* there must be at least one compat. anchor *)
-  Utls.array_rand_elt rng arr
+  (* might throw Not_found... *)
+  A.findi (compatible_anchors dummy_anchor) frag.anchors
 
 (* connectable set of fragments *)
 let draw_and_connect_fragments rng all_frags frags_ht: mol_tree =
@@ -497,8 +490,7 @@ let draw_and_connect_fragments rng all_frags frags_ht: mol_tree =
         L.map (fun typ ->
             let compat = draw_compat_frag rng frags_ht typ in
             let compat' = reindex offset compat in
-            (* FBR: find_first_compat is enough and simpler *)
-            let i = draw_compat_anchor rng typ compat' in
+            let i = compat_anchor_index typ compat' in
             (i, compat')
           ) anchor_types in
       (* connect them to seed frag *)
@@ -526,7 +518,7 @@ let draw_and_connect_fragments rng all_frags frags_ht: mol_tree =
           L.map (fun typ ->
               let compat = draw_compat_frag rng frags_ht typ in
               let compat' = reindex offset compat in
-              let k = draw_compat_anchor rng typ compat' in
+              let k = compat_anchor_index typ compat' in
               (k, compat')
             ) anchor_types in
         (* connect them to parent *)
