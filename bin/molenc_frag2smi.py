@@ -79,6 +79,8 @@ def read_one_fragment(input):
         Chem.SanitizeMol(res_mol)
     except rdkit.Chem.rdchem.AtomKekulizeException:
         print("AtomKekulizeException in %s" % frag_name, file=sys.stderr)
+    except rdkit.Chem.rdchem.KekulizeException:
+        print("KekulizeException in %s" % frag_name, file=sys.stderr)
     smi = Chem.MolToSmiles(res_mol)
     return (smi, frag_name)
 
