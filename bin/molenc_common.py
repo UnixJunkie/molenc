@@ -94,3 +94,7 @@ def read_bond(line):
     (start_i, c, stop_i) = [t(s) for t,s in zip((int,str,int),
                             re.split('[ ]', line))]
     return (start_i, bond_type_of_char(c), stop_i)
+
+class End_of_file(Exception):
+    """End of file was reached"""
+    pass

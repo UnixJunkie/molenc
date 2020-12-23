@@ -26,16 +26,12 @@ def read_anchor(line):
                                   zip((str,int,str), re.split('[ ]', line))]
     return start_i
 
-class End_of_file(Exception):
-    """End of file was reached"""
-    pass
-
 # create a fake molecule for the corresp. fragment
 def read_one_fragment(input):
     res_mol = Chem.RWMol()
     atoms_header = input.readline().strip()
     if atoms_header == '':
-        raise End_of_file # no EOF in Python...
+        raise common.End_of_file # no EOF in Python...
     nb_atoms, frag_name = common.read_atoms_header(atoms_header)
     old2new = {}
     for _i in range(nb_atoms):
@@ -109,7 +105,7 @@ if __name__ == '__main__':
                 smi, name = read_one_fragment(input)
                 count += 1
                 print('%s\t%s' % (smi, name), file=output)
-        except End_of_file:
+        except common.End_of_file:
             pass
     after = time.time()
     dt = after - before
