@@ -164,38 +164,6 @@ type fragment =
     bonds: bond array;
     anchors: anchor array }
 
-(* remove one compatible (randomly selected) anchor from
-   the fragments' anchors *)
-let rand_remove_anchor rng (src_typ, dst_typ) frag =
-  let fake_anchor = { src_typ; start = -1; dst_typ } in
-  let indexes =
-    A.fold_righti (fun i x acc ->
-        if compatible_anchors fake_anchor x then
-          i :: acc
-        else
-          acc
-      ) frag.anchors [] in
-  match indexes with
-  | [] -> failwith "Fragmentable_mol.rand_remove_anchor: should never happen"
-  | _ ->
-    (* draw one *)
-    let i = Utls.array_random_elt rng (A.of_list indexes) in
-    let anchors' = Utls.array_without_elt_at i frag.anchors in
-    { frag with anchors = anchors' }
-
-let rand_select_compat_anchor rng (src_typ, dst_typ) frag =
-  let fake_anchor = { src_typ; start = -1; dst_typ } in
-  let indexes =
-    A.fold_righti (fun i x acc ->
-        if compatible_anchors fake_anchor x then
-          i :: acc
-        else
-          acc
-      ) frag.anchors [] in
-  match indexes with
-  | [] -> assert(false)
-  | _ -> Utls.array_random_elt rng (A.of_list indexes)
-
 (* tree data structure to construct a molecule *)
 type mol_tree = Branch of fragment * mol_tree list
               | Leaf of fragment
@@ -205,38 +173,6 @@ let get_name = function
   | Leaf l -> l.name
 
 exception No_such_anchor of string
-
-(* if there are several adequate anchors, we need to choose
- * one randomly (and allow for repeatibility) so that the fragment
- * linking process is not biased *)
-let rand_select_anchor
-    rng (a: anchor) (tree: mol_tree): int * mol_tree =
-  let frag = match tree with
-    | Leaf l -> l
-    | Branch (core, _branches) -> core in
-  (* find anchor indexes with the right type *)
-  let indexes =
-    A.fold_righti (fun i x acc ->
-        if compatible_anchors a x then
-          i :: acc
-        else
-          acc
-      ) frag.anchors [] in
-  match indexes with
-  | [] -> raise (No_such_anchor
-                   (sprintf "no compatible anchor for (%s) in %s"
-                      (string_of_anchor a) frag.name))
-  | _ ->
-    (* draw one *)
-    let i = Utls.array_random_elt rng (A.of_list indexes) in
-    let target = frag.anchors.(i) in
-    let anchors' = Utls.array_without_elt_at i frag.anchors in
-    (* return target atom index and update anchors list *)
-    let frag' = { frag with anchors = anchors' } in
-    let tree' = match tree with
-      | Leaf _ -> Leaf frag'
-      | Branch (_core, branches) -> Branch (frag', branches) in
-    (target.start, tree')
 
 let append_index_to_frag_name (index: int) (frag: fragment): fragment =
   { frag with name = sprintf "%s_%03d" frag.name index }
@@ -523,125 +459,66 @@ let string_of_mol_tree t =
   loop t;
   Buffer.contents buff
 
-let molecule_from_tree rng (name_prfx: string) (t: mol_tree): molecule =
-  let rec loop (atoms, bonds, names) = function
-    | Leaf leaf ->
-      (* alredy linked to its parent fragment *)
-      (Utls.prepend_list_with_array leaf.atoms atoms,
-       Utls.prepend_list_with_array leaf.bonds bonds,
-       leaf.name :: names)
-    | Branch (core, branches) ->
-      let atoms' = Utls.prepend_list_with_array core.atoms atoms in
-      let bonds' = Utls.prepend_list_with_array core.bonds bonds in
-      let names' = core.name :: names in
-      let starts = get_anchor_starts core in
-      let anchors = A.to_list core.anchors in
-      let target_indexes_trees =
-        L.map2 (rand_select_anchor rng) anchors branches in
-      let stops, branches' = L.split target_indexes_trees in
-      (* add new bonds *)
-      let new_bonds =
-        L.rev_map2 (fun start stop ->
-            { start; btype = Single; stop }
-          ) starts stops in
-      let bonds'' = L.rev_append new_bonds bonds' in
-      let acc = (atoms', bonds'', names') in
-      L.fold_left loop acc branches' in
-  let atoms_acc, bonds_acc, names_acc =
-    try loop ([], [], []) t with
-    | No_such_anchor s ->
-      begin
-        Log.fatal "%s" s;
-        let tree_str = string_of_mol_tree t in
-        Log.fatal "\n%s" tree_str;
-        exit 1
-      end in
-  (* sort atoms, bonds and names to ease verification *)
-  let atoms = A.of_list atoms_acc in
-  let bonds = A.of_list bonds_acc in
-  let names = L.sort BatString.compare names_acc in
-  let frag_names = S.concat "," names in
-  let name = sprintf "%s_%s" name_prfx frag_names in
-  A.sort compare_atom_indexes atoms;
-  A.sort compare_bond_indexes bonds;
-  { name; atoms; bonds }
+type state =
+  (* fragment with no ancestor in the tree *)
+  | Seed of fragment
+  (* fragment with one anchor used by parent in tree *)
+  | Grow of (int * fragment)
 
-(* (* draw all necessary fragments *)
- * (* WARNING: not tail rec *)
- * let rec get_frag_for_anchor_type rng state typ frags_ht =
- *   let candidate = Utls.array_random_elt rng (Ht.find frags_ht typ) in
- *   if state = Grow && A.length candidate.anchors = 1 then
- *     Leaf candidate (* terminal fragment *)
- *   else
- *     let compat_typ = flip_pair typ in
- *     (* extract types of anchor points *)
- *     let all_types = get_anchor_types candidate in
- *     (* remove the one we just connected, if applicable *)
- *     let candidate', rem_types = match state with
- *       | Seed -> (candidate, all_types)
- *       | Grow -> (rand_remove_anchor rng typ candidate,
- *                  Utls.list_really_remove_one all_types compat_typ) in
- *     (* rec call *)
- *     Branch (candidate',
- *             L.map (fun typ' ->
- *                 get_frag_for_anchor_type rng Grow typ' frags_ht
- *               ) rem_types) *)
+let draw_compat_frag rng frags_ht typ =
+  Utls.array_rand_elt rng (Ht.find frags_ht typ)
 
-(* let connect_fragments rng name_prfx frags_a frags_ht =
- *   (* draw uniformly seed fragment *)
- *   let seed_frag = Utls.array_random_elt rng frags_a in
- *   let anchor = Utls.array_random_elt rng seed_frag.anchors in
- *   let typ = get_anchor_type anchor in
- *   let fragments = get_frag_for_anchor_type rng Seed typ frags_ht in
- *   let reindexed = reindex_mol_tree fragments in
- *   molecule_from_tree rng name_prfx reindexed *)
+let draw_compat_anchor rng (src_typ, dst_typ) frag: int =
+  let dummy_anchor = { src_typ; start = -1; dst_typ } in
+  let allowed_indexes =
+    A.fold_lefti (fun acc i x ->
+        if compatible_anchors dummy_anchor x then
+          i :: acc
+        else
+          acc
+      ) [] frag.anchors in
+  let arr = A.of_list allowed_indexes in
+  assert(A.length arr > 0); (* there must be at least one compat. anchor *)
+  Utls.array_rand_elt rng arr
 
-type state = Seed of fragment (* fragment with no ancestor in the tree *)
-           | Grow of int * fragment (* fragment with already one anchor used *)
-
-(* draw fragments to build molecule starting from seed fragment *)
-let grow rng seed_frag frags_ht =
+(* connectable set of fragments *)
+let draw_fragments rng all_frags frags_ht: mol_tree =
   let rec loop = function
-    | Seed frag ->
-      let anchors = A.to_list frag.anchors in
-      let children_frags =
-        L.map (fun anchor ->
-            let typ = get_anchor_type anchor in
-            (* draw one compatible fragment *)
-            let cand_frag = Utls.array_random_elt rng (Ht.find frags_ht typ) in
-            (* random choose index of compatible anchor in cand_frag *)
-            let i = rand_select_compat_anchor rng typ cand_frag in
-            Grow (i, cand_frag)
-          ) anchors in
-      Branch (frag, L.map loop children_frags)
+    | Seed seed ->
+      let anchor_types = get_anchor_types seed in
+      let children =
+        L.map (fun typ ->
+            let compat = draw_compat_frag rng frags_ht typ in
+            let i = draw_compat_anchor rng typ compat in
+            (i, compat)
+          ) anchor_types in
+      Branch (seed, L.map (fun x -> loop (Grow x)) children)
     | Grow (i, frag) ->
-      let anchors = frag.anchors in
-      let n = A.length anchors in
-      assert(n > 0);
+      let n = A.length frag.anchors in
+      assert(n > 0); (* at least one attachment point *)
       if n = 1 then
-        Leaf frag
-      else
-        let anchors' = A.to_list (Utls.array_without_elt_at i anchors) in
-        let children_frags =
-          L.map (fun anchor ->
-              let typ = get_anchor_type anchor in
-              (* draw one compatible fragment *)
-              let cand_frag = Utls.array_random_elt rng (Ht.find frags_ht typ) in
-              (* random choose index of compatible anchor in cand_frag *)
-              let j = rand_select_compat_anchor rng typ cand_frag in
-              Grow (j, cand_frag)
-            ) anchors' in
-        Branch (frag, L.map loop children_frags) in
+        (assert(i = 0);
+         Leaf frag)
+      else (* n > 1 *)
+        let anchor_types = get_anchor_types frag in
+        let children =
+          L.fold_lefti (fun acc j typ ->
+              if j = i then acc (* already connected to parent frag in tree *)
+              else
+                let compat = draw_compat_frag rng frags_ht typ in
+                let k = draw_compat_anchor rng typ compat in
+                (k, compat) :: acc
+            ) [] anchor_types in
+        (* children must be put in the right order -> rev_map *)
+        Branch (frag, L.rev_map (fun x -> loop (Grow x)) children) in
+  let seed_frag = Utls.array_rand_elt rng all_frags in
   loop (Seed seed_frag)
-    
-let connect_fragments rng name_prfx frags_a frags_ht =
-  (* draw uniformly seed fragment *)
-  let seed_frag = Utls.array_random_elt rng frags_a in
-  let fragments = grow rng seed_frag frags_ht in
-  let reindexed = reindex_mol_tree fragments in
-  molecule_from_tree rng name_prfx reindexed
 
-(* FBR: check some generated mols; create regression test suite *)
+let connect_fragments rng name_prfx all_fragments frags_ht =
+  let fragments = draw_fragments rng all_fragments frags_ht in
+  let fragments' = reindex_mol_tree fragments in
+  (* TODO: connect fragments *)
+  failwith "not implemented yet"
 
 let main () =
   Log.(set_log_level INFO);
@@ -723,8 +600,9 @@ let main () =
           Utls.time_it (fun () ->
               for i = 1 to nb_mols do
                 let name_prfx = sprintf "genmol_%06d" i in
-                let mol = connect_fragments rng name_prfx all_fragments frags_ht in
-                write_one_molecule out mol
+                failwith "not implemented yet"
+                (* let mol = connect_fragments rng name_prfx all_fragments frags_ht in
+                 * write_one_molecule out mol *)
               done
             ) in
         Log.info "gen %d mols in %1.2fs" nb_mols dt2
