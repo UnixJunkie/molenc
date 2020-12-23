@@ -594,3 +594,14 @@ let array_without_elt_at i a =
 let list_really_remove_one l x =
   assert(L.mem x l); (* BatList.remove doesn't enforce this *)
   L.remove l x
+
+let array_prepend_to_list a l =
+  A.fold_right (fun x acc -> x :: acc) a l
+
+let string_array_concat sep a =
+  let buff = Buffer.create 1024 in
+  A.iteri (fun i s ->
+      if i > 0 then Buffer.add_string buff sep;
+      Buffer.add_string buff s
+    ) a;
+  Buffer.contents buff
