@@ -10,68 +10,20 @@
 # txt molecule to SMILES
 
 import argparse, rdkit, re, sys, time
+import molenc_common as common
 from rdkit import Chem
-
-# TODO: PUT IN COMMON
-# "#atoms:15 NCGC00261552-01_f00"
-def read_atoms_header(line):
-    (atoms, nb_atoms, name) = [t(s) for t,s in
-                               zip((str,int,str), re.split('[: ]', line))]
-    assert(atoms == "#atoms")
-    return (nb_atoms, name)
-
-# TODO: PUT IN COMMON
-# "0 0,6,2,0"
-def read_atom(line):
-    (index, nb_pi, atomic_num, nb_HA, charge) = [t(s) for t,s in
-                                                 zip((int,int,int,int,int),
-                                                     re.split('[, ]', line))]
-    return (index, nb_pi, atomic_num, nb_HA, charge)
-
-# TODO: PUT IN COMMON
-# "#bonds:16"
-def read_bonds_header(line):
-    (bonds, nb_bonds) = [t(s) for t,s in
-                         zip((str,int), re.split('[:]', line))]
-    assert(bonds == "#bonds")
-    return nb_bonds
-
-# TODO: PUT IN COMMON
-def bond_type_of_char(c):
-    if c == '-':
-        return rdkit.Chem.rdchem.BondType.SINGLE
-    elif c == ':':
-        return rdkit.Chem.rdchem.BondType.AROMATIC
-    elif c == '=':
-        return rdkit.Chem.rdchem.BondType.DOUBLE
-    elif c == '#':
-        return rdkit.Chem.rdchem.BondType.TRIPLE
-    else:
-        assert("molenc_frag2smi.py: bond_type_of_char" == "")
-
-# TODO: PUT IN COMMON
-# "0 - 16"
-def read_bond(line):
-    (start_i, c, stop_i) = [t(s) for t,s in
-                                          zip((int,str,int),
-                                              re.split('[ ]', line))]
-    return (start_i, bond_type_of_char(c), stop_i)
-
-class End_of_file(Exception):
-    """End of file was reached"""
-    pass
 
 # create a fake molecule for the corresp. fragment
 def read_one_molecule(input):
     res_mol = Chem.RWMol()
     atoms_header = input.readline().strip()
     if atoms_header == '':
-        raise End_of_file # no EOF in Python...
-    nb_atoms, name = read_atoms_header(atoms_header)
+        raise common.End_of_file # no EOF in Python...
+    nb_atoms, name = common.read_atoms_header(atoms_header)
     old2new = {}
     for _i in range(nb_atoms):
         line = input.readline().strip()
-        (index, nb_pi, atomic_num, nb_HA, charge) = read_atom(line)
+        (index, nb_pi, atomic_num, nb_HA, charge) = common.read_atom(line)
         # add atom
         a = Chem.Atom(atomic_num)
         if nb_pi == 1:
@@ -81,10 +33,10 @@ def read_one_molecule(input):
         # we need to convert atom indexes
         old2new[index] = j
     bonds_header = input.readline().strip()
-    nb_bonds = read_bonds_header(bonds_header)
+    nb_bonds = common.read_bonds_header(bonds_header)
     for i in range(nb_bonds):
         line = input.readline().strip()
-        (start_i, bt, stop_i) = read_bond(line)
+        (start_i, bt, stop_i) = common.read_bond(line)
         start = old2new[start_i]
         stop = old2new[stop_i]
         # add bond
@@ -123,7 +75,7 @@ if __name__ == '__main__':
                 smi, name = read_one_molecule(input)
                 count += 1
                 print('%s\t%s' % (smi, name), file=output)
-        except End_of_file:
+        except common.End_of_file:
             pass
     after = time.time()
     dt = after - before
