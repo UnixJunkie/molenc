@@ -439,14 +439,14 @@ let organize_fragments frags_a =
       A.of_list frags_lst
     ) ht
 
-(* prepare for final molecule *)
-let reindex_mol_tree t =
+let count_mol_tree_bonds t =
   let count = ref 0 in
   let rec loop = function
-    | Leaf leaf -> Leaf (reindex count leaf)
-    | Branch (core, branches) -> Branch (reindex count core,
-                                         L.map loop branches) in
-  loop t
+    | Leaf leaf -> count := !count + (A.length leaf.bonds)
+    | Branch (core, branches) -> (count := !count + (A.length core.bonds);
+                                  L.iter loop branches) in
+  loop t;
+  !count
 
 (* extract all fragment names from the tree *)
 let string_of_mol_tree t =
@@ -468,8 +468,11 @@ type state =
   (* fragment with one anchor used by parent in tree *)
   | Grow of (int * fragment)
 
-let draw_compat_frag rng frags_ht typ =
-  Utls.array_rand_elt rng (Ht.find frags_ht typ)
+let draw_compat_frag rng count bonds_count frags_ht typ =
+  let frag = Utls.array_rand_elt rng (Ht.find frags_ht typ) in
+  incr count;
+  bonds_count := !bonds_count + (A.length frag.bonds);
+  frag
 
 (* find index of the first compatible anchor *)
 let compat_anchor_index (src_typ, dst_typ) frag: int =
@@ -479,7 +482,10 @@ let compat_anchor_index (src_typ, dst_typ) frag: int =
 
 (* connectable set of fragments *)
 let draw_and_connect_fragments rng all_frags frags_ht: mol_tree =
-  let offset = ref 0 in
+  let offset = ref 0 in (* to renumber atoms *)
+  let seed_frag = Utls.array_rand_elt rng all_frags in
+  let fcount = ref 1 in
+  let bcount = ref (A.length seed_frag.bonds) in
   let rec loop = function
     | Seed seed ->
       let seed' = reindex offset seed in
@@ -488,7 +494,7 @@ let draw_and_connect_fragments rng all_frags frags_ht: mol_tree =
       let anchor_types = get_anchor_types seed' in
       let children =
         L.map (fun typ ->
-            let compat = draw_compat_frag rng frags_ht typ in
+            let compat = draw_compat_frag rng fcount bcount frags_ht typ in
             let compat' = reindex offset compat in
             let i = compat_anchor_index typ compat' in
             (i, compat')
@@ -516,7 +522,7 @@ let draw_and_connect_fragments rng all_frags frags_ht: mol_tree =
         let anchor_types = anchor_types anchors in
         let children =
           L.map (fun typ ->
-              let compat = draw_compat_frag rng frags_ht typ in
+              let compat = draw_compat_frag rng fcount bcount frags_ht typ in
               let compat' = reindex offset compat in
               let k = compat_anchor_index typ compat' in
               (k, compat')
@@ -531,8 +537,10 @@ let draw_and_connect_fragments rng all_frags frags_ht: mol_tree =
         let bonds' = L.rev_append new_bonds bonds in
         let frag' = { frag with bonds = A.of_list bonds' } in
         Branch (frag', L.map (fun x -> loop (Grow x)) children) in
-  let seed_frag = Utls.array_rand_elt rng all_frags in
-  loop (Seed seed_frag)
+  let tree = loop (Seed seed_frag) in
+  let num_bonds = count_mol_tree_bonds tree in
+  assert(num_bonds = !bcount + (!fcount - 1));
+  tree
 
 let molecule_of_tree t =
   let rec loop (names, atoms, bonds) = function
