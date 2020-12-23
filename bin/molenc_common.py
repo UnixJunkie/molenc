@@ -1,6 +1,6 @@
 
-import numpy
-import rdkit
+import numpy, rdkit, re
+
 from rdkit import Chem
 
 def sort_pairs(pairs):
@@ -54,3 +54,43 @@ def print_distance_matrix(out, mol, threeD):
                 else:
                     print(" %d" % x, end='', file=out)
             print("", file=out) # newline
+
+# "#atoms:15 NCGC00261552-01_f00"
+def read_atoms_header(line):
+    (atoms, nb_atoms, name) = [t(s) for t,s in zip((str,int,str),
+                               re.split('[: ]', line))]
+    assert(atoms == "#atoms")
+    return (nb_atoms, name)
+
+# "0 0,6,2,0"
+def read_atom(line):
+    (index, nb_pi, atomic_num, nb_HA, charge) = [t(s) for t,s in
+                                                 zip((int,int,int,int,int),
+                                                 re.split('[, ]', line))]
+    return (index, nb_pi, atomic_num, nb_HA, charge)
+
+# "#bonds:16"
+def read_bonds_header(line):
+    (bonds, nb_bonds) = [t(s) for t,s in
+                         zip((str,int),
+                         re.split('[:]', line))]
+    assert(bonds == "#bonds")
+    return nb_bonds
+
+def bond_type_of_char(c):
+    if c == '-':
+        return rdkit.Chem.rdchem.BondType.SINGLE
+    elif c == ':':
+        return rdkit.Chem.rdchem.BondType.AROMATIC
+    elif c == '=':
+        return rdkit.Chem.rdchem.BondType.DOUBLE
+    elif c == '#':
+        return rdkit.Chem.rdchem.BondType.TRIPLE
+    else:
+        assert("molenc_common.py: bond_type_of_char" == "")
+
+# "0 - 16"
+def read_bond(line):
+    (start_i, c, stop_i) = [t(s) for t,s in zip((int,str,int),
+                            re.split('[ ]', line))]
+    return (start_i, bond_type_of_char(c), stop_i)

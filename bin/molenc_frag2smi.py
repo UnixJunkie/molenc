@@ -10,47 +10,8 @@
 # txt fragment to smi
 
 import argparse, rdkit, re, sys, time
+import molenc_common as common
 from rdkit import Chem
-
-# "#atoms:15 NCGC00261552-01_f00"
-def read_atoms_header(line):
-    (atoms, nb_atoms, frag_name) = [t(s) for t,s in
-                                    zip((str,int,str), re.split('[: ]', line))]
-    assert(atoms == "#atoms")
-    return (nb_atoms, frag_name)
-
-# "0 0,6,2,0"
-def read_atom(line):
-    (index, nb_pi, atomic_num, nb_HA, charge) = [t(s) for t,s in
-                                                 zip((int,int,int,int,int),
-                                                     re.split('[, ]', line))]
-    return (index, nb_pi, atomic_num, nb_HA, charge)
-
-# "#bonds:16"
-def read_bonds_header(line):
-    (bonds, nb_bonds) = [t(s) for t,s in
-                         zip((str,int), re.split('[:]', line))]
-    assert(bonds == "#bonds")
-    return nb_bonds
-
-def bond_type_of_char(c):
-    if c == '-':
-        return rdkit.Chem.rdchem.BondType.SINGLE
-    elif c == ':':
-        return rdkit.Chem.rdchem.BondType.AROMATIC
-    elif c == '=':
-        return rdkit.Chem.rdchem.BondType.DOUBLE
-    elif c == '#':
-        return rdkit.Chem.rdchem.BondType.TRIPLE
-    else:
-        assert("molenc_frag2smi.py: bond_type_of_char" == "")
-
-# "0 - 16"
-def read_bond(line):
-    (start_i, c, stop_i) = [t(s) for t,s in
-                                          zip((int,str,int),
-                                              re.split('[ ]', line))]
-    return (start_i, bond_type_of_char(c), stop_i)
 
 # "#anchors:1"
 def read_anchors_header(line):
@@ -75,11 +36,11 @@ def read_one_fragment(input):
     atoms_header = input.readline().strip()
     if atoms_header == '':
         raise End_of_file # no EOF in Python...
-    nb_atoms, frag_name = read_atoms_header(atoms_header)
+    nb_atoms, frag_name = common.read_atoms_header(atoms_header)
     old2new = {}
     for _i in range(nb_atoms):
         line = input.readline().strip()
-        (index, nb_pi, atomic_num, nb_HA, charge) = read_atom(line)
+        (index, nb_pi, atomic_num, nb_HA, charge) = common.read_atom(line)
         # add atom
         a = Chem.Atom(atomic_num)
         if nb_pi == 1:
@@ -89,10 +50,10 @@ def read_one_fragment(input):
         # we need to convert atom indexes
         old2new[index] = j
     bonds_header = input.readline().strip()
-    nb_bonds = read_bonds_header(bonds_header)
+    nb_bonds = common.read_bonds_header(bonds_header)
     for i in range(nb_bonds):
         line = input.readline().strip()
-        (start_i, bt, stop_i) = read_bond(line)
+        (start_i, bt, stop_i) = common.read_bond(line)
         start = old2new[start_i]
         stop = old2new[stop_i]
         # print('%d %d' % (start, stop))
