@@ -40,7 +40,7 @@ def read_bonds_header(line):
 def bond_type_of_char(c):
     if c == '-':
         return rdkit.Chem.rdchem.BondType.SINGLE
-    elif c == '~':
+    elif c == ':':
         return rdkit.Chem.rdchem.BondType.AROMATIC
     elif c == '=':
         return rdkit.Chem.rdchem.BondType.DOUBLE
@@ -67,7 +67,7 @@ def read_one_molecule(input):
     atoms_header = input.readline().strip()
     if atoms_header == '':
         raise End_of_file # no EOF in Python...
-    nb_atoms, frag_name = read_atoms_header(atoms_header)
+    nb_atoms, name = read_atoms_header(atoms_header)
     old2new = {}
     for _i in range(nb_atoms):
         line = input.readline().strip()
@@ -87,42 +87,25 @@ def read_one_molecule(input):
         (start_i, bt, stop_i) = read_bond(line)
         start = old2new[start_i]
         stop = old2new[stop_i]
-        # print('%d %d' % (start, stop))
         # add bond
         res_mol.AddBond(start, stop, bt)
-    anchors_header = input.readline().strip()
-    nb_anchors = read_anchors_header(anchors_header)
-    anchors = []
     # unset aromaticity flag if atom not in ring
     for a in res_mol.GetAtoms():
         if not a.IsInRing():
             a.SetIsAromatic(False)
-    for _i in range(nb_anchors):
-        line = input.readline().strip()
-        anchor = read_anchor(line)
-        start = old2new[anchor]
-        # dandling attachment point: dummy atom
-        a = Chem.Atom('*')
-        j = res_mol.AddAtom(a)
-        res_mol.AddBond(start, j, Chem.rdchem.BondType.SINGLE)
-        anchors.append(anchor)
-    ## debug log
-    # print('%s %d %d %d' % (frag_name, nb_atoms, nb_bonds, nb_anchors),
-    #       file=sys.stderr)
-    # smi for mol
-    #try:
-    Chem.SanitizeMol(res_mol)
-    #except rdkit.Chem.rdchem.AtomKekulizeException:
-    #    print("AtomKekulizeException in %s" % frag_name, file=sys.stderr)
+    try:
+        Chem.SanitizeMol(res_mol)
+    except rdkit.Chem.rdchem.KekulizeException:
+        print("KekulizeException in %s" % name, file=sys.stderr)
     smi = Chem.MolToSmiles(res_mol)
-    return (smi, frag_name)
+    return (smi, name)
 
 if __name__ == '__main__':
     before = time.time()
     # CLI options parsing
-    parser = argparse.ArgumentParser(description = "compute atom types")
-    parser.add_argument("-i", metavar = "input.frags", dest = "input_fn",
-                        help = "fragments input file")
+    parser = argparse.ArgumentParser(description = "txt molecule to smi")
+    parser.add_argument("-i", metavar = "input.mols", dest = "input_fn",
+                        help = "molecules input file")
     parser.add_argument("-o", metavar = "output.smi", dest = "output_fn",
                         help = "output file")
     # parse CLI
@@ -137,12 +120,12 @@ if __name__ == '__main__':
     with open(input_fn) as input:
         try:
             while True:
-                smi, name = read_one_fragment(input)
+                smi, name = read_one_molecule(input)
                 count += 1
                 print('%s\t%s' % (smi, name), file=output)
         except End_of_file:
             pass
     after = time.time()
     dt = after - before
-    print("%d fragments at %.2f frag/s" % (count, count / dt), file=sys.stderr)
+    print("%d molecules at %.2f frag/s" % (count, count / dt), file=sys.stderr)
     output.close()
