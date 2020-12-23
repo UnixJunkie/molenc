@@ -567,7 +567,7 @@ let list_really_take n l =
   assert(L.length took = n);
   took
 
-let array_random_elt rng a =
+let array_rand_elt rng a =
   let n = A.length a in
   let i = BatRandom.State.int rng n in
   a.(i)
