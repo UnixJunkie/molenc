@@ -192,11 +192,14 @@ let reindex offset frag =
   offset := !offset + n; (* update offset *)
   { name = frag.name; atoms; bonds; anchors }
 
-let get_anchor_types (f: fragment): atom_type_pair list =
+let anchor_types (frags: anchor array): atom_type_pair list =
   (* in the right order *)
   A.fold_right (fun x acc ->
       (get_anchor_type x) :: acc
-    ) f.anchors []
+    ) frags []
+
+let get_anchor_types (f: fragment): atom_type_pair list =
+  anchor_types f.anchors
 
 let get_anchor_starts (f: fragment): int list =
   (* in the right order *)
@@ -482,17 +485,32 @@ let draw_compat_anchor rng (src_typ, dst_typ) frag: int =
   Utls.array_rand_elt rng arr
 
 (* connectable set of fragments *)
-let draw_fragments rng all_frags frags_ht: mol_tree =
+let draw_and_connect_fragments rng all_frags frags_ht: mol_tree =
+  let offset = ref 0 in
   let rec loop = function
     | Seed seed ->
-      let anchor_types = get_anchor_types seed in
+      let seed' = reindex offset seed in
+      let anchors = A.to_list seed'.anchors in
+      let bonds = A.to_list seed'.bonds in
+      let anchor_types = get_anchor_types seed' in
       let children =
         L.map (fun typ ->
             let compat = draw_compat_frag rng frags_ht typ in
-            let i = draw_compat_anchor rng typ compat in
-            (i, compat)
+            let compat' = reindex offset compat in
+            (* FBR: find_first_compat is enough and simpler *)
+            let i = draw_compat_anchor rng typ compat' in
+            (i, compat')
           ) anchor_types in
-      Branch (seed, L.map (fun x -> loop (Grow x)) children)
+      (* connect them to seed frag *)
+      let new_bonds =
+        L.map2 (fun start_a (i, child) ->
+            { start = get_anchor_start start_a;
+              btype = Single;
+              stop = get_anchor_start child.anchors.(i) }
+          ) anchors children in
+      let bonds' = L.rev_append new_bonds bonds in
+      let seed'' = { seed' with bonds = A.of_list bonds' } in
+      Branch (seed'', L.map (fun x -> loop (Grow x)) children)
     | Grow (i, frag) ->
       let n = A.length frag.anchors in
       assert(n > 0); (* at least one attachment point *)
@@ -500,24 +518,33 @@ let draw_fragments rng all_frags frags_ht: mol_tree =
         (assert(i = 0);
          Leaf frag)
       else (* n > 1 *)
-        let anchor_types = get_anchor_types frag in
+        let anchors = Utls.array_without_elt_at i frag.anchors in
+        let anchors' = A.to_list anchors in
+        let bonds = A.to_list frag.bonds in
+        let anchor_types = anchor_types anchors in
         let children =
-          L.fold_lefti (fun acc j typ ->
-              if j = i then acc (* already connected to parent frag in tree *)
-              else
-                let compat = draw_compat_frag rng frags_ht typ in
-                let k = draw_compat_anchor rng typ compat in
-                (k, compat) :: acc
-            ) [] anchor_types in
-        (* children must be put in the right order -> rev_map *)
-        Branch (frag, L.rev_map (fun x -> loop (Grow x)) children) in
+          L.map (fun typ ->
+              let compat = draw_compat_frag rng frags_ht typ in
+              let compat' = reindex offset compat in
+              let k = draw_compat_anchor rng typ compat' in
+              (k, compat')
+            ) anchor_types in
+        (* connect them to parent *)
+        let new_bonds =
+          L.map2 (fun start_a (k, child) ->
+              { start = get_anchor_start start_a;
+                btype = Single;
+                stop = get_anchor_start child.anchors.(k) }
+            ) anchors' children in
+        let bonds' = L.rev_append new_bonds bonds in
+        let frag' = { frag with bonds = A.of_list bonds' } in
+        Branch (frag', L.map (fun x -> loop (Grow x)) children) in
   let seed_frag = Utls.array_rand_elt rng all_frags in
   loop (Seed seed_frag)
 
 let connect_fragments rng name_prfx all_fragments frags_ht =
-  let fragments = draw_fragments rng all_fragments frags_ht in
-  let fragments' = reindex_mol_tree fragments in
-  (* TODO: connect fragments *)
+  let tree = draw_and_connect_fragments rng all_fragments frags_ht in
+  (* TODO: convert to molecule *)
   failwith "not implemented yet"
 
 let main () =
