@@ -12,6 +12,7 @@
 import argparse, rdkit, re, sys, time
 import molenc_common as common
 from rdkit import Chem
+from rdkit.Chem.Draw import rdMolDraw2D
 
 # "#anchors:1"
 def read_anchors_header(line):
@@ -34,17 +35,21 @@ def read_one_fragment(input):
         raise common.End_of_file # no EOF in Python...
     nb_atoms, frag_name = common.read_atoms_header(atoms_header)
     old2new = {}
+    pi_electrons = {}
     for _i in range(nb_atoms):
         line = input.readline().strip()
         (index, nb_pi, atomic_num, nb_HA, charge) = common.read_atom(line)
         # add atom
         a = Chem.Atom(atomic_num)
-        if nb_pi == 1:
-            a.SetIsAromatic(True)
         a.SetFormalCharge(charge)
         j = res_mol.AddAtom(a)
-        # we need to convert atom indexes
+        # # WARNING: we need a fix for aromatic Nitrogen ???
+        # if atomic_num == 7 and nb_pi == 1 and nb_HA == 2 and charge == 0:
+        #     a.SetNumExplicitHs(0)
+        # we will need to convert atom indexes later
         old2new[index] = j
+        # need to remember pi electrons count
+        pi_electrons[j] = nb_pi
     bonds_header = input.readline().strip()
     nb_bonds = common.read_bonds_header(bonds_header)
     for i in range(nb_bonds):
@@ -58,10 +63,13 @@ def read_one_fragment(input):
     anchors_header = input.readline().strip()
     nb_anchors = read_anchors_header(anchors_header)
     anchors = []
-    # unset aromaticity flag if atom not in ring
+    # position aromaticity flag
     for a in res_mol.GetAtoms():
-        if not a.IsInRing():
-            a.SetIsAromatic(False)
+        anum = a.GetAtomicNum()
+        if a.IsInRing() and (anum == 6 or anum == 7):
+            j = a.GetIdx()
+            if pi_electrons[j] == 1:
+                a.SetIsAromatic(True)
     for _i in range(nb_anchors):
         line = input.readline().strip()
         anchor = read_anchor(line)
@@ -75,12 +83,23 @@ def read_one_fragment(input):
     # print('%s %d %d %d' % (frag_name, nb_atoms, nb_bonds, nb_anchors),
     #       file=sys.stderr)
     # smi for mol
+    error = False
     try:
         Chem.SanitizeMol(res_mol)
     except rdkit.Chem.rdchem.AtomKekulizeException:
         print("AtomKekulizeException in %s" % frag_name, file=sys.stderr)
+        error = True
     except rdkit.Chem.rdchem.KekulizeException:
         print("KekulizeException in %s" % frag_name, file=sys.stderr)
+        error = True
+    # if error:
+    #     d = rdMolDraw2D.MolDraw2DCairo(500, 500)
+    #     d.drawOptions().addAtomIndices = True
+    #     d.DrawMolecule(res_mol)
+    #     d.FinishDrawing()
+    #     png_fn = '%s.png' % frag_name
+    #     with open(png_fn, 'wb') as fn:
+    #         fn.write(d.GetDrawingText())
     smi = Chem.MolToSmiles(res_mol)
     return (smi, frag_name)
 
