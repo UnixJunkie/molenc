@@ -15,8 +15,8 @@ which mview && mview data/3_frags.smi &
 cut -f1 data/3_genmols.smi | sort -u > data/3_genmols_uniq.smi
 which mview && mview data/3_genmols_uniq.smi &
 
-# IN=data/all_kegg_drugs_20112019_std
-# ./bin/molenc_frag.py -i $IN.smi -o $IN.to_frag
+# IN=data/chembl_antivirals
+# ./bin/molenc_frag.py -i $IN.smi -o $IN.to_frag --draw
 # ./molenc_frag -im $IN.to_frag -of $IN.frags -s 1234
 # ./bin/molenc_frag2smi.py -i $IN.frags -o $IN.frags.smi
 # ./molenc_frag -if $IN.frags -om $IN.mols -s 1234 -n 50
