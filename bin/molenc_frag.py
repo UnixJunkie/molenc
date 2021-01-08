@@ -85,7 +85,7 @@ def print_bonds(out, mol):
 def print_cuttable_bonds(out, mol):
     cuttable_bonds = find_cuttable_bonds(mol)
     total_weight = Descriptors.MolWt(mol)
-    # 150 Da: suggested max fragment weight
+    # 150 Da: D. Rognan's suggested max fragment weight
     nb_frags = round(total_weight / 150)
     max_cuts = min(len(cuttable_bonds), nb_frags)
     print("#cut_bonds:%d:%d" % (len(cuttable_bonds), max_cuts), file=out)
@@ -93,13 +93,10 @@ def print_cuttable_bonds(out, mol):
         i = bond.GetIdx()
         print("%d" % i, file=out)
 
-# FBR: test on all KEGG drugs
-# FBR: the program has two modes: fragment | assemble (TODO)
-
 if __name__ == '__main__':
     before = time.time()
     # CLI options parsing
-    parser = argparse.ArgumentParser(description = "compute atom types")
+    parser = argparse.ArgumentParser(description = "compute molecule fragmentation hints")
     parser.add_argument("-i", metavar = "input.smi", dest = "input_fn",
                         help = "molecules input file")
     parser.add_argument("-o", metavar = "output.txt", dest = "output_fn",
@@ -109,7 +106,7 @@ if __name__ == '__main__':
                         help = "output PNG for each molecule w/ atom indexes")
     # parse CLI
     if len(sys.argv) == 1:
-        # show help in case user has no clue of what to do
+        # user has no clue of what to do -> usage
         parser.print_help(sys.stderr)
         sys.exit(1)
     args = parser.parse_args()
