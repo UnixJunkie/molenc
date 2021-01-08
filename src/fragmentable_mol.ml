@@ -15,19 +15,21 @@ type atom = { index: int;
               pi_electrons: int;
               atomic_num: int;
               heavy_neighbors: int;
-              formal_charge: int }
+              formal_charge: int;
+              stereo_code: int }
 
-type atom_type = int * int * int * int
+type atom_type = int * int * int * int * int
 
 type atom_type_pair = atom_type * atom_type
 
-let dummy_atom_type = (-1, -1, -1, -1)
+let dummy_atom_type = (-1, -1, -1, -1, -1)
 
 let get_atom_type at =
   (at.pi_electrons,
    at.atomic_num,
    at.heavy_neighbors,
-   at.formal_charge)
+   at.formal_charge,
+   at.stereo_code)
 
 let reindex_atom ht (at: atom): atom =
   { at with index = Ht.find ht at.index }
@@ -39,26 +41,29 @@ let dummy_atom = { index = -1;
                    pi_electrons = -1;
                    atomic_num = -1;
                    heavy_neighbors = -1;
-                   formal_charge = -1 }
+                   formal_charge = -1;
+                   stereo_code = -1 }
 
 let atom_of_string s =
-  Scanf.sscanf s "%d %d,%d,%d,%d"
-    (fun a b c d e -> { index = a;
-                        pi_electrons = b;
-                        atomic_num = c;
-                        heavy_neighbors = d;
-                        formal_charge = e })
+  Scanf.sscanf s "%d %d,%d,%d,%d,%d"
+    (fun a b c d e f -> { index = a;
+                          pi_electrons = b;
+                          atomic_num = c;
+                          heavy_neighbors = d;
+                          formal_charge = e;
+                          stereo_code = f })
 
 let string_of_atom a =
-  sprintf "%d %d,%d,%d,%d"
+  sprintf "%d %d,%d,%d,%d,%d"
     a.index
     a.pi_electrons
     a.atomic_num
     a.heavy_neighbors
     a.formal_charge
+    a.stereo_code
 
-let string_of_atom_type (a, b, c, d) =
-  sprintf "%d,%d,%d,%d" a b c d
+let string_of_atom_type (b, c, d, e, f) =
+  sprintf "%d,%d,%d,%d,%d" b c d e f
 
 type bond_type = Single
                | Aromatic
@@ -152,11 +157,11 @@ let string_of_anchor a =
     (string_of_atom_type a.dst_typ)
 
 let anchor_of_string s =
-  Scanf.sscanf s "%d,%d,%d,%d %d %d,%d,%d,%d"
-    (fun a b c d start i j k l ->
-       { src_typ = (a, b, c, d);
+  Scanf.sscanf s "%d,%d,%d,%d,%d %d %d,%d,%d,%d,%d"
+    (fun a b c d e start i j k l m ->
+       { src_typ = (a, b, c, d, e);
          start;
-         dst_typ = (i, j, k, l) })
+         dst_typ = (i, j, k, l, m) })
 
 type fragment =
   { name: string;
