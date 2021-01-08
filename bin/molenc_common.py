@@ -64,10 +64,10 @@ def read_atoms_header(line):
 
 # "0 0,6,2,0"
 def read_atom(line):
-    (index, nb_pi, atomic_num, nb_HA, charge) = [t(s) for t,s in
-                                                 zip((int,int,int,int,int),
-                                                 re.split('[, ]', line))]
-    return (index, nb_pi, atomic_num, nb_HA, charge)
+    (index, nb_pi, atomic_num, nb_HA, charge, stereo) = [t(s) for t,s in
+                                                         zip((int,int,int,int,int,int),
+                                                         re.split('[, ]', line))]
+    return (index, nb_pi, atomic_num, nb_HA, charge, stereo)
 
 # "#bonds:16"
 def read_bonds_header(line):
@@ -98,3 +98,16 @@ def read_bond(line):
 class End_of_file(Exception):
     """End of file was reached"""
     pass
+
+# stereo information encoding using integers
+# FBR: take care of stereo bonds
+class StereoCodes(IntEnum):
+    NONE = 0 # default unless specified otherwise
+    ANY_CENTER = 1
+    R_CENTER = 2
+    S_CENTER = 3
+    ANY_BOND = 4
+    Z_BOND = 5
+    E_BOND = 6
+    CIS_BOND = 7
+    TRANS_BOND = 8
