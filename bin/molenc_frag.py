@@ -34,45 +34,44 @@ def nb_heavy_atom_neighbors(a):
     return res
 
 # stereo information encoding, at the atom level and using integers
-# FBR: take care of stereo centers first
-# FBR: take care of stereo bonds later
-class AtomStereoCode(IntEnum):
+# FBR: take care of stereo bonds
+class StereoCodes(IntEnum):
     NONE = 0 # default unless specified otherwise
     ANY_CENTER = 1
     R_CENTER = 2
     S_CENTER = 3
-    # ANY_BOND_END = 4
-    # Z_BOND_END = 5
-    # E_BOND_END = 6
-    # CIS_BOND_END = 7
-    # TRANS_BOND_END = 8
+    ANY_BOND = 4
+    Z_BOND = 5
+    E_BOND = 6
+    CIS_BOND = 7
+    TRANS_BOND = 8
 
-to_atom_stereo = \
-  { '?': AtomStereoCode.ANY_CENTER,
-    'R': AtomStereoCode.R_CENTER,
-    'S': AtomStereoCode.S_CENTER,
-    rdkit.Chem.rdchem.BondStereo.STEREONONE: AtomStereoCode.NONE }
-    # rdkit.Chem.rdchem.BondStereo.STEREOANY: AtomStereoCode.ANY_BOND_END,
-    # rdkit.Chem.rdchem.BondStereo.STEREOZ: AtomStereoCode.Z_BOND_END,
-    # rdkit.Chem.rdchem.BondStereo.STEREOE: AtomStereoCode.E_BOND_END,
-    # rdkit.Chem.rdchem.BondStereo.STEREOCIS: AtomStereoCode.CIS_BOND_END,
-    # rdkit.Chem.rdchem.BondStereo.STEREOTRANS: AtomStereoCode.TRANS_BOND_END }
+to_stereo_code = \
+  { '?': StereoCodes.ANY_CENTER,
+    'R': StereoCodes.R_CENTER,
+    'S': StereoCodes.S_CENTER,
+    rdkit.Chem.rdchem.BondStereo.STEREONONE: StereoCodes.NONE,
+    rdkit.Chem.rdchem.BondStereo.STEREOANY: StereoCodes.ANY_BOND,
+    rdkit.Chem.rdchem.BondStereo.STEREOZ: StereoCodes.Z_BOND,
+    rdkit.Chem.rdchem.BondStereo.STEREOE: StereoCodes.E_BOND,
+    rdkit.Chem.rdchem.BondStereo.STEREOCIS: StereoCodes.CIS_BOND,
+    rdkit.Chem.rdchem.BondStereo.STEREOTRANS: StereoCodes.TRANS_BOND }
 
-def get_stereo_codes(m):
+def get_atom_stereo_codes(m):
     # by default, each atom has no stereo
-    res = [AtomStereoCode.NONE for i in range(m.GetNumAtoms())]
+    res = [StereoCodes.NONE for i in range(m.GetNumAtoms())]
     # # unless detected otherwise for stereo bonds
     # for b in m.GetBonds():
     #     bstereo = b.GetStereo()
     #     if bstereo != rdkit.Chem.rdchem.BondStereo.STEREONONE:
     #         i = b.GetBeginAtomIdx()
     #         j = b.GetEndAtomIdx()
-    #         k = to_atom_stereo[bstereo]
+    #         k = to_stereo_code[bstereo]
     #         res[i] = k
     #         res[j] = k
     # or for chiral centers
     for i, k in Chem.FindMolChiralCenters(m):
-        res[i] = to_atom_stereo[k]
+        res[i] = to_stereo_code[k]
     return res
 
 # # stereo code tests
@@ -106,7 +105,7 @@ def find_cuttable_bonds(mol):
     return res
 
 def print_typed_atoms(out, mol):
-    stereo = get_stereo_codes(mol)
+    stereo = get_atom_stereo_codes(mol)
     for a in mol.GetAtoms():
         i = a.GetIdx()
         t = type_atom(a)
