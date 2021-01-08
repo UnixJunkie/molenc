@@ -53,56 +53,6 @@ def type_atom(a):
         res = "%s%d%s" % (symbol, nbHA, formal_charge)
     return res
 
-# stereo information encoding, at the atom level and using integers
-class AtomStereoCode(Enum):
-    NONE = 0
-    ANY_CENTER = 1
-    R_CENTER = 2
-    S_CENTER = 3
-    ANY_BOND_END = 4
-    Z_BOND_END = 5
-    E_BOND_END = 6
-    CIS_BOND_END = 7
-    TRANS_BOND_END = 8
-
-to_atom_stereo = \
-    { '?': AtomStereoCode.ANY_CENTER,
-    'R': AtomStereoCode.R_CENTER,
-    'S': AtomStereoCode.S_CENTER,
-    rdkit.Chem.rdchem.BondStereo.STEREONONE: AtomStereoCode.NONE,
-    rdkit.Chem.rdchem.BondStereo.STEREOANY: AtomStereoCode.ANY_BOND_END,
-    rdkit.Chem.rdchem.BondStereo.STEREOZ: AtomStereoCode.Z_BOND_END,
-rdkit.Chem.rdchem.BondStereo.STEREOE: AtomStereoCode.E_BOND_END,
-    rdkit.Chem.rdchem.BondStereo.STEREOCIS: AtomStereoCode.CIS_BOND_END,
-    rdkit.Chem.rdchem.BondStereo.STEREOTRANS: AtomStereoCode.TRANS_BOND_END }
-
-def get_stereo_codes(m):
-    # by default, each atom has no stereo
-    res = [AtomStereoCode.NONE for i in range(m.GetNumAtoms())]
-    # unless detected otherwise for stereo bonds
-    for b in m.GetBonds():
-        bstereo = b.GetStereo()
-        if bstereo != rdkit.Chem.rdchem.BondStereo.STEREONONE:
-            i = b.GetBeginAtomIdx()
-            j = b.GetEndAtomIdx()
-            k = to_atom_stereo[bstereo]
-            res[i] = k
-            res[j] = k
-    # or for chiral centers
-    for i, k in Chem.FindMolChiralCenters(m):
-        res[i] = to_atom_stereo[k]
-    return res
-
-# # tests
-# cis = Chem.MolFromSmiles('C/C=C\C')
-# trans = Chem.MolFromSmiles('C/C=C/C')
-# l_ala = Chem.MolFromSmiles('N[C@@H](C)C(=O)O')
-# d_ala = Chem.MolFromSmiles('N[C@H](C)C(=O)O')
-# print(get_stereo_codes(cis))
-# print(get_stereo_codes(trans))
-# print(get_stereo_codes(l_ala))
-# print(get_stereo_codes(d_ala))
-
 def encode_molecule(m):
     return map(type_atom, m.GetAtoms())
 
