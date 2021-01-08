@@ -77,6 +77,7 @@ def read_one_fragment(input):
         # dandling attachment point: dummy atom
         a = Chem.Atom('*')
         j = res_mol.AddAtom(a)
+        # only single, non stereo, bonds out of rings have been cut
         res_mol.AddBond(start, j, Chem.rdchem.BondType.SINGLE)
         anchors.append(anchor)
     ## debug log
@@ -106,14 +107,14 @@ def read_one_fragment(input):
 if __name__ == '__main__':
     before = time.time()
     # CLI options parsing
-    parser = argparse.ArgumentParser(description = "compute atom types")
+    parser = argparse.ArgumentParser(description = "convert txt fragments to SMILES")
     parser.add_argument("-i", metavar = "input.frags", dest = "input_fn",
                         help = "fragments input file")
     parser.add_argument("-o", metavar = "output.smi", dest = "output_fn",
-                        help = "output file")
+                        help = "SMILES output file")
     # parse CLI
     if len(sys.argv) == 1:
-        # show help in case user has no clue of what to do
+        # user has no clue of how to use
         parser.print_help(sys.stderr)
         sys.exit(1)
     args = parser.parse_args()
