@@ -17,6 +17,7 @@ from rdkit import RDConfig
 from rdkit.Chem import AllChem, Descriptors
 from rdkit.Chem.AtomPairs import Pairs
 from rdkit.Chem.Draw import rdMolDraw2D
+from molenc_common import StereoCodes
 
 def RobustSmilesMolSupplier(filename):
     with open(filename) as f:
@@ -33,23 +34,10 @@ def nb_heavy_atom_neighbors(a):
             res += 1
     return res
 
-# stereo information encoding, at the atom level and using integers
-# FBR: take care of stereo bonds
-class StereoCodes(IntEnum):
-    NONE = 0 # default unless specified otherwise
-    ANY_CENTER = 1
-    R_CENTER = 2
-    S_CENTER = 3
-    ANY_BOND = 4
-    Z_BOND = 5
-    E_BOND = 6
-    CIS_BOND = 7
-    TRANS_BOND = 8
-
 to_stereo_code = \
-  { '?': StereoCodes.ANY_CENTER,
-    'R': StereoCodes.R_CENTER,
-    'S': StereoCodes.S_CENTER,
+  { '?': StereoCodes.ANY_CENTER, # atom.SetChiralTag(Chem.ChiralType.CHI_UNSPECIFIED)
+    'R': StereoCodes.R_CENTER, # SMILES @@ means clockwise / R / Chem.ChiralType.CHI_TETRAHEDRAL_CW
+    'S': StereoCodes.S_CENTER, # SMILES @ means anti clockwise / S / Chem.ChiralType.CHI_TETRAHEDRAL_CCW
     rdkit.Chem.rdchem.BondStereo.STEREONONE: StereoCodes.NONE,
     rdkit.Chem.rdchem.BondStereo.STEREOANY: StereoCodes.ANY_BOND,
     rdkit.Chem.rdchem.BondStereo.STEREOZ: StereoCodes.Z_BOND,
