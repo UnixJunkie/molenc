@@ -11,7 +11,7 @@
 
 import argparse, molenc_common, os, random, rdkit, sys, time
 
-from enum import Enum
+from enum import IntEnum
 from rdkit import Chem
 from rdkit import RDConfig
 from rdkit.Chem import AllChem, Descriptors
@@ -33,6 +33,58 @@ def nb_heavy_atom_neighbors(a):
             res += 1
     return res
 
+# stereo information encoding, at the atom level and using integers
+# FBR: take care of stereo centers first
+# FBR: take care of stereo bonds later
+class AtomStereoCode(IntEnum):
+    NONE = 0 # default unless specified otherwise
+    ANY_CENTER = 1
+    R_CENTER = 2
+    S_CENTER = 3
+    # ANY_BOND_END = 4
+    # Z_BOND_END = 5
+    # E_BOND_END = 6
+    # CIS_BOND_END = 7
+    # TRANS_BOND_END = 8
+
+to_atom_stereo = \
+  { '?': AtomStereoCode.ANY_CENTER,
+    'R': AtomStereoCode.R_CENTER,
+    'S': AtomStereoCode.S_CENTER,
+    rdkit.Chem.rdchem.BondStereo.STEREONONE: AtomStereoCode.NONE }
+    # rdkit.Chem.rdchem.BondStereo.STEREOANY: AtomStereoCode.ANY_BOND_END,
+    # rdkit.Chem.rdchem.BondStereo.STEREOZ: AtomStereoCode.Z_BOND_END,
+    # rdkit.Chem.rdchem.BondStereo.STEREOE: AtomStereoCode.E_BOND_END,
+    # rdkit.Chem.rdchem.BondStereo.STEREOCIS: AtomStereoCode.CIS_BOND_END,
+    # rdkit.Chem.rdchem.BondStereo.STEREOTRANS: AtomStereoCode.TRANS_BOND_END }
+
+def get_stereo_codes(m):
+    # by default, each atom has no stereo
+    res = [AtomStereoCode.NONE for i in range(m.GetNumAtoms())]
+    # # unless detected otherwise for stereo bonds
+    # for b in m.GetBonds():
+    #     bstereo = b.GetStereo()
+    #     if bstereo != rdkit.Chem.rdchem.BondStereo.STEREONONE:
+    #         i = b.GetBeginAtomIdx()
+    #         j = b.GetEndAtomIdx()
+    #         k = to_atom_stereo[bstereo]
+    #         res[i] = k
+    #         res[j] = k
+    # or for chiral centers
+    for i, k in Chem.FindMolChiralCenters(m):
+        res[i] = to_atom_stereo[k]
+    return res
+
+# # stereo code tests
+# cis = Chem.MolFromSmiles('C/C=C\C')
+# trans = Chem.MolFromSmiles('C/C=C/C')
+# l_ala = Chem.MolFromSmiles('N[C@@H](C)C(=O)O')
+# d_ala = Chem.MolFromSmiles('N[C@H](C)C(=O)O')
+# print(get_stereo_codes(cis))
+# print(get_stereo_codes(trans))
+# print(get_stereo_codes(l_ala))
+# print(get_stereo_codes(d_ala))
+
 def type_atom(a):
     # stereo chemistry is ignored for the moment
     nb_pi_electrons = Pairs.Utils.NumPiElectrons(a)
@@ -43,20 +95,23 @@ def type_atom(a):
     res = "%d,%d,%d,%d" % (nb_pi_electrons, atom_num, nbHA, formal_charge)
     return res
 
-# single bonds not in rings
+# no stereo, single bonds not in rings
 def find_cuttable_bonds(mol):
     res = []
     for b in mol.GetBonds():
         if ((b.GetBondType() == rdkit.Chem.rdchem.BondType.SINGLE) and
-            (not b.IsInRing())):
+            (not b.IsInRing()) and
+            (b.GetStereo() == rdkit.Chem.rdchem.BondStereo.STEREONONE)):
             res.append(b)
     return res
 
 def print_typed_atoms(out, mol):
+    stereo = get_stereo_codes(mol)
     for a in mol.GetAtoms():
         i = a.GetIdx()
         t = type_atom(a)
-        print("%d %s" % (i, t), file=out)
+        s = stereo[i]
+        print("%d %s,%d" % (i, t, s), file=out)
 
 def char_of_bond_type(bond):
     t = bond.GetBondType()
@@ -96,7 +151,8 @@ def print_cuttable_bonds(out, mol):
 if __name__ == '__main__':
     before = time.time()
     # CLI options parsing
-    parser = argparse.ArgumentParser(description = "compute molecule fragmentation hints")
+    parser = argparse.ArgumentParser(
+        description = "compute molecule fragmentation hints")
     parser.add_argument("-i", metavar = "input.smi", dest = "input_fn",
                         help = "molecules input file")
     parser.add_argument("-o", metavar = "output.txt", dest = "output_fn",
