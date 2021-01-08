@@ -21,7 +21,7 @@ def read_anchors_header(line):
     assert(anchors == "#anchors")
     return nb_anchors
 
-# "0,6,2,0 0 0,6,2,0"
+# "0,6,2,0,0 0 0,6,2,0,0"
 def read_anchor(line):
     (start_t, start_i, stop_t) = [t(s) for t,s in
                                   zip((str,int,str), re.split('[ ]', line))]
@@ -38,10 +38,12 @@ def read_one_fragment(input):
     pi_electrons = {}
     for _i in range(nb_atoms):
         line = input.readline().strip()
-        (index, nb_pi, atomic_num, nb_HA, charge) = common.read_atom(line)
+        (index, nb_pi, atomic_num, nb_HA, charge, stereo) = common.read_atom(line)
         # add atom
         a = Chem.Atom(atomic_num)
         a.SetFormalCharge(charge)
+        if stereo > 0: # set chirality
+            a.SetChiralTag(common.atom_stereo_code_to_chiral_tag(stereo))
         j = res_mol.AddAtom(a)
         # # WARNING: we need a fix for aromatic Nitrogen ???
         # if atomic_num == 7 and nb_pi == 1 and nb_HA == 2 and charge == 0:
