@@ -2,6 +2,7 @@
 import numpy, rdkit, re
 
 from rdkit import Chem
+from enum import IntEnum
 
 def sort_pairs(pairs):
     res = []
@@ -115,9 +116,9 @@ class StereoCodes(IntEnum):
 def atom_stereo_code_to_chiral_tag(c):
     if c == 1:
         return Chem.ChiralType.CHI_UNSPECIFIED
-    else if c == 2:
+    elif c == 2:
         return Chem.ChiralType.CHI_TETRAHEDRAL_CW
-    else if c == 3:
+    elif c == 3:
         return Chem.ChiralType.CHI_TETRAHEDRAL_CCW
     else:
         assert("molenc_common.py: atom_stereo_code not in [1,2,3]" == "")
