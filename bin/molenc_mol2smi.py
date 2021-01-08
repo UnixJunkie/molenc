@@ -23,12 +23,14 @@ def read_one_molecule(input):
     old2new = {}
     for _i in range(nb_atoms):
         line = input.readline().strip()
-        (index, nb_pi, atomic_num, nb_HA, charge) = common.read_atom(line)
+        (index, nb_pi, atomic_num, nb_HA, charge, stereo) = common.read_atom(line)
         # add atom
         a = Chem.Atom(atomic_num)
         if nb_pi == 1:
-            a.SetIsAromatic(True)
+            a.SetIsAromatic(True) # fixed later if atom not in ring
         a.SetFormalCharge(charge)
+        if stereo > 0: # set chirality
+            a.SetChiralTag(common.atom_stereo_code_to_chiral_tag(stereo))
         j = res_mol.AddAtom(a)
         # we need to convert atom indexes
         old2new[index] = j
