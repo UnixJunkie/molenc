@@ -122,3 +122,19 @@ def atom_stereo_code_to_chiral_tag(c):
         return Chem.ChiralType.CHI_TETRAHEDRAL_CCW
     else:
         assert("molenc_common.py: atom_stereo_code not in [1,2,3]" == "")
+
+def bond_stereo_code_to_bond_stereo(c):
+    if c == 0:
+        return rdkit.Chem.rdchem.BondStereo.STEREONONE
+    elif c == 4:
+        return rdkit.Chem.rdchem.BondStereo.STEREOANY
+    elif c == 5:
+        return rdkit.Chem.rdchem.BondStereo.STEREOZ
+    elif c == 6:
+        return rdkit.Chem.rdchem.BondStereo.STEREOE
+    elif c == 7:
+        return rdkit.Chem.rdchem.BondStereo.STEREOCIS
+    elif c == 8:
+        return rdkit.Chem.rdchem.BondStereo.STEREOTRANS
+    else:
+        assert("molenc_common.py: bond_stereo_code not in [0,4,5,6,7,8]" == "")
