@@ -127,17 +127,14 @@ def read_one_fragment(input):
         # only single, non stereo, bonds out of rings have been cut
         res_mol.AddBond(start, j, Chem.rdchem.BondType.SINGLE)
         anchors.append(anchor)
-    ## debug log
-    # print('%s %d %d %d' % (frag_name, nb_atoms, nb_bonds, nb_anchors),
-    #       file=sys.stderr)
     # smi for mol
-    kekul_error = False
-    # kekul_error2 = False
     try:
         Chem.SanitizeMol(res_mol)
+        res_smi = Chem.MolToSmiles(res_mol)
+        return (False, res_smi, frag_name)
     except rdkit.Chem.rdchem.KekulizeException:
         print("KekulizeException in %s" % frag_name, file=sys.stderr)
-        kekul_error = True
+        return (True, "", frag_name)
     # if kekul_error:
     #     res_mol = restore_from_kekulization_error(res_mol)
     #     try:
@@ -155,8 +152,6 @@ def read_one_fragment(input):
     #     #   png_fn = '%s.png' % frag_name
     #     #   with open(png_fn, 'wb') as fn:
     #     #     fn.write(d.GetDrawingText())
-    smi = Chem.MolToSmiles(res_mol)
-    return (kekul_error, smi, frag_name)
 
 if __name__ == '__main__':
     before = time.time()
@@ -174,7 +169,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     input_fn = args.input_fn
     output = open(args.output_fn, 'w')
-    err_out = open(args.output_fn + '.err.smi', 'w')
+    err_out = open(args.output_fn + '.err.names', 'w')
     count = 0
     kekul_err_count = 0
     with open(input_fn) as input:
@@ -183,7 +178,7 @@ if __name__ == '__main__':
                 kekul_err, smi, name = read_one_fragment(input)
                 count += 1
                 if kekul_err:
-                    print('%s\t%s' % (smi, name), file=err_out)
+                    print('%s' % name, file=err_out)
                     kekul_err_count += 1
                 else:
                     print('%s\t%s' % (smi, name), file=output)
