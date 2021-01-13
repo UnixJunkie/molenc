@@ -113,7 +113,17 @@ def char_of_bond_type(bond):
     else:
         assert("molenc_frag.py: char_of_bond_type" == "")
 
-# print all bonds with their type
+def string_of_bond_stereo(bond):
+    st = bond.GetStereo()
+    c = molenc_common.char_of_bond_stereo(st)
+    if c == 'N':
+        return c
+    else:
+        (a, b) = bond.GetStereoAtoms()
+        str = "%c:%d:%d" % (c, a, b)
+        return str
+
+# print all bonds with their type (and optional stereo info)
 def print_bonds(out, mol):
     print("#bonds:%d" % mol.GetNumBonds(), file=out)
     bonds = mol.GetBonds()
@@ -121,7 +131,8 @@ def print_bonds(out, mol):
         a = bond.GetBeginAtomIdx()
         b = bond.GetEndAtomIdx()
         t = char_of_bond_type(bond)
-        print("%d %c %d" % (a, t, b), file=out)
+        stereo = string_of_bond_stereo(bond)
+        print("%d %c %d %s" % (a, t, b, stereo), file=out)
 
 # print which bonds are cuttable and the suggested number of cuts
 def print_cuttable_bonds(out, mol):
