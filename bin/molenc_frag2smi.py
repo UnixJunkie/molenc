@@ -42,20 +42,48 @@ def current_valence(a):
             res += 3.0
     return res
 
+def count_aromatic_bonds(a):
+    count = 0
+    for b in a.GetBonds():
+        if b.GetBondType() == rdkit.Chem.rdchem.BondType.AROMATIC:
+            count += 1
+    return count
+
 # try to correct a molecule that failed kekulization
 def restore_from_kekulization_error(mol):
-    for a in mol.GetAtoms():
+    print('---------', file=sys.stderr)
+    pat1 = Chem.MolFromSmarts('c(=O)')
+    rep1 = Chem.MolFromSmarts('c(O)')
+    res_mol1 = AllChem.ReplaceSubstructs(mol, pat1, rep1)
+    res_mol = res_mol1[0]
+    for a in res_mol.GetAtoms():
         anum = a.GetAtomicNum()
+        val = current_valence(a)
+        if anum == 7 and (not a.IsInRing()):
+            print('N not in ring with %d aromatic bonds; val=%.1f' %
+                  (count_aromatic_bonds(a), val), file = sys.stderr)
         if a.IsInRing() and anum == 7:
-            val = current_valence(a)
+            print('N in ring with %d aromatic bonds; val=%.1f' %
+                  (count_aromatic_bonds(a), val), file = sys.stderr)
             if val == 4.0:
-                # set the correct +1 partial charge for Nitrogen with valence 4 in rings
+                # set the correct +1 partial charge
+                # for Nitrogen with valence 4 in rings
                 a.SetFormalCharge(1)
-                a.SetNoImplicit(True) # forbid addition of implicit hydrogens
+                # forbid addition of implicit hydrogens later
+                a.SetNoImplicit(True)
                 a.SetNumExplicitHs(0)
-            if val == 3.0:
-                a.SetNumExplicitHs(1) # must have one H then
-    return mol
+                print('N charge correct', file = sys.stderr)
+            # if count_aromatic_bonds(a) == 2 and val == 3.0:
+            #     # aromatic Nitrogen _must_ be [nH] instead of [n]
+            #     a.SetNumExplicitHs(1)
+            if count_aromatic_bonds(a) >= 1:
+                # aromatic Nitrogen _must_ be [nH] instead of [n]
+                a.SetNumExplicitHs(1)
+    # pat2 = Chem.MolFromSmarts('[n+0]')
+    # rep2 = Chem.MolFromSmarts('[nH]')
+    # res_mol2 = AllChem.ReplaceSubstructs(res_mol, pat2, rep2)
+    # res_mol = res_mol2[0]
+    return res_mol
 
 # create a fake molecule for the corresp. fragment
 def read_one_fragment(input):
@@ -99,38 +127,34 @@ def read_one_fragment(input):
         # only single, non stereo, bonds out of rings have been cut
         res_mol.AddBond(start, j, Chem.rdchem.BondType.SINGLE)
         anchors.append(anchor)
-    # FBR: move this later on
-    # TRY TO PREVENT KEKULIZATION ERRORS LATER ON
-    pat1 = Chem.MolFromSmarts('c(=O)')
-    rep1 = Chem.MolFromSmarts('c(O)')
-    res_mol1 = AllChem.ReplaceSubstructs(res_mol, pat1, rep1)
-    res_mol = res_mol1[0]
     ## debug log
     # print('%s %d %d %d' % (frag_name, nb_atoms, nb_bonds, nb_anchors),
     #       file=sys.stderr)
     # smi for mol
     kekul_error = False
+    # kekul_error2 = False
     try:
         Chem.SanitizeMol(res_mol)
     except rdkit.Chem.rdchem.KekulizeException:
         print("KekulizeException in %s" % frag_name, file=sys.stderr)
         kekul_error = True
-    if kekul_error:
-        kekul_error2 = False
-        res_mol2 = restore_from_kekulization_error(res_mol)
-        try:
-            Chem.SanitizeMol(res_mol2)
-            print('restored one')
-        except rdkit.Chem.rdchem.KekulizeException:
-            print('failed restore\n%s\t%s' % (Chem.MolToSmiles(res_mol2), frag_name))
-            kekul_error2 = True
-        #   d = rdMolDraw2D.MolDraw2DCairo(500, 500)
-        #   d.drawOptions().addAtomIndices = True
-        #   d.DrawMolecule(res_mol)
-        #   d.FinishDrawing()
-        #   png_fn = '%s.png' % frag_name
-        #   with open(png_fn, 'wb') as fn:
-        #     fn.write(d.GetDrawingText())
+    # if kekul_error:
+    #     res_mol = restore_from_kekulization_error(res_mol)
+    #     try:
+    #         Chem.SanitizeMol(res_mol)
+    #         # print('restored one')
+    #     except rdkit.Chem.rdchem.KekulizeException:
+    #         print('kekulization rescue failed\n%s\t%s' %
+    #               (Chem.MolToSmiles(res_mol), frag_name), file=sys.stderr)
+    #         kekul_error2 = True
+    #     ## draw mol with atom indexes for inspection
+    #     #   d = rdMolDraw2D.MolDraw2DCairo(500, 500)
+    #     #   d.drawOptions().addAtomIndices = True
+    #     #   d.DrawMolecule(res_mol)
+    #     #   d.FinishDrawing()
+    #     #   png_fn = '%s.png' % frag_name
+    #     #   with open(png_fn, 'wb') as fn:
+    #     #     fn.write(d.GetDrawingText())
     smi = Chem.MolToSmiles(res_mol)
     return (kekul_error, smi, frag_name)
 
