@@ -84,9 +84,38 @@ let char_of_bond = function
   | Double -> '='
   | Triple -> '#'
 
+type int_pair = int * int
+type bond_stereo = NONE
+                 | ANY of int_pair
+                 | Z of int_pair
+                 | E of int_pair
+                 | CIS of int_pair
+                 | TRANS of int_pair
+
+let parse_bond_stereo_string s =
+  if s = "N" then NONE
+  else Scanf.sscanf s "%c:%d:%d" (fun stereo a b -> match stereo with
+      | 'A' -> ANY (a, b)
+      | 'Z' -> Z (a, b)
+      | 'E' -> E (a, b)
+      | 'C' -> CIS (a, b)
+      | 'T' -> TRANS (a, b)
+      | _ -> failwith (sprintf "Fragmentable_mol.read_bond_stereo_string: \
+                                unknown bond stereo code: %c" stereo)
+    )
+
+let string_of_bond_stereo = function
+  | NONE -> "N"
+  | ANY (a, b)   -> sprintf "A:%d:%d" a b
+  | Z (a, b)     -> sprintf "Z:%d:%d" a b
+  | E (a, b)     -> sprintf "E:%d:%d" a b
+  | CIS (a, b)   -> sprintf "C:%d:%d" a b
+  | TRANS (a, b) -> sprintf "T:%d:%d" a b
+
 type bond = { start: int;
               btype: bond_type;
-              stop: int }
+              stop: int;
+              stereo: bond_stereo }
 
 let reindex_bond ht (b: bond): bond =
   { b with
@@ -97,13 +126,18 @@ let compare_bond_indexes b1 b2 =
   compare (b1.start, b1.stop) (b2.start, b2.stop)
 
 let bond_of_string s =
-  Scanf.sscanf s "%d %c %d"
-    (fun start bchar stop -> { start;
-                               btype = bond_of_char bchar;
-                               stop })
+  Scanf.sscanf s "%d %c %d %s" (fun start bchar stop bstereo ->
+      let btype = bond_of_char bchar in
+      let stereo = parse_bond_stereo_string bstereo in
+      { start; btype; stop; stereo }
+    )
 
 let string_of_bond b =
-  sprintf "%d %c %d" b.start (char_of_bond b.btype) b.stop
+  sprintf "%d %c %d %s"
+    b.start
+    (char_of_bond b.btype)
+    b.stop
+    (string_of_bond_stereo b.stereo)
 
 (* a molecule with fragmentation hints *)
 type fragmentable =
@@ -349,7 +383,7 @@ let edit_bonds (mol: fragmentable) (to_cut: int array): fragment =
 (* needed for computing connectivity later on *)
 let directed_to_undirected_bonds (m: fragment): bond array =
   let rev_bonds = A.map (fun orig ->
-      { start = orig.stop; btype = orig.btype; stop = orig.start }
+      { orig with start = orig.stop; stop = orig.start }
     ) m.bonds in
   A.append m.bonds rev_bonds
 
@@ -509,7 +543,8 @@ let draw_and_connect_fragments rng all_frags frags_ht: mol_tree =
         L.map2 (fun start_a (i, child) ->
             { start = get_anchor_start start_a;
               btype = Single;
-              stop = get_anchor_start child.anchors.(i) }
+              stop = get_anchor_start child.anchors.(i);
+              stereo = NONE }
           ) anchors children in
       let bonds' = L.rev_append new_bonds bonds in
       let seed'' = { seed' with bonds = A.of_list bonds' } in
@@ -537,7 +572,8 @@ let draw_and_connect_fragments rng all_frags frags_ht: mol_tree =
           L.map2 (fun start_a (k, child) ->
               { start = get_anchor_start start_a;
                 btype = Single;
-                stop = get_anchor_start child.anchors.(k) }
+                stop = get_anchor_start child.anchors.(k);
+                stereo = NONE }
             ) anchors' children in
         let bonds' = L.rev_append new_bonds bonds in
         let frag' = { frag with bonds = A.of_list bonds' } in
