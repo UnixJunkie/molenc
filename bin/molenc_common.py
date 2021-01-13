@@ -138,3 +138,19 @@ def bond_stereo_code_to_bond_stereo(c):
         return rdkit.Chem.rdchem.BondStereo.STEREOTRANS
     else:
         assert("molenc_common.py: bond_stereo_code not in [0,4,5,6,7,8]" == "")
+
+def char_of_bond_stereo(st):
+    if st == rdkit.Chem.rdchem.BondStereo.STEREONONE:
+        return 'N'
+    elif st == rdkit.Chem.rdchem.BondStereo.STEREOANY:
+        return 'A'
+    elif st == rdkit.Chem.rdchem.BondStereo.STEREOZ:
+        return 'Z'
+    elif st == rdkit.Chem.rdchem.BondStereo.STEREOE:
+        return 'E'
+    elif st == rdkit.Chem.rdchem.BondStereo.STEREOCIS:
+        return 'C'
+    elif st == rdkit.Chem.rdchem.BondStereo.STEREOTRANS:
+        return 'T'
+    else:
+        assert("molenc_common.py: unexpected bond_stereo" == "")
