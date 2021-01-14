@@ -93,6 +93,7 @@ def read_one_fragment(input):
         raise common.End_of_file # no EOF in Python...
     nb_atoms, frag_name = common.read_atoms_header(atoms_header)
     old2new = {}
+    # read atoms
     for _i in range(nb_atoms):
         line = input.readline().strip()
         (index, nb_pi, atomic_num, nb_HA, charge, stereo) = common.read_atom(line)
@@ -106,14 +107,36 @@ def read_one_fragment(input):
         old2new[index] = j
     bonds_header = input.readline().strip()
     nb_bonds = common.read_bonds_header(bonds_header)
+    stereo_bonds = []
+    # PREVENT CUTTING BONDS BETWEEN A STEREO BOND AND ONE
+    # OF ITS STEREO ATOMS DURING FRAGMENTATION !!!
+    # read bonds
     for i in range(nb_bonds):
         line = input.readline().strip()
-        (start_i, bt, stop_i) = common.read_bond(line)
+        (start_i, bt, stop_i, (stereo, c, d)) = common.read_bond(line)
+        # convert atom indexes
         start = old2new[start_i]
         stop = old2new[stop_i]
         # print('%d %d' % (start, stop))
         # add bond
-        res_mol.AddBond(start, stop, bt)
+        n = res_mol.AddBond(start, stop, bt)
+        if stereo != rdkit.Chem.rdchem.BondStereo.STEREONONE:
+            bi = n - 1
+            # if an exception is thrown here, it means
+            # this stereobond stereo atom is out of the fragments atoms
+            # (attachment points dummy atoms are forbidden)
+            #
+            # convert stereo bond stereo atoms indexes
+            a = old2new[c]
+            b = old2new[d]
+            stereo_bonds.append((bi, stereo, a, b))
+    # all fragments atoms and internal bonds are here now
+    # so stereo bonds info can be set
+    for (bi, stereo, a, b) in stereo_bonds:
+        bond = res_mol.GetBondWithIdx(bi)
+        bond.SetStereo(stereo)
+        bond.SetStereoAtoms(a, b)
+        #print('%s stereo on bond %d (%d, %d)' % (frag_name, bi, a, b))
     anchors_header = input.readline().strip()
     nb_anchors = read_anchors_header(anchors_header)
     anchors = []
