@@ -25,7 +25,9 @@ def RobustSmilesMolSupplier(filename):
             words = line.split()
             smile = words[0]
             name = " ".join(words[1:]) # everything after the SMILES string
-            yield (name, Chem.MolFromSmiles(smile))
+            mol = Chem.MolFromSmiles(smile)
+            mol.SetProp("name", name)
+            yield (name, mol)
 
 def nb_heavy_atom_neighbors(a):
     res = 0
@@ -82,13 +84,39 @@ def type_atom(a):
     res = "%d,%d,%d,%d" % (nb_pi_electrons, atom_num, nbHA, formal_charge)
     return res
 
+def log_protected_bond(name, b):
+    print('mol %s: protected bond %d' % (name, b.GetIdx()))
+
 # no stereo, single bonds not in rings
 def find_cuttable_bonds(mol):
+    # protect bonds between stereo bond atoms and their stereo atoms
+    name = mol.GetProp("name")
+    for b in mol.GetBonds():
+        if b.GetStereo() != rdkit.Chem.rdchem.BondStereo.STEREONONE:
+            (i, j) = (b.GetBeginAtomIdx(), b.GetEndAtomIdx())
+            (k, l) = b.GetStereoAtoms()
+            b0 = mol.GetBondBetweenAtoms(i, k)
+            b1 = mol.GetBondBetweenAtoms(i, l)
+            b2 = mol.GetBondBetweenAtoms(j, k)
+            b3 = mol.GetBondBetweenAtoms(j, l)
+            if b0 != None:
+                b0.SetBoolProp("protected", True)
+                log_protected_bond(name, b0)
+            if b1 != None:
+                b1.SetBoolProp("protected", True)
+                log_protected_bond(name, b1)
+            if b2 != None:
+                b2.SetBoolProp("protected", True)
+                log_protected_bond(name, b2)
+            if b3 != None:
+                b3.SetBoolProp("protected", True)
+                log_protected_bond(name, b3)
     res = []
     for b in mol.GetBonds():
         if ((b.GetBondType() == rdkit.Chem.rdchem.BondType.SINGLE) and
             (not b.IsInRing()) and
-            (b.GetStereo() == rdkit.Chem.rdchem.BondStereo.STEREONONE)):
+            (b.GetStereo() == rdkit.Chem.rdchem.BondStereo.STEREONONE) and
+            (b.HasProp("protected") == 0)): # HasProp returns an int... :(
             res.append(b)
     return res
 
