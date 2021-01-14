@@ -26,8 +26,6 @@ def read_one_molecule(input):
         (index, nb_pi, atomic_num, nb_HA, charge, stereo) = common.read_atom(line)
         # add atom
         a = Chem.Atom(atomic_num)
-        if nb_pi == 1:
-            a.SetIsAromatic(True) # fixed later if atom not in ring
         a.SetFormalCharge(charge)
         if stereo > 0: # set chirality
             a.SetChiralTag(common.atom_stereo_code_to_chiral_tag(stereo))
@@ -36,17 +34,28 @@ def read_one_molecule(input):
         old2new[index] = j
     bonds_header = input.readline().strip()
     nb_bonds = common.read_bonds_header(bonds_header)
+    stereo_bonds = []
     for i in range(nb_bonds):
         line = input.readline().strip()
-        (start_i, bt, stop_i) = common.read_bond(line)
+        (start_i, bt, stop_i, (stereo, c, d)) = common.read_bond(line)
         start = old2new[start_i]
         stop = old2new[stop_i]
         # add bond
-        res_mol.AddBond(start, stop, bt)
-    # unset aromaticity flag if atom not in ring
-    for a in res_mol.GetAtoms():
-        if not a.IsInRing():
-            a.SetIsAromatic(False)
+        n = res_mol.AddBond(start, stop, bt)
+        if stereo != rdkit.Chem.rdchem.BondStereo.STEREONONE:
+            bi = n - 1
+            # convert stereo bond stereo atoms indexes
+            a = old2new[c]
+            b = old2new[d]
+            stereo_bonds.append((bi, stereo, a, b))
+    # all atoms and bonds are here now
+    # so stereo bonds info can be set
+    for (bi, stereo, a, b) in stereo_bonds:
+        bond = res_mol.GetBondWithIdx(bi)
+        bond.SetStereo(stereo)
+        bond.SetStereoAtoms(a, b)
+        print('%s stereo %s on bond %d (%d, %d)' %
+              (name, common.char_of_bond_stereo(stereo), bi, a, b))
     try:
         Chem.SanitizeMol(res_mol)
     except rdkit.Chem.rdchem.KekulizeException:
