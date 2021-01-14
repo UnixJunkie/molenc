@@ -115,8 +115,7 @@
 6 : 2 N
 12 : 7 N
 18 : 13 N
-#cut_bonds:3:2
-0
+#cut_bonds:2:2
 6
 12
 #atoms:20 NCGC00260832-01
