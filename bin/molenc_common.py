@@ -90,10 +90,29 @@ def bond_type_of_char(c):
     else:
         assert("molenc_common.py: bond_type_of_char" == "")
 
+def parse_bond_stereo_string(stereo_str):
+    if stereo_str == "N":
+        return (rdkit.Chem.rdchem.BondStereo.STEREONONE, -1, -1)
+    else:
+        (stereo_char, a, b) = [t(s) for t,s in zip((str,int,int),
+                                                   re.split(':', stereo_str))]
+        if stereo_char == "A" then:
+            return (rdkit.Chem.rdchem.BondStereo.STEREOANY, a, b)
+        elif stereo_char == "Z" then:
+            return (rdkit.Chem.rdchem.BondStereo.STEREOZ, a, b)
+        elif stereo_char == "E" then:
+            return (rdkit.Chem.rdchem.BondStereo.STEREOE, a, b)
+        elif stereo_char == "C" then:
+            return (rdkit.Chem.rdchem.BondStereo.STEREOCIS, a, b)
+        elif stereo_char == "T" then:
+            return (rdkit.Chem.rdchem.BondStereo.STEREOTRANS, a, b)
+        else:
+            assert("molenc_common.py: stereo_char not in ['A','Z','E','C','T']" == "")
+
 # "0 - 16"
 def read_bond(line):
-    (start_i, c, stop_i) = [t(s) for t,s in zip((int,str,int),
-                            re.split('[ ]', line))]
+    (start_i, c, stop_i, stereo) = [t(s) for t,s in zip((int,str,int,str),
+                                    re.split('[ ]', line))]
     return (start_i, bond_type_of_char(c), stop_i)
 
 class End_of_file(Exception):
