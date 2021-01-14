@@ -92,6 +92,17 @@ type bond_stereo = NONE
                  | CIS of int_pair
                  | TRANS of int_pair
 
+let reindex_pair ht (a, b) =
+  (Ht.find ht a, Ht.find ht b)
+
+let reindex_stereo_bond_stereo_atoms ht = function
+  | NONE     -> NONE
+  | ANY   ab -> ANY   (reindex_pair ht ab)
+  | Z     ab -> Z     (reindex_pair ht ab)
+  | E     ab -> E     (reindex_pair ht ab)
+  | CIS   ab -> CIS   (reindex_pair ht ab)
+  | TRANS ab -> TRANS (reindex_pair ht ab)
+
 let parse_bond_stereo_string s =
   if s = "N" then NONE
   else Scanf.sscanf s "%c:%d:%d" (fun stereo a b -> match stereo with
@@ -118,9 +129,9 @@ type bond = { start: int;
               stereo: bond_stereo }
 
 let reindex_bond ht (b: bond): bond =
-  { b with
-    start = Ht.find ht b.start;
-    stop = Ht.find ht b.stop }
+  { b with start  = Ht.find ht b.start;
+           stop   = Ht.find ht b.stop;
+           stereo = reindex_stereo_bond_stereo_atoms ht b.stereo }
 
 let compare_bond_indexes b1 b2 =
   compare (b1.start, b1.stop) (b2.start, b2.stop)
