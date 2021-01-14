@@ -122,7 +122,6 @@ class End_of_file(Exception):
     pass
 
 # stereo information encoding using integers
-# FBR: take care of stereo bonds
 class StereoCodes(IntEnum):
     NONE = 0 # default unless specified otherwise
     ANY_CENTER = 1
