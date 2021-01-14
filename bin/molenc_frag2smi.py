@@ -108,8 +108,6 @@ def read_one_fragment(input):
     bonds_header = input.readline().strip()
     nb_bonds = common.read_bonds_header(bonds_header)
     stereo_bonds = []
-    # PREVENT CUTTING BONDS BETWEEN A STEREO BOND AND ONE
-    # OF ITS STEREO ATOMS DURING FRAGMENTATION !!!
     # read bonds
     for i in range(nb_bonds):
         line = input.readline().strip()
@@ -125,6 +123,8 @@ def read_one_fragment(input):
             # if an exception is thrown here, it means
             # this stereobond stereo atom is out of the fragments atoms
             # (attachment points dummy atoms are forbidden)
+            # this should never happen since such bonds are protected during
+            # fragmentation
             #
             # convert stereo bond stereo atoms indexes
             a = old2new[c]
@@ -136,7 +136,8 @@ def read_one_fragment(input):
         bond = res_mol.GetBondWithIdx(bi)
         bond.SetStereo(stereo)
         bond.SetStereoAtoms(a, b)
-        #print('%s stereo on bond %d (%d, %d)' % (frag_name, bi, a, b))
+        print('%s stereo %s on bond %d (%d, %d)' %
+              (frag_name, common.char_of_bond_stereo(stereo), bi, a, b))
     anchors_header = input.readline().strip()
     nb_anchors = read_anchors_header(anchors_header)
     anchors = []
