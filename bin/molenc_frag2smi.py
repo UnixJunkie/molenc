@@ -96,7 +96,8 @@ def read_one_fragment(input):
     # read atoms
     for _i in range(nb_atoms):
         line = input.readline().strip()
-        (index, nb_pi, atomic_num, nb_HA, charge, stereo) = common.read_atom(line)
+        (index, nb_pi, atomic_num, nb_HA, charge, stereo) = \
+          common.read_atom(line)
         # add atom
         a = Chem.Atom(atomic_num)
         a.SetFormalCharge(charge)
@@ -180,7 +181,8 @@ def read_one_fragment(input):
 if __name__ == '__main__':
     before = time.time()
     # CLI options parsing
-    parser = argparse.ArgumentParser(description = "convert txt fragments to SMILES")
+    parser = argparse.ArgumentParser(description =
+                                     "convert txt fragments to SMILES")
     parser.add_argument("-i", metavar = "input.frags", dest = "input_fn",
                         help = "fragments input file")
     parser.add_argument("-o", metavar = "output.smi", dest = "output_fn",
