@@ -28,9 +28,12 @@ def nb_heavy_atom_neighbors(a):
     return res
 
 to_stereo_code = \
-  { '?': StereoCodes.ANY_CENTER, # atom.SetChiralTag(Chem.ChiralType.CHI_UNSPECIFIED)
-    'R': StereoCodes.R_CENTER, # SMILES @@ means clockwise / R / Chem.ChiralType.CHI_TETRAHEDRAL_CW
-    'S': StereoCodes.S_CENTER, # SMILES @ means anti clockwise / S / Chem.ChiralType.CHI_TETRAHEDRAL_CCW
+  { # atom.SetChiralTag(Chem.ChiralType.CHI_UNSPECIFIED)
+    '?': StereoCodes.ANY_CENTER,
+    # SMILES @@ means clockwise / R / Chem.ChiralType.CHI_TETRAHEDRAL_CW
+    'R': StereoCodes.R_CENTER,
+    # SMILES @ means anti clockwise / S / Chem.ChiralType.CHI_TETRAHEDRAL_CCW
+    'S': StereoCodes.S_CENTER,
     rdkit.Chem.rdchem.BondStereo.STEREONONE: StereoCodes.NONE,
     rdkit.Chem.rdchem.BondStereo.STEREOANY: StereoCodes.ANY_BOND,
     rdkit.Chem.rdchem.BondStereo.STEREOZ: StereoCodes.Z_BOND,
@@ -165,6 +168,24 @@ def print_cuttable_bonds(out, mol):
         i = bond.GetIdx()
         print("%d" % i, file=out)
 
+# Smiling Surgeon-style SMILES fragmentation
+# FBR: TODO
+def cut_some_bonds(mol, seed):
+    cuttable_bonds = [b.GetIdx() for b in find_cuttable_bonds(mol)]
+    total_weight = Descriptors.MolWt(mol)
+    # 150 Da: D. Rognan's suggested max fragment weight
+    nb_frags = round(total_weight / 150)
+    max_cuts = min(len(cuttable_bonds), nb_frags)
+    # print("mol %s; cut %d bonds" % (mol.GetProp("name"), max_cuts),
+    #       file=sys.stderr)
+    random.seed(seed)
+    random.shuffle(cuttable_bonds)
+    to_cut = cuttable_bonds[0:max_cuts]
+    fragmented = Chem.FragmentOnBonds(mol, to_cut)
+    fragments_smi = Chem.MolToSmiles(fragmented)
+    # print('fragments: %s' % fragments_smi)
+    return fragments_smi
+
 if __name__ == '__main__':
     before = time.time()
     # CLI options parsing
@@ -177,6 +198,10 @@ if __name__ == '__main__':
     parser.add_argument("--draw", dest = "draw_mol", action ='store_true',
                         default = False,
                         help = "output PNG for each molecule w/ atom indexes")
+    parser.add_argument("--smisur", dest = "surgeon", action ='store_true',
+                        default = False, help = "Smiling Surgeon tests")
+    parser.add_argument("--seed", dest = "seed", default = 1234,
+                        type = int, help = "RNG seed")
     # parse CLI
     if len(sys.argv) == 1:
         # user has no clue of what to do -> usage
@@ -185,14 +210,21 @@ if __name__ == '__main__':
     args = parser.parse_args()
     input_fn = args.input_fn
     draw_mol = args.draw_mol
+    smiles_surgeon_mode = args.surgeon
+    rng_seed = args.seed
     output = open(args.output_fn, 'w')
     mol_supplier = RobustSmilesMolSupplier(input_fn)
     count = 0
     for name, mol in mol_supplier:
-        print("#atoms:%d %s" % (mol.GetNumAtoms(), name), file=output)
-        print_typed_atoms(output, mol)
-        print_bonds(output, mol)
-        print_cuttable_bonds(output, mol)
+        if smiles_surgeon_mode:
+            # Smiling Surgeon tests ---------
+            fragments_smi = cut_some_bonds(mol, rng_seed)
+            print("%s\t%s" % (fragments_smi, name), file=output)
+        else: # previous --------------------
+            print("#atoms:%d %s" % (mol.GetNumAtoms(), name), file=output)
+            print_typed_atoms(output, mol)
+            print_bonds(output, mol)
+            print_cuttable_bonds(output, mol)
         count += 1
         if draw_mol:
             d = rdMolDraw2D.MolDraw2DCairo(500, 500)
