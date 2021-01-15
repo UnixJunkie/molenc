@@ -131,17 +131,8 @@ def read_one_fragment(input):
             a = old2new[c]
             b = old2new[d]
             stereo_bonds.append((bi, stereo, a, b))
-    # all fragments atoms and internal bonds are here now
-    # so stereo bonds info can be set
-    for (bi, stereo, a, b) in stereo_bonds:
-        bond = res_mol.GetBondWithIdx(bi)
-        bond.SetStereo(stereo)
-        bond.SetStereoAtoms(a, b)
-        print('%s stereo %s on bond %d (%d, %d)' %
-              (frag_name, common.char_of_bond_stereo(stereo), bi, a, b))
     anchors_header = input.readline().strip()
     nb_anchors = read_anchors_header(anchors_header)
-    anchors = []
     for _i in range(nb_anchors):
         line = input.readline().strip()
         anchor = read_anchor(line)
@@ -151,10 +142,24 @@ def read_one_fragment(input):
         j = res_mol.AddAtom(a)
         # only single, non stereo, bonds out of rings have been cut
         res_mol.AddBond(start, j, Chem.rdchem.BondType.SINGLE)
-        anchors.append(anchor)
+    # all fragments atoms and internal bonds are here now
+    # so stereo bonds info can be set
+    # FBR: WARNING: just does not work... :(
+    #      it seems that 'Chem.SanitizeMol(res_mol)' looses the stereo info
+    #      reported on rdkit-users ML Fri Jan 15 11:49:46 JST 2021
+    print('before stereo: %s' % Chem.MolToSmiles(res_mol))
+    for (bi, stereo, a, b) in stereo_bonds:
+        bond = res_mol.GetBondWithIdx(bi)
+        bond.SetStereoAtoms(a, b)
+        bond.SetStereo(stereo)
+        print('%s stereo %s on bond %d (%d, %d)' %
+              (frag_name, common.char_of_bond_stereo(stereo), bi, a, b))
+    Chem.AssignStereochemistry(res_mol) # ! MANDATORY !        
+    print('after stereo: %s' % Chem.MolToSmiles(res_mol))
     # smi for mol
     try:
         Chem.SanitizeMol(res_mol)
+        print('after sanitize: %s' % Chem.MolToSmiles(res_mol))
         res_smi = Chem.MolToSmiles(res_mol)
         return (False, res_smi, frag_name)
     except rdkit.Chem.rdchem.KekulizeException:
