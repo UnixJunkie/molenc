@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -x
+set -x #DEBUG
 
 # clean
 rm -f data/3.to_frag data/3_frags.txt data/3_frags.smi data/3_genmols.txt data/3_genmols.smi
