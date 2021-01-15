@@ -23,7 +23,8 @@ def read_one_molecule(input):
     old2new = {}
     for _i in range(nb_atoms):
         line = input.readline().strip()
-        (index, nb_pi, atomic_num, nb_HA, charge, stereo) = common.read_atom(line)
+        (index, nb_pi, atomic_num, nb_HA, charge, stereo) = \
+          common.read_atom(line)
         # add atom
         a = Chem.Atom(atomic_num)
         a.SetFormalCharge(charge)
@@ -56,6 +57,7 @@ def read_one_molecule(input):
         bond.SetStereoAtoms(a, b)
         print('%s stereo %s on bond %d (%d, %d)' %
               (name, common.char_of_bond_stereo(stereo), bi, a, b))
+    Chem.AssignStereochemistry(res_mol) # ! MANDATORY !
     try:
         Chem.SanitizeMol(res_mol)
     except rdkit.Chem.rdchem.KekulizeException:
@@ -90,5 +92,6 @@ if __name__ == '__main__':
             pass
     after = time.time()
     dt = after - before
-    print("%d molecules at %.2f molecule/s" % (count, count / dt), file=sys.stderr)
+    print("%d molecules at %.2f molecule/s" %
+          (count, count / dt), file=sys.stderr)
     output.close()
