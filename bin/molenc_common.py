@@ -4,6 +4,14 @@ import numpy, rdkit, re
 from rdkit import Chem
 from enum import IntEnum
 
+def RobustSmilesMolSupplier(filename):
+    with open(filename) as f:
+        for line in f:
+            smile, name = line.strip().split("\t") # enforce TAB-separated
+            mol = Chem.MolFromSmiles(smile)
+            mol.SetProp("name", name)
+            yield (name, mol)
+
 def sort_pairs(pairs):
     res = []
     for (a, b) in pairs:

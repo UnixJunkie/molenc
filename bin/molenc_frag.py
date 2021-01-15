@@ -11,6 +11,7 @@
 
 import argparse, molenc_common, os, random, rdkit, sys, time
 
+from molenc_common import RobustSmilesMolSupplier
 from enum import IntEnum
 from rdkit import Chem
 from rdkit import RDConfig
@@ -18,16 +19,6 @@ from rdkit.Chem import AllChem, Descriptors
 from rdkit.Chem.AtomPairs import Pairs
 from rdkit.Chem.Draw import rdMolDraw2D
 from molenc_common import StereoCodes
-
-def RobustSmilesMolSupplier(filename):
-    with open(filename) as f:
-        for line in f:
-            words = line.split()
-            smile = words[0]
-            name = " ".join(words[1:]) # everything after the SMILES string
-            mol = Chem.MolFromSmiles(smile)
-            mol.SetProp("name", name)
-            yield (name, mol)
 
 def nb_heavy_atom_neighbors(a):
     res = 0
