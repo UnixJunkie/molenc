@@ -182,6 +182,8 @@ def cut_some_bonds(mol, seed):
     random.shuffle(cuttable_bonds)
     to_cut = cuttable_bonds[0:max_cuts]
     fragmented = Chem.FragmentOnBonds(mol, to_cut)
+    # FBR: list the '*' star atoms and their "fake isotope/label"
+    #      from fragmented
     fragments_smi = Chem.MolToSmiles(fragmented)
     # print('fragments: %s' % fragments_smi)
     return fragments_smi
