@@ -7,17 +7,22 @@
 # Kyushu Institute of Technology,
 # 680-4 Kawazu, Iizuka, Fukuoka, 820-8502, Japan.
 
-# The "Smiling Surgeon": a surgeon operating directly at the SMILES level
+# The "Smiling Surgeon": a doctor operating directly at the SMILES level
 
 # FRAGMENTATION
 #
-# 1) cut some cuttable bonds of a molecule
-# 2) try to save it as SMILES to see what we get (we should have a mixture)
-# 3) atom-type only atoms at the ends of bonds that were cut
-# 4) place a dummy atom at each end of the bond that was cut
-# 5) each of these dummy atoms should reflect in some way (an isotope number?)
-#    the atom type of the previously opposing atom
-# 6) save the current state of the edited molecule as a SMILES
+# 1) OK cut some cuttable bonds of a molecule
+#    TODO maybe preserve single bonds coming out of a stereo center
+# 2) OK try to save it as SMILES to see what we get (we get a mixture)
+#
+# 3) TODO atom-type only atoms at the ends of bonds that were cut
+# 4) TODO create isotope number (created by rdkit) to former opposite atom type
+#         map (python dict)
+# 6) TODO output this SMILES plus the int->atom_type map as mol_name
+#         we should name the fragments also, using parent molecule name + an index
+#         # TO RELOAD THIS MAP LATER ON
+#         import ast
+#         ast.literal_eval(map_str)
 
 # FRAGMENT ASSEMBLY
 #
