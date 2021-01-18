@@ -213,7 +213,6 @@ def cut_some_bonds(mol, seed):
     max_cuts = min(len(cuttable_bonds), nb_frags - 1)
     # print("mol %s; cut %d bonds" % (mol.GetProp("name"), max_cuts),
     #       file=sys.stderr)
-    random.seed(seed)
     random.shuffle(cuttable_bonds)
     to_cut = cuttable_bonds[0:max_cuts]
     if len(to_cut) == 0:
@@ -254,6 +253,7 @@ if __name__ == '__main__':
     nb_passes = args.nb_passes
     smiles_surgeon_mode = args.surgeon
     rng_seed = args.seed
+    random.seed(rng_seed)
     output = open(args.output_fn, 'w')
     mol_supplier = RobustSmilesMolSupplier(input_fn)
     count = 0
