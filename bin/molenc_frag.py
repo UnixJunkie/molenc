@@ -165,7 +165,7 @@ def print_cuttable_bonds(out, mol):
     total_weight = Descriptors.MolWt(mol)
     # 150 Da: D. Rognan's suggested max fragment weight
     nb_frags = round(total_weight / 150)
-    max_cuts = min(len(cuttable_bonds), nb_frags)
+    max_cuts = min(len(cuttable_bonds), nb_frags - 1)
     print("#cut_bonds:%d:%d" % (len(cuttable_bonds), max_cuts), file=out)
     for bond in cuttable_bonds:
         i = bond.GetIdx()
@@ -211,13 +211,20 @@ def cut_some_bonds(mol, seed):
     total_weight = Descriptors.MolWt(mol)
     # 150 Da: D. Rognan's suggested max fragment weight
     nb_frags = round(total_weight / 150)
-    max_cuts = min(len(cuttable_bonds), nb_frags)
+    max_cuts = min(len(cuttable_bonds), nb_frags - 1)
     # print("mol %s; cut %d bonds" % (mol.GetProp("name"), max_cuts),
     #       file=sys.stderr)
     random.seed(seed)
     random.shuffle(cuttable_bonds)
     to_cut = cuttable_bonds[0:max_cuts]
-    return fragment_on_bonds_and_label(mol, cuttable_bonds)
+    if len(to_cut) == 0:
+        # molecule too small: not fragmented
+        smi = Chem.MolToSmiles(mol)
+        name = mol.GetProp("name")
+        dico = {}
+        return (smi, name, dico)
+    else:
+        return fragment_on_bonds_and_label(mol, to_cut)
 
 if __name__ == '__main__':
     before = time.time()
