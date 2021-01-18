@@ -58,6 +58,14 @@ def get_atom_stereo_codes(m):
         res[i] = to_stereo_code[k]
     return res
 
+def get_stereo_center_indexes(m):
+    res = {}
+    # unassigned stereo centers are not reported;
+    # set includeUnassigned=True to change
+    for i, k in Chem.FindMolChiralCenters(m):
+        res[i] = True
+    return res
+
 # # stereo code tests
 # cis = Chem.MolFromSmiles('C/C=C\C')
 # trans = Chem.MolFromSmiles('C/C=C/C')
@@ -84,13 +92,22 @@ def type_atoms(mol):
 def log_protected_bond(name, b):
     print('mol %s: protected bond %d' % (name, b.GetIdx()))
 
-# no stereo, single bonds not in rings
+# only single bonds not in rings, no stereo bonds,
+# no bond to/from a specified stereo center (i.e. if stereo was set,
+# we protect it)
 def find_cuttable_bonds(mol):
-    # protect bonds between stereo bond atoms and their stereo atoms
     name = mol.GetProp("name")
+    stereo_center_indexes = get_stereo_center_indexes(mol)
     for b in mol.GetBonds():
+        # protect bonds to/from a stereo center
+        i = b.GetBeginAtomIdx()
+        j = b.GetEndAtomIdx()
+        if ((stereo_center_indexes.get(i) == True) or
+            (stereo_center_indexes.get(j) == True)):
+           b.SetBoolProp("protected", True)
+           log_protected_bond(name, b.GetIdx())
+        # protect bonds between stereo bond atoms and their stereo atoms
         if b.GetStereo() != rdkit.Chem.rdchem.BondStereo.STEREONONE:
-            (i, j) = (b.GetBeginAtomIdx(), b.GetEndAtomIdx())
             (k, l) = b.GetStereoAtoms()
             b0 = mol.GetBondBetweenAtoms(i, k)
             b1 = mol.GetBondBetweenAtoms(i, l)
@@ -181,9 +198,6 @@ def index_for_atom_type(atom_types_dict, atom_type):
         atom_types_dict[atom_type] = v
         return v
 
-# FBR: TODO prevent cutting bonds to/from a stereo center?
-#      ASKED to Andy
-
 def fragment_on_bonds_and_label(mol, bonds):
     labels = []
     dico = {}
@@ -242,6 +256,8 @@ if __name__ == '__main__':
                         type = int, help = "RNG seed")
     parser.add_argument("-n", dest = "nb_passes", default = 1,
                         type = int, help = "number of fragmentation passes")
+    parser.add_argument("--assemble", dest = "assemble", default = False,
+                        help = "assemble instead of fragmenting")
     # parse CLI
     if len(sys.argv) == 1:
         # user has no clue of what to do -> usage
@@ -252,32 +268,37 @@ if __name__ == '__main__':
     draw_mol = args.draw_mol
     nb_passes = args.nb_passes
     smiles_surgeon_mode = args.surgeon
+    assemble = args.assemble
     rng_seed = args.seed
     random.seed(rng_seed)
     output = open(args.output_fn, 'w')
-    mol_supplier = RobustSmilesMolSupplier(input_fn)
     count = 0
-    for name, mol in mol_supplier:
-        if smiles_surgeon_mode:
-            # Smiling Surgeon tests ---------
-            for i in range(nb_passes):
-                fragments_smi, parent_name, dico = cut_some_bonds(mol, rng_seed)
-                print("%s\t%s_p%d;%s" %
-                      (fragments_smi, name, i, str(dico)), file=output)
-        else: # previous --------------------
-            print("#atoms:%d %s" % (mol.GetNumAtoms(), name), file=output)
-            print_typed_atoms(output, mol)
-            print_bonds(output, mol)
-            print_cuttable_bonds(output, mol)
-        count += 1
-        if draw_mol:
-            d = rdMolDraw2D.MolDraw2DCairo(500, 500)
-            d.drawOptions().addAtomIndices = True
-            d.DrawMolecule(mol)
-            d.FinishDrawing()
-            png_fn = '%s.png' % name
-            with open(png_fn, 'wb') as fn:
-                fn.write(d.GetDrawingText())
+    if assemble: # assembling fragments
+        assert(False)
+    else:
+        # fragmenting
+        mol_supplier = RobustSmilesMolSupplier(input_fn)
+        for name, mol in mol_supplier:
+            if smiles_surgeon_mode:
+                # Smiling Surgeon tests ---------
+                for i in range(nb_passes):
+                    fragments_smi, parent_name, dico = cut_some_bonds(mol, rng_seed)
+                    print("%s\t%s_p%d;%s" %
+                          (fragments_smi, name, i, str(dico)), file=output)
+            else: # previous --------------------
+                print("#atoms:%d %s" % (mol.GetNumAtoms(), name), file=output)
+                print_typed_atoms(output, mol)
+                print_bonds(output, mol)
+                print_cuttable_bonds(output, mol)
+            count += 1
+            if draw_mol:
+                d = rdMolDraw2D.MolDraw2DCairo(500, 500)
+                d.drawOptions().addAtomIndices = True
+                d.DrawMolecule(mol)
+                d.FinishDrawing()
+                png_fn = '%s.png' % name
+                with open(png_fn, 'wb') as fn:
+                    fn.write(d.GetDrawingText())
     after = time.time()
     dt = after - before
     print("%d molecules at %.2f mol/s" % (count, count / dt), file=sys.stderr)

@@ -63,7 +63,7 @@
 15 : 10 N
 23 : 18 N
 29 : 24 N
-#cut_bonds:9:3
+#cut_bonds:9:2
 0
 1
 2
@@ -115,7 +115,7 @@
 6 : 2 N
 12 : 7 N
 18 : 13 N
-#cut_bonds:2:2
+#cut_bonds:2:1
 6
 12
 #atoms:20 NCGC00260832-01
@@ -162,7 +162,7 @@
 19 - 1 N
 19 : 4 N
 16 : 11 N
-#cut_bonds:5:2
+#cut_bonds:5:1
 0
 6
 7
