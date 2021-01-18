@@ -147,18 +147,19 @@ def read_one_fragment(input):
     # FBR: WARNING: just does not work... :(
     #      it seems that 'Chem.SanitizeMol(res_mol)' looses the stereo info
     #      reported on rdkit-users ML Fri Jan 15 11:49:46 JST 2021
-    print('before stereo: %s' % Chem.MolToSmiles(res_mol), file=sys.stderr)
+    # print('before stereo: %s' % Chem.MolToSmiles(res_mol), file=sys.stderr)
     for (bi, stereo, a, b) in stereo_bonds:
         bond = res_mol.GetBondWithIdx(bi)
         bond.SetStereoAtoms(a, b)
         bond.SetStereo(stereo)
         print('%s stereo %s on bond %d (%d, %d)' %
-              (frag_name, common.char_of_bond_stereo(stereo), bi, a, b))
+              (frag_name, common.char_of_bond_stereo(stereo), bi, a, b),
+              file=sys.stderr)
     # smi for mol
     try:
         Chem.SanitizeMol(res_mol)
         Chem.AssignStereochemistry(res_mol) # ! MANDATORY; AFTER SanitizeMol !
-        print('after sanitize then stereo: %s' % Chem.MolToSmiles(res_mol), file=sys.stderr)
+        # print('after sanitize then stereo: %s' % Chem.MolToSmiles(res_mol), file=sys.stderr)
         res_smi = Chem.MolToSmiles(res_mol)
         return (False, res_smi, frag_name)
     except rdkit.Chem.rdchem.KekulizeException:
