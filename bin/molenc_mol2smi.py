@@ -56,10 +56,11 @@ def read_one_molecule(input):
         bond.SetStereo(stereo)
         bond.SetStereoAtoms(a, b)
         print('%s stereo %s on bond %d (%d, %d)' %
-              (name, common.char_of_bond_stereo(stereo), bi, a, b))
-    Chem.AssignStereochemistry(res_mol) # ! MANDATORY !
+              (name, common.char_of_bond_stereo(stereo), bi, a, b),
+              file=sys.stderr)
     try:
         Chem.SanitizeMol(res_mol)
+        Chem.AssignStereochemistry(res_mol) # ! MANDATORY; AFTER SanitizeMol !
     except rdkit.Chem.rdchem.KekulizeException:
         print("KekulizeException in %s" % name, file=sys.stderr)
     smi = Chem.MolToSmiles(res_mol)
