@@ -14,15 +14,13 @@
 # 1) OK cut some cuttable bonds of a molecule
 #    TODO maybe preserve single bonds coming out of a stereo center
 # 2) OK try to save it as SMILES to see what we get (we get a mixture)
-#
-# 3) TODO atom-type only atoms at the ends of bonds that were cut
-# 4) TODO create isotope number (created by rdkit) to former opposite atom type
-#         map (python dict)
-# 6) TODO output this SMILES plus the int->atom_type map as mol_name
-#         we should name the fragments also, using parent molecule name + an index
-#         # TO RELOAD THIS MAP LATER ON
-#         import ast
-#         ast.literal_eval(map_str)
+# 3) OK atom-type only atoms at the ends of bonds that were cut
+# 4) OK use isotope numbers as keys in the (former opposite) atom type map
+# 6) OK output this SMILES plus the int->atom_type map as mol_name
+#       we should name the fragments also, using parent molecule name + an index
+#       # TO RELOAD THIS MAP LATER ON
+#       import ast
+#       ast.literal_eval(map_str)
 
 # FRAGMENT ASSEMBLY
 #
