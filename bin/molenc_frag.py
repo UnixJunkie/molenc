@@ -78,6 +78,9 @@ def type_atom(a):
     res = "%d,%d,%d,%d" % (nb_pi_electrons, atom_num, nbHA, formal_charge)
     return res
 
+def type_atoms(mol):
+    return [type_atom(a) for a in mol.GetAtoms()]
+
 def log_protected_bond(name, b):
     print('mol %s: protected bond %d' % (name, b.GetIdx()))
 
@@ -181,8 +184,9 @@ def index_for_atom_type(atom_types_dict, atom_type):
 # FBR: TODO prevent cutting bonds to/from a stereo center?
 #      ASKED to Andy
 
-def fragment_on_bonds_and_label(atom_types_dict, mol, bonds):
+def fragment_on_bonds_and_label(mol, bonds):
     labels = []
+    dico = {}
     for bi in bonds:
         b = mol.GetBondWithIdx(bi)
         i = b.GetBeginAtomIdx()
@@ -192,18 +196,17 @@ def fragment_on_bonds_and_label(atom_types_dict, mol, bonds):
         aj = mol.GetAtomWithIdx(j)
         at_i = type_atom(ai)
         at_j = type_atom(aj)
-        vi = index_for_atom_type(atom_types_dict, at_i)
-        vj = index_for_atom_type(atom_types_dict, at_j)
+        vi = index_for_atom_type(dico, at_i)
+        vj = index_for_atom_type(dico, at_j)
         labels.append((vi, vj))
     fragmented = Chem.FragmentOnBonds(mol, bonds, dummyLabels=labels)
-    # name = mol.GetProp("name")
-    # dico_str = str(local_dico)
-    # return (Chem.MolToSmiles(fragmented), name, dico_str)
-    return Chem.MolToSmiles(fragmented)
+    smi = Chem.MolToSmiles(fragmented)
+    name = mol.GetProp("name")
+    return (smi, name, dico)
 
 # Smiling Surgeon-style SMILES fragmentation
 # FBR: TODO
-def cut_some_bonds(atom_types_dict, mol, seed):
+def cut_some_bonds(mol, seed):
     cuttable_bonds = [b.GetIdx() for b in find_cuttable_bonds(mol)]
     total_weight = Descriptors.MolWt(mol)
     # 150 Da: D. Rognan's suggested max fragment weight
@@ -214,7 +217,7 @@ def cut_some_bonds(atom_types_dict, mol, seed):
     random.seed(seed)
     random.shuffle(cuttable_bonds)
     to_cut = cuttable_bonds[0:max_cuts]
-    return fragment_on_bonds_and_label(atom_types_dict, mol, cuttable_bonds)
+    return fragment_on_bonds_and_label(mol, cuttable_bonds)
 
 if __name__ == '__main__':
     before = time.time()
@@ -248,8 +251,8 @@ if __name__ == '__main__':
     for name, mol in mol_supplier:
         if smiles_surgeon_mode:
             # Smiling Surgeon tests ---------
-            fragments_smi = cut_some_bonds(mol, rng_seed)
-            print("%s\t%s" % (fragments_smi, name), file=output)
+            fragments_smi, parent_name, dico = cut_some_bonds(mol, rng_seed)
+            print("%s\t%s;%s" % (fragments_smi, name, str(dico)), file=output)
         else: # previous --------------------
             print("#atoms:%d %s" % (mol.GetNumAtoms(), name), file=output)
             print_typed_atoms(output, mol)
