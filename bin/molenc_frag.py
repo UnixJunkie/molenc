@@ -168,9 +168,42 @@ def print_cuttable_bonds(out, mol):
         i = bond.GetIdx()
         print("%d" % i, file=out)
 
+def index_for_atom_type(atom_types_dict, atom_type):
+    try:
+        return atom_types_dict[atom_type]
+    except KeyError:
+        # want indexes to start at 1; so the isotope number is
+        # always explicit in the fragments SMILES output
+        v = len(atom_types_dict) + 1
+        atom_types_dict[atom_type] = v
+        return v
+
+# FBR: TODO prevent cutting bonds to/from a stereo center?
+#      ASKED to Andy
+
+def fragment_on_bonds_and_label(atom_types_dict, mol, bonds):
+    labels = []
+    for bi in bonds:
+        b = mol.GetBondWithIdx(bi)
+        i = b.GetBeginAtomIdx()
+        j = b.GetEndAtomIdx()
+        # get or create dictionary keys for those atom types
+        ai = mol.GetAtomWithIdx(i)
+        aj = mol.GetAtomWithIdx(j)
+        at_i = type_atom(ai)
+        at_j = type_atom(aj)
+        vi = index_for_atom_type(atom_types_dict, at_i)
+        vj = index_for_atom_type(atom_types_dict, at_j)
+        labels.append((vi, vj))
+    fragmented = Chem.FragmentOnBonds(mol, bonds, dummyLabels=labels)
+    # name = mol.GetProp("name")
+    # dico_str = str(local_dico)
+    # return (Chem.MolToSmiles(fragmented), name, dico_str)
+    return Chem.MolToSmiles(fragmented)
+
 # Smiling Surgeon-style SMILES fragmentation
 # FBR: TODO
-def cut_some_bonds(mol, seed):
+def cut_some_bonds(atom_types_dict, mol, seed):
     cuttable_bonds = [b.GetIdx() for b in find_cuttable_bonds(mol)]
     total_weight = Descriptors.MolWt(mol)
     # 150 Da: D. Rognan's suggested max fragment weight
@@ -181,12 +214,7 @@ def cut_some_bonds(mol, seed):
     random.seed(seed)
     random.shuffle(cuttable_bonds)
     to_cut = cuttable_bonds[0:max_cuts]
-    fragmented = Chem.FragmentOnBonds(mol, to_cut)
-    # FBR: list the '*' star atoms and their "fake isotope/label"
-    #      from fragmented
-    fragments_smi = Chem.MolToSmiles(fragmented)
-    # print('fragments: %s' % fragments_smi)
-    return fragments_smi
+    return fragment_on_bonds_and_label(atom_types_dict, mol, cuttable_bonds)
 
 if __name__ == '__main__':
     before = time.time()
