@@ -205,7 +205,6 @@ def fragment_on_bonds_and_label(mol, bonds):
     return (smi, name, dico)
 
 # Smiling Surgeon-style SMILES fragmentation
-# FBR: TODO
 def cut_some_bonds(mol, seed):
     cuttable_bonds = [b.GetIdx() for b in find_cuttable_bonds(mol)]
     total_weight = Descriptors.MolWt(mol)
@@ -242,6 +241,8 @@ if __name__ == '__main__':
                         default = False, help = "Smiling Surgeon tests")
     parser.add_argument("--seed", dest = "seed", default = 1234,
                         type = int, help = "RNG seed")
+    parser.add_argument("-n", dest = "nb_passes", default = 1,
+                        type = int, help = "number of fragmentation passes")
     # parse CLI
     if len(sys.argv) == 1:
         # user has no clue of what to do -> usage
@@ -250,6 +251,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     input_fn = args.input_fn
     draw_mol = args.draw_mol
+    nb_passes = args.nb_passes
     smiles_surgeon_mode = args.surgeon
     rng_seed = args.seed
     output = open(args.output_fn, 'w')
@@ -258,8 +260,10 @@ if __name__ == '__main__':
     for name, mol in mol_supplier:
         if smiles_surgeon_mode:
             # Smiling Surgeon tests ---------
-            fragments_smi, parent_name, dico = cut_some_bonds(mol, rng_seed)
-            print("%s\t%s;%s" % (fragments_smi, name, str(dico)), file=output)
+            for i in range(nb_passes):
+                fragments_smi, parent_name, dico = cut_some_bonds(mol, rng_seed)
+                print("%s\t%s_p%d;%s" %
+                      (fragments_smi, name, i, str(dico)), file=output)
         else: # previous --------------------
             print("#atoms:%d %s" % (mol.GetNumAtoms(), name), file=output)
             print_typed_atoms(output, mol)
