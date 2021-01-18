@@ -154,12 +154,11 @@ def read_one_fragment(input):
         bond.SetStereo(stereo)
         print('%s stereo %s on bond %d (%d, %d)' %
               (frag_name, common.char_of_bond_stereo(stereo), bi, a, b))
-    Chem.AssignStereochemistry(res_mol) # ! MANDATORY !        
-    print('after stereo: %s' % Chem.MolToSmiles(res_mol), file=sys.stderr)
     # smi for mol
     try:
         Chem.SanitizeMol(res_mol)
-        print('after sanitize: %s' % Chem.MolToSmiles(res_mol), file=sys.stderr)
+        Chem.AssignStereochemistry(res_mol) # ! MANDATORY; AFTER SanitizeMol !
+        print('after sanitize then stereo: %s' % Chem.MolToSmiles(res_mol), file=sys.stderr)
         res_smi = Chem.MolToSmiles(res_mol)
         return (False, res_smi, frag_name)
     except rdkit.Chem.rdchem.KekulizeException:
