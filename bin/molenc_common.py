@@ -2,6 +2,7 @@
 import numpy, rdkit, re
 
 from rdkit import Chem
+from rdkit.Chem.AtomPairs import Pairs
 from enum import IntEnum
 
 def RobustSmilesMolSupplier(filename):

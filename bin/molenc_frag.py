@@ -15,11 +15,11 @@ import rdkit
 import sys
 import time
 
-from common import RobustSmilesMolSupplier
+from molenc_common import RobustSmilesMolSupplier
 from rdkit import Chem
 from rdkit.Chem import Descriptors
 from rdkit.Chem.Draw import rdMolDraw2D
-from common import StereoCodes
+from molenc_common import StereoCodes
 
 to_stereo_code = \
   { # atom.SetChiralTag(Chem.ChiralType.CHI_UNSPECIFIED)
