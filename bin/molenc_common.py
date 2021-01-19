@@ -209,13 +209,14 @@ def type_atom(a):
     res = "%d,%d,%d,%d" % (nb_pi_electrons, atom_num, nbHA, formal_charge)
     return res
 
-def log_protected_bond(name, b):
-    print('mol %s: protected bond %d' % (name, b.GetIdx()), file=sys.stderr)
+def log_protected_bond(debug, name, b):
+    if debug:
+        print('mol %s: protected bond %d' % (name, b.GetIdx()), file=sys.stderr)
 
 # only single bonds not in rings, no stereo bonds,
 # no bond to/from a specified stereo center (i.e. if stereo was set,
 # we protect it)
-def find_cuttable_bonds(mol):
+def find_cuttable_bonds(mol, debug = False):
     name = mol.GetProp("name")
     stereo_center_indexes = get_stereo_center_indexes(mol)
     for b in mol.GetBonds():
@@ -225,7 +226,7 @@ def find_cuttable_bonds(mol):
         if ((stereo_center_indexes.get(i) == True) or
             (stereo_center_indexes.get(j) == True)):
            b.SetBoolProp("protected", True)
-           log_protected_bond(name, b)
+           log_protected_bond(debug, name, b)
         # protect bonds between stereo bond atoms and their stereo atoms
         if b.GetStereo() != rdkit.Chem.rdchem.BondStereo.STEREONONE:
             (k, l) = b.GetStereoAtoms()
@@ -235,16 +236,16 @@ def find_cuttable_bonds(mol):
             b3 = mol.GetBondBetweenAtoms(j, l)
             if b0 != None:
                 b0.SetBoolProp("protected", True)
-                log_protected_bond(name, b0)
+                log_protected_bond(debug, name, b0)
             if b1 != None:
                 b1.SetBoolProp("protected", True)
-                log_protected_bond(name, b1)
+                log_protected_bond(debug, name, b1)
             if b2 != None:
                 b2.SetBoolProp("protected", True)
-                log_protected_bond(name, b2)
+                log_protected_bond(debug, name, b2)
             if b3 != None:
                 b3.SetBoolProp("protected", True)
-                log_protected_bond(name, b3)
+                log_protected_bond(debug, name, b3)
     res = []
     for b in mol.GetBonds():
         if ((b.GetBondType() == rdkit.Chem.rdchem.BondType.SINGLE) and
