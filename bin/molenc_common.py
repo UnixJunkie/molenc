@@ -1,5 +1,5 @@
 
-import numpy, rdkit, re
+import numpy, rdkit, re, sys
 
 from rdkit import Chem
 from rdkit.Chem.AtomPairs import Pairs
@@ -210,7 +210,7 @@ def type_atom(a):
     return res
 
 def log_protected_bond(name, b):
-    print('mol %s: protected bond %d' % (name, b.GetIdx()))
+    print('mol %s: protected bond %d' % (name, b.GetIdx()), file=sys.stderr)
 
 # only single bonds not in rings, no stereo bonds,
 # no bond to/from a specified stereo center (i.e. if stereo was set,
