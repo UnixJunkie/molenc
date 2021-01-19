@@ -173,6 +173,8 @@ if __name__ == '__main__':
     parser.add_argument("--assemble", dest = "assemble", action = 'store_true',
                         default = False,
                         help = "assemble instead of fragmenting")
+    parser.add_argument("--nmols", dest = "nmols", default = 1,
+                        type = int, help = "number of molecules to generate")
     # parse CLI
     if len(sys.argv) == 1:
         # user has no clue of what to do -> usage
@@ -182,6 +184,7 @@ if __name__ == '__main__':
     input_fn = args.input_fn
     nb_passes = args.nb_passes
     assemble = args.assemble
+    nmols = args.nmols
     rng_seed = args.seed
     random.seed(rng_seed)
     output = open(args.output_fn, 'w')
@@ -189,14 +192,17 @@ if __name__ == '__main__':
     if assemble: # assembling fragments ---------------------------------------
         fragments = read_all_fragments(input_fn)
         nb_uniq = count_uniq_fragment(fragments)
-        print('%d fragments indexed (uniq: %d)' % (len(fragments), nb_uniq))
-        seed_frag = choose_one_random_fragment(fragments)
-        print('seed_frag: %s' % str(seed_frag)) # debug
+        print('read %d fragments (uniq: %d)' % (len(fragments), nb_uniq))
         index = index_fragments(fragments)
-        print(len(index)) # debug
-        # inspect the index (to debug)
-        for k, v in index.items():
-            print("k:%s -> %d frags" % (k, len(v)))
+        print('%d fragment keys' % len(index))
+        # # inspect the index (to debug)
+        # for k, v in index.items():
+        #     print("k:%s -> %d frags" % (k, len(v)))
+        for i in range(nmols):
+            seed_frag = choose_one_random_fragment(fragments)
+            # print('seed_frag: %s' % str(seed_frag)) # debug
+            # FBR: TODO: grow this fragment
+            count += 1
     else:
         # fragmenting ---------------------------------------------------------
         mol_supplier = RobustSmilesMolSupplier(input_fn)
