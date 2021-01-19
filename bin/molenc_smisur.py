@@ -35,6 +35,7 @@ import rdkit
 import sys
 import time
 
+from molenc_common import RobustSmilesMolSupplier
 from rdkit import Chem
 from rdkit.Chem import Descriptors
 from rdkit.Chem.AtomPairs import Pairs
@@ -59,8 +60,8 @@ def fragment_on_bonds_and_label(mol, bonds):
         # get or create dictionary keys for those atom types
         ai = mol.GetAtomWithIdx(i)
         aj = mol.GetAtomWithIdx(j)
-        at_i = type_atom(ai)
-        at_j = type_atom(aj)
+        at_i = common.type_atom(ai)
+        at_j = common.type_atom(aj)
         vi = index_for_atom_type(dico, at_i)
         vj = index_for_atom_type(dico, at_j)
         labels.append((vi, vj))
@@ -104,7 +105,7 @@ if __name__ == '__main__':
     before = time.time()
     # CLI options parsing
     parser = argparse.ArgumentParser(
-        description = "compute molecule fragmentation hints")
+        description = "fragment molecules, or assemble molecular fragments")
     parser.add_argument("-i", metavar = "input.smi", dest = "input_fn",
                         help = "molecules input file")
     parser.add_argument("-o", metavar = "output.smi", dest = "output_fn",
@@ -113,7 +114,8 @@ if __name__ == '__main__':
                         type = int, help = "RNG seed")
     parser.add_argument("-n", dest = "nb_passes", default = 1,
                         type = int, help = "number of fragmentation passes")
-    parser.add_argument("--assemble", dest = "assemble", default = False,
+    parser.add_argument("--assemble", dest = "assemble", action = 'store_true',
+                        default = False,
                         help = "assemble instead of fragmenting")
     # parse CLI
     if len(sys.argv) == 1:
@@ -122,9 +124,7 @@ if __name__ == '__main__':
         sys.exit(1)
     args = parser.parse_args()
     input_fn = args.input_fn
-    draw_mol = args.draw_mol
     nb_passes = args.nb_passes
-    smiles_surgeon_mode = args.surgeon
     assemble = args.assemble
     rng_seed = args.seed
     random.seed(rng_seed)
@@ -136,7 +136,6 @@ if __name__ == '__main__':
         # fragmenting ---------------------------------------------------------
         mol_supplier = RobustSmilesMolSupplier(input_fn)
         for name, mol in mol_supplier:
-            # Smiling Surgeon tests ---------
             for i in range(nb_passes):
                 fragments_smi, parent_name, dico = cut_some_bonds(mol, rng_seed)
                 print("%s\t%s_p%d;%s" %
