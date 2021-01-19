@@ -7,25 +7,28 @@
 # Kyushu Institute of Technology,
 # 680-4 Kawazu, Iizuka, Fukuoka, 820-8502, Japan.
 
-# The "Smiling Surgeon": a doctor operating directly at the SMILES level
+# The Smiling Surgeon: a doctor operating directly at the SMILES level
 
 # FRAGMENTATION
 #
 # 1) OK cut some cuttable bonds of a molecule
-#    TODO maybe preserve single bonds coming out of a stereo center
 # 2) OK try to save it as SMILES to see what we get (we get a mixture)
 # 3) OK atom-type only atoms at the ends of bonds that were cut
 # 4) OK use isotope numbers as keys in the (former opposite) atom type map
-# 6) OK output this SMILES plus the int->atom_type map as mol_name
-#       we should name the fragments also, using parent molecule name + an index
+# 6) OK output this SMILES plus the (int -> atom_type) map as a string
+#       plus the parent molecule name
 
-# FRAGMENT ASSEMBLY
+# FRAGMENTS ASSEMBLY
 #
-# 1) read in all the fragments
-# 2) create the map (start_atom_type, end_atom_type) -> fragment_smi
-# 3) choose a fragment randomly
-# 4) FOR each remaining attachment point, draw a compatible fragment
-# 5)     attach it
+# 1) read in all fragments
+# 2) create the map ((start_atom_type, end_atom_type) -> fragment)
+# 3) choose a seed fragment randomly
+# 4) if remaining attachment points on it:
+#        draw a compatible fragment
+#        attach it
+#        rec_call
+#    else:
+#        return current_mol
 
 import argparse
 import ast
@@ -50,9 +53,15 @@ def index_for_atom_type(atom_types_dict, atom_type):
         atom_types_dict[atom_type] = v
         return v
 
+def dict_reverse_binding(dico):
+    res = {}
+    for k, v in dico.items():
+        res[v] = k
+    return res
+
 def fragment_on_bonds_and_label(mol, bonds):
     labels = []
-    dico = {}
+    atom_type_to_index = {}
     for bi in bonds:
         b = mol.GetBondWithIdx(bi)
         i = b.GetBeginAtomIdx()
@@ -62,13 +71,14 @@ def fragment_on_bonds_and_label(mol, bonds):
         aj = mol.GetAtomWithIdx(j)
         at_i = common.type_atom(ai)
         at_j = common.type_atom(aj)
-        vi = index_for_atom_type(dico, at_i)
-        vj = index_for_atom_type(dico, at_j)
+        vi = index_for_atom_type(atom_type_to_index, at_i)
+        vj = index_for_atom_type(atom_type_to_index, at_j)
         labels.append((vi, vj))
     fragmented = Chem.FragmentOnBonds(mol, bonds, dummyLabels=labels)
     smi = Chem.MolToSmiles(fragmented)
     name = mol.GetProp("name")
-    return (smi, name, dico)
+    index_to_atom_type = dict_reverse_binding(atom_type_to_index)
+    return (smi, name, index_to_atom_type)
 
 # SMILES fragmentation
 def cut_some_bonds(mol, seed):
@@ -83,6 +93,8 @@ def cut_some_bonds(mol, seed):
     to_cut = cuttable_bonds[0:max_cuts]
     if len(to_cut) == 0:
         # molecule too small: not fragmented
+        # still, we output it so that input and output SMILES files can be
+        # visualized side-by-side
         smi = Chem.MolToSmiles(mol)
         name = mol.GetProp("name")
         dico = {}
@@ -99,7 +111,51 @@ def FragmentsSupplier(filename):
             dico = ast.literal_eval(dict_str)
             for i, smi in enumerate(fragments_smiles):
                 frag_name = '%s_f%d' % (parent_mol_name, i)
-                yield (smi, frag_name, dico)
+                if len(dico) > 0: # molecule _was_ fragmented (not too small)
+                    # print(smi, frag_name, dico, file=sys.stderr) # debug
+                    yield (smi, frag_name, dico)
+
+def read_all_fragments(fn):
+    res = []
+    for (smi, frag_name, dico) in FragmentsSupplier(fn):
+        res.append((smi, frag_name, dico))
+    return res
+
+def choose_one_random_fragment(all_frags):
+    n = len(all_frags)
+    i = random.randint(0, n - 1)
+    return all_frags[i]
+
+def count_uniq_fragment(all_frags):
+    ss = set() # string set
+    for (smi, _frag_name, _dico) in all_frags:
+        ss.add(smi)
+    return len(ss)
+
+def index_fragments(frags):
+    res = {}
+    for smi, frag_name, dico in frags:
+        frag_mol = Chem.MolFromSmiles(smi)
+        # process each attachment point
+        for a in frag_mol.GetAtoms():
+            if a.GetAtomicNum() == 0: # wildcard atom
+                isotope = a.GetIsotope()
+                # print(isotope, dico) # debug
+                dst_type = dico[isotope]
+                neighbs = a.GetNeighbors()
+                assert(len(neighbs) == 1)
+                src_atom = neighbs[0]
+                src_type = common.type_atom(src_atom)
+                # record the fragment under key: (dst_type, src_type)
+                # (i.e. ready to use by requiring fragment)
+                key = (dst_type, src_type)
+                new_val = (frag_mol, frag_name, dico)
+                try:
+                    previous_frags = res[key]
+                    previous_frags.append(new_val)
+                except KeyError:
+                    res[key] = [new_val]
+    return res
 
 if __name__ == '__main__':
     before = time.time()
@@ -131,7 +187,16 @@ if __name__ == '__main__':
     output = open(args.output_fn, 'w')
     count = 0
     if assemble: # assembling fragments ---------------------------------------
-        assert(False)
+        fragments = read_all_fragments(input_fn)
+        nb_uniq = count_uniq_fragment(fragments)
+        print('%d fragments indexed (uniq: %d)' % (len(fragments), nb_uniq))
+        seed_frag = choose_one_random_fragment(fragments)
+        print('seed_frag: %s' % str(seed_frag)) # debug
+        index = index_fragments(fragments)
+        print(len(index)) # debug
+        # inspect the index (to debug)
+        for k, v in index.items():
+            print("k:%s -> %d frags" % (k, len(v)))
     else:
         # fragmenting ---------------------------------------------------------
         mol_supplier = RobustSmilesMolSupplier(input_fn)
