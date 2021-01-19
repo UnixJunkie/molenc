@@ -166,7 +166,7 @@ if __name__ == '__main__':
                         help = "molecules input file")
     parser.add_argument("-o", metavar = "output.smi", dest = "output_fn",
                         help = "output file")
-    parser.add_argument("--seed", dest = "seed", default = 1234,
+    parser.add_argument("--seed", dest = "seed", default = -1,
                         type = int, help = "RNG seed")
     parser.add_argument("-n", dest = "nb_passes", default = 1,
                         type = int, help = "number of fragmentation passes")
@@ -186,7 +186,9 @@ if __name__ == '__main__':
     assemble = args.assemble
     nmols = args.nmols
     rng_seed = args.seed
-    random.seed(rng_seed)
+    if rng_seed != -1:
+        # only if the user asked for it, we make experiments repeatable
+        random.seed(rng_seed)
     output = open(args.output_fn, 'w')
     count = 0
     if assemble: # assembling fragments ---------------------------------------
@@ -214,5 +216,10 @@ if __name__ == '__main__':
             count += 1
     after = time.time()
     dt = after - before
-    print("%d molecules at %.2f mol/s" % (count, count / dt), file=sys.stderr)
+    if assemble:
+        print("generated %d molecules at %.2f mol/s" %
+              (count, count / dt), file=sys.stderr)
+    else:
+        print("read %d molecules at %.2f mol/s" %
+              (count, count / dt), file=sys.stderr)
     output.close()
