@@ -59,6 +59,9 @@ def dict_reverse_binding(dico):
         res[v] = k
     return res
 
+def dict_values(dico):
+    return [v for _k, v in dico.items()]
+
 def fragment_on_bonds_and_label(mol, bonds):
     labels = []
     atom_type_to_index = {}
@@ -132,16 +135,20 @@ def count_uniq_fragment(all_frags):
         ss.add(smi)
     return len(ss)
 
+# set "name" prop. to frag_mol
+# set "dst_type" prop to attachment points
 def index_fragments(frags):
     res = {}
     for smi, frag_name, dico in frags:
         frag_mol = Chem.MolFromSmiles(smi)
+        frag_mol.SetProp("name", frag_name)
         # process each attachment point
         for a in frag_mol.GetAtoms():
-            if a.GetAtomicNum() == 0: # wildcard atom
+            if a.GetAtomicNum() == 0: # '*' wildcard atom
                 isotope = a.GetIsotope()
                 # print(isotope, dico) # debug
                 dst_type = dico[isotope]
+                a.SetProp("dst_type", str(dst_type))
                 neighbs = a.GetNeighbors()
                 assert(len(neighbs) == 1)
                 src_atom = neighbs[0]
@@ -149,13 +156,19 @@ def index_fragments(frags):
                 # record the fragment under key: (dst_type, src_type)
                 # (i.e. ready to use by requiring fragment)
                 key = (dst_type, src_type)
-                new_val = (frag_mol, frag_name, dico)
                 try:
                     previous_frags = res[key]
-                    previous_frags.append(new_val)
+                    previous_frags.append(frag_mol)
                 except KeyError:
-                    res[key] = [new_val]
+                    res[key] = [frag_mol]
     return res
+
+def grow_fragment(frag_seed, frags_index):
+    # find first attachement point in frag_seed
+    # draw compatible fragment
+    # connect it
+    # rec. call
+    assert(false)
 
 if __name__ == '__main__':
     before = time.time()
@@ -192,10 +205,11 @@ if __name__ == '__main__':
     output = open(args.output_fn, 'w')
     count = 0
     if assemble: # assembling fragments ---------------------------------------
-        fragments = read_all_fragments(input_fn)
-        nb_uniq = count_uniq_fragment(fragments)
-        print('read %d fragments (uniq: %d)' % (len(fragments), nb_uniq))
-        index = index_fragments(fragments)
+        smi_fragments = read_all_fragments(input_fn)
+        nb_uniq = count_uniq_fragment(smi_fragments)
+        print('read %d fragments (uniq: %d)' % (len(smi_fragments), nb_uniq))
+        index = index_fragments(smi_fragments)
+        fragments = dict_values(index)
         print('%d fragment keys' % len(index))
         # # inspect the index (to debug)
         # for k, v in index.items():
