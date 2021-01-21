@@ -43,6 +43,12 @@ from rdkit import Chem
 from rdkit.Chem import Descriptors
 from rdkit.Chem.AtomPairs import Pairs
 
+def get_name(mol):
+    return mol.GetProp("name")
+
+def set_name(mol, name):
+    mol.SetProp("name", name)
+
 def index_for_atom_type(atom_types_dict, atom_type):
     try:
         return atom_types_dict[atom_type]
@@ -79,7 +85,7 @@ def fragment_on_bonds_and_label(mol, bonds):
         labels.append((vi, vj))
     fragmented = Chem.FragmentOnBonds(mol, bonds, dummyLabels=labels)
     smi = Chem.MolToSmiles(fragmented)
-    name = mol.GetProp("name")
+    name = get_name(mol)
     index_to_atom_type = dict_reverse_binding(atom_type_to_index)
     return (smi, name, index_to_atom_type)
 
@@ -99,7 +105,7 @@ def cut_some_bonds(mol, seed):
         # still, we output it so that input and output SMILES files can be
         # visualized side-by-side
         smi = Chem.MolToSmiles(mol)
-        name = mol.GetProp("name")
+        name = get_name(mol)
         dico = {}
         return (smi, name, dico)
     else:
@@ -135,13 +141,19 @@ def count_uniq_fragment(all_frags):
         ss.add(smi)
     return len(ss)
 
+# the only one attached to a dummy atom / attachment point
+def get_src_atom(a):
+    neighbs = a.GetNeighbors()
+    assert(len(neighbs) == 1)
+    return neighbs[0]
+
 # set "name" prop. to frag_mol
 # set "dst_type" prop to attachment points
 def index_fragments(frags):
     res = {}
     for smi, frag_name, dico in frags:
         frag_mol = Chem.MolFromSmiles(smi)
-        frag_mol.SetProp("name", frag_name)
+        set_name(frag_mol, frag_name)
         # process each attachment point
         for a in frag_mol.GetAtoms():
             if a.GetAtomicNum() == 0: # '*' wildcard atom
@@ -149,9 +161,7 @@ def index_fragments(frags):
                 # print(isotope, dico) # debug
                 dst_type = dico[isotope]
                 a.SetProp("dst_type", str(dst_type))
-                neighbs = a.GetNeighbors()
-                assert(len(neighbs) == 1)
-                src_atom = neighbs[0]
+                src_atom = get_src_atom(a)
                 src_type = common.type_atom(src_atom)
                 # record the fragment under key: (dst_type, src_type)
                 # (i.e. ready to use by requiring fragment)
@@ -163,12 +173,46 @@ def index_fragments(frags):
                     res[key] = [frag_mol]
     return res
 
-def grow_fragment(frag_seed, frags_index):
-    # find first attachement point in frag_seed
-    # draw compatible fragment
-    # connect it
-    # rec. call
-    assert(false)
+# first attach. index, or -1 if there are no more
+def find_first_attach_index(mol):
+    for a in mol.GetAtoms():
+        if a.GetAtomicNum() == 0: # '*' wildcard atom
+            return a.GetIdx()
+    return -1
+
+# return a new molecule, where m1 and m2 are now attached
+# via a single bond from m1[i1] to m2[i2]
+def bind_molecules(m1, m2, i1, i2):
+    n1 = m1.GetNumAtoms()
+    new_i2 = n1 + i2
+    new_mol = Chem.CombineMols(m1, m2)
+    rw_mol = Chem.RWMol(new_mol)
+    rw_mol.AddBond(i1, new_i2, Chem.rdchem.BondType.SINGLE)
+    new_name = '%s,%s' % (get_name(m1), get_name(m2))
+    set_name(rw_mol, new_name)
+    return rw_mol
+
+# FBR: TODO
+def grow_fragment(frag_seed_mol, frags_index):
+    attach_index = find_first_attach_index(frag_seed_mol)
+    if attach_index == -1:
+        return frag_seed_mol
+    else:
+        mol = RWMol(frag_seed_mol)
+        a = mol.GetAtomWithIdx(attach_index)
+        dst_type_str = a.GetProp("dst_type")
+        dst_type = ast.literal_eval(dst_type_str)
+        src_atom = get_src_atom(a)
+        src_type = common.type_atom(src_atom)
+        mol.RemoveAtom(attach_index)
+        # FBR: I assume we don't need to remove the bond attached to it...
+        # draw a compatible fragment
+        key = (dst_type, src_type)
+        compat_frag_mol = frags_index[key]
+        # connect them
+        new_mol = Chem.CombineMols(mol, compat_frag_mol)
+        # rec. call
+        assert(false)
 
 if __name__ == '__main__':
     before = time.time()
@@ -217,7 +261,10 @@ if __name__ == '__main__':
         for i in range(nmols):
             seed_frag = choose_one_random_fragment(fragments)
             # print('seed_frag: %s' % str(seed_frag)) # debug
-            # FBR: TODO: grow this fragment
+            gen_mol = grow_fragment(seed_frag, index)
+            gen_smi = Chem.MolToSmiles(gen_mol)
+            gen_name = get_name(gen_mol)
+            print("%s\t%s" % (gen_smi, gen_name), file=output)
             count += 1
     else:
         # fragmenting ---------------------------------------------------------
