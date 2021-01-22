@@ -143,7 +143,7 @@ def index_fragments(frags):
                 # record the fragment under key: (dst_typ, src_typ)
                 # i.e. ready to use by requiring fragment
                 key = (dst_typ, src_typ)
-                print('insert key: %s' % str(key))
+                # print('insert key: %s' % str(key)) # debug
                 value = (frag_mol, dst_idx)
                 a.SetProp("dst_typ", dst_typ)
                 try:
@@ -165,8 +165,8 @@ def extract_fragments(dico):
 # via a single bond; after this bond is introduced, the former
 # corresponding attachment points/atoms are removed
 def bind_molecules(m1, m2):
-    print('m1: %s' % Chem.MolToSmiles(m1)) #debug
-    print('m2: %s' % Chem.MolToSmiles(m2)) #debug
+    # print('m1: %s' % Chem.MolToSmiles(m1)) #debug
+    # print('m2: %s' % Chem.MolToSmiles(m2)) #debug
     n1 = m1.GetNumAtoms()
     n2 = m2.GetNumAtoms()
     m = n1 + n2
@@ -206,7 +206,7 @@ def bind_molecules(m1, m2):
                 j += 1
     # crash if none was found
     print("bind_molecules: could not connect fragment %s w/ %s" %
-          (name1, name2))
+          (name1, name2), file=sys.stderr)
     assert(False)
 
 # first attach. point/atom index, or -1 if no more
@@ -239,7 +239,7 @@ def grow_fragment(frag_seed_mol, frags_index):
         src_typ = common.type_atom(src_a)
         # draw compatible fragment
         key = (src_typ, dst_typ) # current to wanted direction
-        print('want key: %s' % str(key))
+        # print('want key: %s' % str(key)) # debug
         possible_compat_frags = frags_index[key]
         compat_frag = random_choose_one(possible_compat_frags)
         (frag_mol2, dst_idx2) = compat_frag
@@ -269,10 +269,7 @@ if __name__ == '__main__':
                         type = int, help = "RNG seed")
     parser.add_argument("-n", dest = "nb_passes", default = 1,
                         type = int, help = "number of fragmentation passes")
-    parser.add_argument("--assemble", dest = "assemble", action = 'store_true',
-                        default = False,
-                        help = "assemble instead of fragmenting")
-    parser.add_argument("--nmols", dest = "nmols", default = 1,
+    parser.add_argument("--assemble", dest = "nmols", default = -1,
                         type = int, help = "number of molecules to generate")
     # parse CLI
     if len(sys.argv) == 1:
@@ -282,8 +279,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
     input_fn = args.input_fn
     nb_passes = args.nb_passes
-    assemble = args.assemble
     nmols = args.nmols
+    assemble = nmols > 0
     rng_seed = args.seed
     if rng_seed != -1:
         # only if the user asked for it, we make experiments repeatable
@@ -302,7 +299,7 @@ if __name__ == '__main__':
         #     print("k:%s -> %d frags" % (k, len(v)))
         for i in range(nmols):
             seed_frag = random_choose_one(fragments)
-            print('seed_frag: %s' % get_name(seed_frag)) # debug
+            # print('seed_frag: %s' % get_name(seed_frag)) # debug
             gen_mol = grow_fragment(seed_frag, index)
             gen_smi = Chem.MolToSmiles(gen_mol)
             gen_name = get_name(gen_mol)
