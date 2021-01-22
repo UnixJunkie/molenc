@@ -41,6 +41,7 @@ import time
 from molenc_common import RobustSmilesMolSupplier
 from rdkit import Chem
 from rdkit.Chem import Descriptors
+from rdkit.Chem import RWMol
 from rdkit.Chem.AtomPairs import Pairs
 
 def get_name(mol):
@@ -125,7 +126,7 @@ def FragmentsSupplier(filename):
 def read_all_fragments(fn):
     return [(smi, name, dico) for (smi, name, dico) in FragmentsSupplier(fn)]
 
-def choose_one_random_fragment(all_frags):
+def random_choose_one(all_frags):
     n = len(all_frags)
     i = random.randint(0, n - 1)
     return all_frags[i]
@@ -175,20 +176,40 @@ def index_fragments(frags):
 
 # extract fragments from values of the dictionary
 def extract_fragments(dico):
-    return [frag_mol
-            for _k, (frag_mol, _src_idx, _dst_idx, _src_typ, _dst_typ)
-            in dico.items()]
+    res = []
+    for _k, v in dico.items():
+        for (frag_mol, _src_idx, _dst_idx, _src_typ, _dst_typ) in v:
+            res.append(frag_mol)
+    return res
 
 # return a new molecule, where m1 and m2 are now attached
-# via a single bond from m1[i1] to m2[i2]
-def bind_molecules(m1, m2, i1, i2):
+# via a single bond from m1[src1] to m2[src2].
+# after this bond is introduced, m1[dst1] and m2[dst2]
+# (former attachment points/atoms) are removed.
+# after that, remaining atom labels, if any, are updated
+def bind_molecules(m1, m2, src1, src2, dst1, dst2):
     n1 = m1.GetNumAtoms()
-    new_i2 = n1 + i2
+    n2 = m2.GetNumAtoms()
+    m = n1 + n2
+    new_src2 = n1 + src2
+    new_dst2 = n1 + dst2
     new_mol = Chem.CombineMols(m1, m2)
     rw_mol = Chem.RWMol(new_mol)
-    rw_mol.AddBond(i1, new_i2, Chem.rdchem.BondType.SINGLE)
+    rw_mol.AddBond(src1, new_src2, Chem.rdchem.BondType.SINGLE)
+    # remove former attachment points
+    rw_mol.RemoveAtom(dst1)
+    rw_mol.RemoveAtom(new_dst2)
     new_name = '%s,%s' % (get_name(m1), get_name(m2))
     set_name(rw_mol, new_name)
+    # reindex annotations
+    for a in rw_mol.GetAtoms():
+        if a.GetAtomicNum() == 0: # '*' wildcard atom
+            atom_prop_str = a.GetProp("value")
+            src_idx, dst_idx, src_typ, dst_typ = ast.literal_eval(atom_prop_str)
+            new_src_idx = get_src_atom_idx(a)
+            new_dst_idx = a.GetIdx()
+            new_atom_prop = (new_src_idx, new_dst_idx, src_typ, dst_typ)
+            a.SetProp("value", str(new_atom_prop))
     return rw_mol
 
 # first attach. point/atom index, or -1 if no more
@@ -199,7 +220,7 @@ def find_first_attach_index(mol):
     return -1
 
 # attach matching fragments until no attachment points are left
-# FBR: write non recursive way ???
+# FBR: non recursive version ???
 def grow_fragment(frag_seed_mol, frags_index):
     attach_index = find_first_attach_index(frag_seed_mol)
     if attach_index == -1:
@@ -212,22 +233,25 @@ def grow_fragment(frag_seed_mol, frags_index):
             print("KekulizeException in %s" % get_name(frag_seed_mol), file=sys.stderr)
             return frag_seed_mol.GetMol()
     else:
-        mol = RWMol(frag_seed_mol)
-        a = mol.GetAtomWithIdx(attach_index)
+        a = frag_seed_mol.GetAtomWithIdx(attach_index)
         atom_prop_str = a.GetProp("value")
         src_idx, dst_idx, src_typ, dst_typ = ast.literal_eval(atom_prop_str)
+        assert(common.type_atom(frag_seed_mol.GetAtomWithIdx(src_idx)) == src_typ)
+        assert(frag_seed_mol.GetAtomWithIdx(dst_idx).GetAtomicNum() == 0)
         assert(attach_index == dst_idx)
-        # remove current attachment point / atom
-        # FBR: assuming we don't need to remove the bond attached to it...
-        mol.RemoveAtom(attach_index)
         # draw compatible fragment
         key = (dst_typ, src_typ)
-        (frag_mol2, src_idx2, dst_idx2, src_typ2, dst_typ2) = frags_index[key]
-        # remove destination attachment point
-        mol2 = RWMol(frag_mol2)
-        mol2.RemoveAtom(dst_idx2)
+        possible_compat_frags = frags_index[key]
+        compat_frag = random_choose_one(possible_compat_frags)
+        (frag_mol2, src_idx2, dst_idx2, src_typ2, dst_typ2) = compat_frag
+        assert(common.type_atom(frag_mol2.GetAtomWithIdx(src_idx2)) == src_typ2)
+        assert(frag_mol2.GetAtomWithIdx(dst_idx2).GetAtomicNum() == 0)
+        # check fragments compatibility
+        assert(src_typ == dst_typ2)
+        assert(dst_typ == src_typ2)
         # connect them
-        new_mol = bind_molecules(mol, mol2, src_idx, src_idx2)
+        new_mol = bind_molecules(
+            frag_seed_mol, frag_mol2, src_idx, src_idx2, dst_idx, dst_idx2)
         # rec. call
         return grow_fragment(new_mol, frags_index)
 
@@ -276,7 +300,7 @@ if __name__ == '__main__':
         # for k, v in index.items():
         #     print("k:%s -> %d frags" % (k, len(v)))
         for i in range(nmols):
-            seed_frag = choose_one_random_fragment(fragments)
+            seed_frag = random_choose_one(fragments)
             # print('seed_frag: %s' % str(seed_frag)) # debug
             gen_mol = grow_fragment(seed_frag, index)
             gen_smi = Chem.MolToSmiles(gen_mol)
