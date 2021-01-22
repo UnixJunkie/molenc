@@ -65,9 +65,6 @@ def dict_reverse_binding(dico):
         res[v] = k
     return res
 
-def dict_values(dico):
-    return [v for _k, v in dico.items()]
-
 def fragment_on_bonds_and_label(mol, bonds):
     labels = []
     atom_type_to_index = {}
@@ -91,15 +88,16 @@ def fragment_on_bonds_and_label(mol, bonds):
 
 # SMILES fragmentation
 def cut_some_bonds(mol, seed):
-    cuttable_bonds = [b.GetIdx() for b in common.find_cuttable_bonds(mol)]
+    cuttable_bonds = common.find_cuttable_bonds(mol)
+    cut_bonds_indexes = [b.GetIdx() for b in cuttable_bonds]
     total_weight = Descriptors.MolWt(mol)
     # 150 Da: D. Rognan's suggested max fragment weight
     nb_frags = round(total_weight / 150)
-    max_cuts = min(len(cuttable_bonds), nb_frags - 1)
+    max_cuts = min(len(cut_bonds_indexes), nb_frags - 1)
     # print("mol %s; cut %d bonds" % (mol.GetProp("name"), max_cuts),
     #       file=sys.stderr)
-    random.shuffle(cuttable_bonds)
-    to_cut = cuttable_bonds[0:max_cuts]
+    random.shuffle(cut_bonds_indexes)
+    to_cut = cut_bonds_indexes[0:max_cuts]
     if len(to_cut) == 0:
         # molecule too small: not fragmented
         # still, we output it so that input and output SMILES files can be
@@ -125,10 +123,7 @@ def FragmentsSupplier(filename):
                     yield (smi, frag_name, dico)
 
 def read_all_fragments(fn):
-    res = []
-    for (smi, frag_name, dico) in FragmentsSupplier(fn):
-        res.append((smi, frag_name, dico))
-    return res
+    return [(smi, name, dico) for (smi, name, dico) in FragmentsSupplier(fn)]
 
 def choose_one_random_fragment(all_frags):
     n = len(all_frags)
@@ -137,18 +132,19 @@ def choose_one_random_fragment(all_frags):
 
 def count_uniq_fragment(all_frags):
     ss = set() # string set
-    for (smi, _frag_name, _dico) in all_frags:
+    for (smi, _name, _dico) in all_frags:
         ss.add(smi)
     return len(ss)
 
 # the only one attached to a dummy atom / attachment point
-def get_src_atom(a):
+def get_src_atom_idx(a):
     neighbs = a.GetNeighbors()
     assert(len(neighbs) == 1)
-    return neighbs[0]
+    src_a = neighbs[0]
+    return src_a.GetIdx()
 
 # set "name" prop. to frag_mol
-# set "dst_type" prop to attachment points
+# record (frag_mol, src_atom_idx, src_atom_typ, dst_atom_typ)
 def index_fragments(frags):
     res = {}
     for smi, frag_name, dico in frags:
@@ -160,25 +156,28 @@ def index_fragments(frags):
                 isotope = a.GetIsotope()
                 # print(isotope, dico) # debug
                 dst_type = dico[isotope]
-                a.SetProp("dst_type", str(dst_type))
-                src_atom = get_src_atom(a)
+                dst_atom_idx = a.GetIdx()
+                src_atom_idx = get_src_atom_idx(a)
+                src_atom = frag_mol.GetAtomWithIdx(src_atom_idx)
                 src_type = common.type_atom(src_atom)
                 # record the fragment under key: (dst_type, src_type)
-                # (i.e. ready to use by requiring fragment)
+                # i.e. ready to use by requiring fragment
                 key = (dst_type, src_type)
+                value = (frag_mol, src_atom_idx, dst_atom_idx, src_type, dst_type)
+                atom_prop = (src_atom_idx, dst_atom_idx, src_type, dst_type)
+                a.SetProp("value", str(atom_prop))
                 try:
                     previous_frags = res[key]
-                    previous_frags.append(frag_mol)
+                    previous_frags.append(value)
                 except KeyError:
-                    res[key] = [frag_mol]
+                    res[key] = [value]
     return res
 
-# first attach. index, or -1 if there are no more
-def find_first_attach_index(mol):
-    for a in mol.GetAtoms():
-        if a.GetAtomicNum() == 0: # '*' wildcard atom
-            return a.GetIdx()
-    return -1
+# extract fragments from values of the dictionary
+def extract_fragments(dico):
+    return [frag_mol
+            for _k, (frag_mol, _src_idx, _dst_idx, _src_typ, _dst_typ)
+            in dico.items()]
 
 # return a new molecule, where m1 and m2 are now attached
 # via a single bond from m1[i1] to m2[i2]
@@ -192,27 +191,45 @@ def bind_molecules(m1, m2, i1, i2):
     set_name(rw_mol, new_name)
     return rw_mol
 
-# FBR: TODO
+# first attach. point/atom index, or -1 if no more
+def find_first_attach_index(mol):
+    for a in mol.GetAtoms():
+        if a.GetAtomicNum() == 0: # '*' wildcard atom
+            return a.GetIdx()
+    return -1
+
+# attach matching fragments until no attachment points are left
+# FBR: write non recursive way ???
 def grow_fragment(frag_seed_mol, frags_index):
     attach_index = find_first_attach_index(frag_seed_mol)
     if attach_index == -1:
-        return frag_seed_mol
+        try:
+            Chem.SanitizeMol(frag_seed_mol)
+            Chem.AssignStereochemistry(frag_seed_mol) # ! MANDATORY _AFTER_ SanitizeMol !
+            # print('after sanitize then stereo: %s' % Chem.MolToSmiles(res_mol), file=sys.stderr)
+            return frag_seed_mol.GetMol()
+        except rdkit.Chem.rdchem.KekulizeException:
+            print("KekulizeException in %s" % get_name(frag_seed_mol), file=sys.stderr)
+            return frag_seed_mol.GetMol()
     else:
         mol = RWMol(frag_seed_mol)
         a = mol.GetAtomWithIdx(attach_index)
-        dst_type_str = a.GetProp("dst_type")
-        dst_type = ast.literal_eval(dst_type_str)
-        src_atom = get_src_atom(a)
-        src_type = common.type_atom(src_atom)
+        atom_prop_str = a.GetProp("value")
+        src_idx, dst_idx, src_typ, dst_typ = ast.literal_eval(atom_prop_str)
+        assert(attach_index == dst_idx)
+        # remove current attachment point / atom
+        # FBR: assuming we don't need to remove the bond attached to it...
         mol.RemoveAtom(attach_index)
-        # FBR: I assume we don't need to remove the bond attached to it...
-        # draw a compatible fragment
-        key = (dst_type, src_type)
-        compat_frag_mol = frags_index[key]
+        # draw compatible fragment
+        key = (dst_typ, src_typ)
+        (frag_mol2, src_idx2, dst_idx2, src_typ2, dst_typ2) = frags_index[key]
+        # remove destination attachment point
+        mol2 = RWMol(frag_mol2)
+        mol2.RemoveAtom(dst_idx2)
         # connect them
-        new_mol = Chem.CombineMols(mol, compat_frag_mol)
+        new_mol = bind_molecules(mol, mol2, src_idx, src_idx2)
         # rec. call
-        assert(false)
+        return grow_fragment(new_mol, frags_index)
 
 if __name__ == '__main__':
     before = time.time()
@@ -253,7 +270,7 @@ if __name__ == '__main__':
         nb_uniq = count_uniq_fragment(smi_fragments)
         print('read %d fragments (uniq: %d)' % (len(smi_fragments), nb_uniq))
         index = index_fragments(smi_fragments)
-        fragments = dict_values(index)
+        fragments = extract_fragments(index)
         print('%d fragment keys' % len(index))
         # # inspect the index (to debug)
         # for k, v in index.items():
