@@ -9,27 +9,6 @@
 
 # The Smiling Surgeon: a doctor operating directly at the SMILES level
 
-# FRAGMENTATION
-#
-# 1) OK cut some cuttable bonds of a molecule
-# 2) OK try to save it as SMILES to see what we get (we get a mixture)
-# 3) OK atom-type only atoms at the ends of bonds that were cut
-# 4) OK use isotope numbers as keys in the (former opposite) atom type map
-# 6) OK output this SMILES plus the (int -> atom_type) map as a string
-#       plus the parent molecule name
-
-# FRAGMENTS ASSEMBLY
-#
-# 1) read in all fragments
-# 2) create the map ((start_atom_type, end_atom_type) -> fragment)
-# 3) choose a seed fragment randomly
-# 4) if remaining attachment points on it:
-#        draw a compatible fragment
-#        attach it
-#        rec_call
-#    else:
-#        return current_mol
-
 import argparse
 import ast
 import molenc_common as common
@@ -156,17 +135,17 @@ def index_fragments(frags):
             if a.GetAtomicNum() == 0: # '*' wildcard atom
                 isotope = a.GetIsotope()
                 # print(isotope, dico) # debug
-                dst_type = dico[isotope]
-                dst_atom_idx = a.GetIdx()
-                src_atom_idx = get_src_atom_idx(a)
-                src_atom = frag_mol.GetAtomWithIdx(src_atom_idx)
-                src_type = common.type_atom(src_atom)
-                # record the fragment under key: (dst_type, src_type)
+                dst_typ = dico[isotope]
+                dst_idx = a.GetIdx()
+                src_idx = get_src_atom_idx(a)
+                src_a = frag_mol.GetAtomWithIdx(src_idx)
+                src_typ = common.type_atom(src_a)
+                # record the fragment under key: (dst_typ, src_typ)
                 # i.e. ready to use by requiring fragment
-                key = (dst_type, src_type)
-                value = (frag_mol, src_atom_idx, dst_atom_idx, src_type, dst_type)
-                atom_prop = (src_atom_idx, dst_atom_idx, src_type, dst_type)
-                a.SetProp("value", str(atom_prop))
+                key = (dst_typ, src_typ)
+                print('insert key: %s' % str(key))
+                value = (frag_mol, dst_idx)
+                a.SetProp("dst_typ", dst_typ)
                 try:
                     previous_frags = res[key]
                     previous_frags.append(value)
@@ -178,7 +157,7 @@ def index_fragments(frags):
 def extract_fragments(dico):
     res = []
     for _k, v in dico.items():
-        for (frag_mol, _src_idx, _dst_idx, _src_typ, _dst_typ) in v:
+        for (frag_mol, _dst_idx) in v:
             res.append(frag_mol)
     return res
 
@@ -201,15 +180,6 @@ def bind_molecules(m1, m2, src1, src2, dst1, dst2):
     rw_mol.RemoveAtom(new_dst2)
     new_name = '%s,%s' % (get_name(m1), get_name(m2))
     set_name(rw_mol, new_name)
-    # reindex annotations
-    for a in rw_mol.GetAtoms():
-        if a.GetAtomicNum() == 0: # '*' wildcard atom
-            atom_prop_str = a.GetProp("value")
-            src_idx, dst_idx, src_typ, dst_typ = ast.literal_eval(atom_prop_str)
-            new_src_idx = get_src_atom_idx(a)
-            new_dst_idx = a.GetIdx()
-            new_atom_prop = (new_src_idx, new_dst_idx, src_typ, dst_typ)
-            a.SetProp("value", str(new_atom_prop))
     return rw_mol
 
 # first attach. point/atom index, or -1 if no more
@@ -222,10 +192,12 @@ def find_first_attach_index(mol):
 # attach matching fragments until no attachment points are left
 # FBR: non recursive version ???
 def grow_fragment(frag_seed_mol, frags_index):
-    attach_index = find_first_attach_index(frag_seed_mol)
-    if attach_index == -1:
+    dst_idx = find_first_attach_index(frag_seed_mol)
+    if dst_idx == -1:
         try:
             Chem.SanitizeMol(frag_seed_mol)
+            # the constituting fragments might have some stereo info
+            # that we want to preserve up to the final molecule
             Chem.AssignStereochemistry(frag_seed_mol) # ! MANDATORY _AFTER_ SanitizeMol !
             # print('after sanitize then stereo: %s' % Chem.MolToSmiles(res_mol), file=sys.stderr)
             return frag_seed_mol.GetMol()
@@ -233,25 +205,29 @@ def grow_fragment(frag_seed_mol, frags_index):
             print("KekulizeException in %s" % get_name(frag_seed_mol), file=sys.stderr)
             return frag_seed_mol.GetMol()
     else:
-        a = frag_seed_mol.GetAtomWithIdx(attach_index)
-        atom_prop_str = a.GetProp("value")
-        src_idx, dst_idx, src_typ, dst_typ = ast.literal_eval(atom_prop_str)
-        assert(common.type_atom(frag_seed_mol.GetAtomWithIdx(src_idx)) == src_typ)
-        assert(frag_seed_mol.GetAtomWithIdx(dst_idx).GetAtomicNum() == 0)
-        assert(attach_index == dst_idx)
+        dst_a = frag_seed_mol.GetAtomWithIdx(dst_idx)
+        dst_typ = dst_a.GetProp("dst_typ")
+        src_idx = get_src_atom_idx(dst_a)
+        src_a = frag_seed_mol.GetAtomWithIdx(src_idx)
+        src_typ = common.type_atom(src_a)
         # draw compatible fragment
-        key = (dst_typ, src_typ)
+        key = (src_typ, dst_typ) # current to wanted direction
+        print('want key: %s' % str(key))
         possible_compat_frags = frags_index[key]
         compat_frag = random_choose_one(possible_compat_frags)
-        (frag_mol2, src_idx2, dst_idx2, src_typ2, dst_typ2) = compat_frag
-        assert(common.type_atom(frag_mol2.GetAtomWithIdx(src_idx2)) == src_typ2)
-        assert(frag_mol2.GetAtomWithIdx(dst_idx2).GetAtomicNum() == 0)
+        (frag_mol2, dst_idx2) = compat_frag
+        dst_a2 = frag_mol2.GetAtomWithIdx(dst_idx2)
+        dst_typ2 = dst_a2.GetProp("dst_typ")
+        src_idx2 = get_src_atom_idx(dst_a2)
+        src_a2 = frag_mol2.GetAtomWithIdx(src_idx2)
+        src_typ2 = common.type_atom(src_a2)
         # check fragments compatibility
         assert(src_typ == dst_typ2)
         assert(dst_typ == src_typ2)
         # connect them
         new_mol = bind_molecules(
             frag_seed_mol, frag_mol2, src_idx, src_idx2, dst_idx, dst_idx2)
+        print('new_mol: %s' % Chem.MolToSmiles(new_mol))
         # rec. call
         return grow_fragment(new_mol, frags_index)
 
@@ -301,7 +277,7 @@ if __name__ == '__main__':
         #     print("k:%s -> %d frags" % (k, len(v)))
         for i in range(nmols):
             seed_frag = random_choose_one(fragments)
-            # print('seed_frag: %s' % str(seed_frag)) # debug
+            print('seed_frag: %s' % get_name(seed_frag)) # debug
             gen_mol = grow_fragment(seed_frag, index)
             gen_smi = Chem.MolToSmiles(gen_mol)
             gen_name = get_name(gen_mol)
