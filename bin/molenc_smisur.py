@@ -217,7 +217,7 @@ def find_first_attach_index(mol):
     return -1
 
 # attach matching fragments until no attachment points are left
-# FBR: non recursive version ???
+# WARNING: this is a recursive function
 def grow_fragment(frag_seed_mol, frags_index):
     dst_idx = find_first_attach_index(frag_seed_mol)
     if dst_idx == -1:
@@ -302,8 +302,9 @@ if __name__ == '__main__':
             # print('seed_frag: %s' % get_name(seed_frag)) # debug
             gen_mol = grow_fragment(seed_frag, index)
             gen_smi = Chem.MolToSmiles(gen_mol)
-            gen_name = get_name(gen_mol)
-            print("%s\t%s" % (gen_smi, gen_name), file=output)
+            frag_names = get_name(gen_mol)
+            name_prfx = 'genmol%d' % count
+            print("%s\t%s:%s" % (gen_smi, name_prfx, frag_names), file=output)
             count += 1
     else:
         # fragmenting ---------------------------------------------------------
