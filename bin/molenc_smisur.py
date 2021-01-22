@@ -256,6 +256,11 @@ def grow_fragment(frag_seed_mol, frags_index):
         # rec. call
         return grow_fragment(new_mol, frags_index)
 
+def write_out(gen_mol, count, gen_smi, output):
+    frag_names = get_name(gen_mol)
+    name_prfx = 'genmol%d' % count
+    print("%s\t%s:%s" % (gen_smi, name_prfx, frag_names), file=output)
+
 if __name__ == '__main__':
     before = time.time()
     # CLI options parsing
@@ -271,6 +276,9 @@ if __name__ == '__main__':
                         type = int, help = "number of fragmentation passes")
     parser.add_argument("--assemble", dest = "nmols", default = -1,
                         type = int, help = "number of molecules to generate")
+    parser.add_argument("--diverse", dest = "diverse", default = False,
+                        action = "store_true",
+                        help = "enforce uniqueness of generated SMILES")
     # parse CLI
     if len(sys.argv) == 1:
         # user has no clue of what to do -> usage
@@ -282,6 +290,8 @@ if __name__ == '__main__':
     nmols = args.nmols
     assemble = nmols > 0
     rng_seed = args.seed
+    diverse = args.diverse
+    seen_smiles = set()
     if rng_seed != -1:
         # only if the user asked for it, we make experiments repeatable
         random.seed(rng_seed)
@@ -297,15 +307,19 @@ if __name__ == '__main__':
         # # inspect the index (to debug)
         # for k, v in index.items():
         #     print("k:%s -> %d frags" % (k, len(v)))
-        for i in range(nmols):
+        while count < nmols:
             seed_frag = random_choose_one(fragments)
             # print('seed_frag: %s' % get_name(seed_frag)) # debug
             gen_mol = grow_fragment(seed_frag, index)
             gen_smi = Chem.MolToSmiles(gen_mol)
-            frag_names = get_name(gen_mol)
-            name_prfx = 'genmol%d' % count
-            print("%s\t%s:%s" % (gen_smi, name_prfx, frag_names), file=output)
-            count += 1
+            if diverse: # enforce uniqueness of generated cano SMILES
+                if not (gen_smi in seen_smiles):
+                    write_out(gen_mol, count, gen_smi, output)
+                    seen_smiles.add(gen_smi)
+                    count += 1
+            else:
+                write_out(gen_mol, count, gen_smi, output)
+                count += 1
     else:
         # fragmenting ---------------------------------------------------------
         mol_supplier = RobustSmilesMolSupplier(input_fn)
