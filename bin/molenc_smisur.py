@@ -261,6 +261,33 @@ def write_out(gen_mol, count, gen_smi, output):
     name_prfx = 'genmol%d' % count
     print("%s\t%s:%s" % (gen_smi, name_prfx, frag_names), file=output)
 
+# Oprea's lead-like filter
+# Hann, M. M., & Oprea, T. I. (2004).
+# Pursuing the leadlikeness concept in pharmaceutical research.
+# Current opinion in chemical biology, 8(3), 255-263.
+def lead_like(mol):
+    # MolW <= 460
+    if Descriptors.MolWt(mol) > 460:
+        return False
+    # -4.0 <= LogP <= 4.2
+    LogP = Descriptors.MolLogP(mol)
+    if LogP < -4.0 or LogP > 4.2:
+        return False
+    # # LogSw >= -5 # ignored
+    # rotB <= 10
+    if Descriptors.NumRotatableBonds(mol) > 10:
+        return False
+    # nRings <= 4
+    if Lipinski.NumAromaticRings(mol) > 4:
+        return False
+    # HBD <= 5
+    if Descriptors.NumHDonors(mol) > 5:
+        return False
+    # HBA <= 9
+    if Descriptors.NumHAcceptors(mol) > 9:
+        return False
+    return True # lead-like then!
+
 if __name__ == '__main__':
     before = time.time()
     # CLI options parsing
