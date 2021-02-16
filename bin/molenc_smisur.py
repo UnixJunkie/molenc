@@ -19,7 +19,7 @@ import time
 
 from molenc_common import RobustSmilesMolSupplier
 from rdkit import Chem
-from rdkit.Chem import Descriptors
+from rdkit.Chem import Descriptors, Lipinski
 from rdkit.Chem import RWMol
 from rdkit.Chem.AtomPairs import Pairs
 
