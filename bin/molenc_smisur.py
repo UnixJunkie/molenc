@@ -265,7 +265,7 @@ def write_out(gen_mol, count, gen_smi, output):
 # Hann, M. M., & Oprea, T. I. (2004).
 # Pursuing the leadlikeness concept in pharmaceutical research.
 # Current opinion in chemical biology, 8(3), 255-263.
-def lead_like(mol):
+def lead_like_filter(mol):
     # MolW <= 460
     if Descriptors.MolWt(mol) > 460:
         return False
@@ -288,6 +288,17 @@ def lead_like(mol):
         return False
     return True # lead-like then!
 
+def new_enough(filter_diverse, gen_smi, seen_smiles):
+    if not filter_diverse:
+        return True
+    else:
+        res = not (gen_smi in seen_smiles)
+        seen_smiles.add(gen_smi)
+        return res
+
+def lead_like_enough(ll_filter, mol):
+    return ((not ll_filter) or lead_like(mol))
+
 if __name__ == '__main__':
     before = time.time()
     # CLI options parsing
@@ -306,6 +317,9 @@ if __name__ == '__main__':
     parser.add_argument("--diverse", dest = "diverse", default = False,
                         action = "store_true",
                         help = "enforce uniqueness of generated SMILES")
+    parser.add_argument("--lead-like", dest = "ll_filter", default = False,
+                        action = "store_true",
+                        help = "only generate lead-like molecules")
     # parse CLI
     if len(sys.argv) == 1:
         # user has no clue of what to do -> usage
@@ -318,6 +332,7 @@ if __name__ == '__main__':
     assemble = nmols > 0
     rng_seed = args.seed
     diverse = args.diverse
+    ll_filter = args.ll_filter
     seen_smiles = set()
     if rng_seed != -1:
         # only if the user asked for it, we make experiments repeatable
@@ -339,12 +354,9 @@ if __name__ == '__main__':
             # print('seed_frag: %s' % get_name(seed_frag)) # debug
             gen_mol = grow_fragment(seed_frag, index)
             gen_smi = Chem.MolToSmiles(gen_mol)
-            if diverse: # enforce uniqueness of generated cano SMILES
-                if not (gen_smi in seen_smiles):
-                    write_out(gen_mol, count, gen_smi, output)
-                    seen_smiles.add(gen_smi)
-                    count += 1
-            else:
+            new_enough = new_enough(diverse, gen_smi, seen_smiles)
+            lead_like = lead_like_enough(ll_filter, gen_mol)
+            if new_enough and lead_like:
                 write_out(gen_mol, count, gen_smi, output)
                 count += 1
     else:
