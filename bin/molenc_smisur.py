@@ -297,7 +297,7 @@ def new_enough(filter_diverse, gen_smi, seen_smiles):
         return res
 
 def lead_like_enough(ll_filter, mol):
-    return ((not ll_filter) or lead_like(mol))
+    return ((not ll_filter) or lead_like_filter(mol))
 
 if __name__ == '__main__':
     before = time.time()
