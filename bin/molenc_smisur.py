@@ -354,9 +354,9 @@ if __name__ == '__main__':
             # print('seed_frag: %s' % get_name(seed_frag)) # debug
             gen_mol = grow_fragment(seed_frag, index)
             gen_smi = Chem.MolToSmiles(gen_mol)
-            new_enough = new_enough(diverse, gen_smi, seen_smiles)
-            lead_like = lead_like_enough(ll_filter, gen_mol)
-            if new_enough and lead_like:
+            is_new = new_enough(diverse, gen_smi, seen_smiles)
+            is_lead_like = lead_like_enough(ll_filter, gen_mol)
+            if is_new and is_lead_like:
                 write_out(gen_mol, count, gen_smi, output)
                 count += 1
     else:
