@@ -299,6 +299,33 @@ def new_enough(filter_diverse, gen_smi, seen_smiles):
 def lead_like_enough(ll_filter, mol):
     return ((not ll_filter) or lead_like_filter(mol))
 
+# Tran-Nguyen, V. K., Jacquemard, C., & Rognan, D. (2020).
+# LIT-PCBA: An unbiased data set for machine learning and virtual screening.
+# Journal of chemical information and modeling, 60(9), 4263-4273.
+def drug_like_filter(mol):
+    MolW = Descriptors.MolWt(mol)
+    if MolW <= 150 or MolW >= 800: # 150 < MolW < 800 Da
+        return False
+    cLogP = Descriptors.MolLogP(mol)
+    if cLogP <= -3.0 or cLogP >= 5.0: # −3.0 < AlogP < 5.0
+        return False
+    RotB = Descriptors.NumRotatableBonds(mol)
+    if RotB >= 15: # RotB < 15
+        return False
+    HBA = Descriptors.NumHAcceptors(mol)
+    if HBA >= 10: # HBA < 10
+        return False
+    HBD = Descriptors.NumHDonors(mol)
+    if HBD >= 10: # HBD < 10
+        return False
+    FC = Chem.rdmolops.GetFormalCharge(mol)
+    if FC <= -2 or FC >= 2: # −2.0 < FC < 2.0
+        return False
+    return True # Still here? Drug-like then!
+
+def drug_like_enough(dl_filter, mol):
+    return ((not dl_filter) or drug_like_filter(mol))
+
 if __name__ == '__main__':
     before = time.time()
     # CLI options parsing
@@ -320,6 +347,9 @@ if __name__ == '__main__':
     parser.add_argument("--lead-like", dest = "ll_filter", default = False,
                         action = "store_true",
                         help = "only generate lead-like molecules")
+    parser.add_argument("--drug-like", dest = "dl_filter", default = False,
+                        action = "store_true",
+                        help = "only generate drug-like molecules")
     # parse CLI
     if len(sys.argv) == 1:
         # user has no clue of what to do -> usage
@@ -333,6 +363,7 @@ if __name__ == '__main__':
     rng_seed = args.seed
     diverse = args.diverse
     ll_filter = args.ll_filter
+    dl_filter = args.dl_filter
     seen_smiles = set()
     if rng_seed != -1:
         # only if the user asked for it, we make experiments repeatable
@@ -356,7 +387,8 @@ if __name__ == '__main__':
             gen_smi = Chem.MolToSmiles(gen_mol)
             is_new = new_enough(diverse, gen_smi, seen_smiles)
             is_lead_like = lead_like_enough(ll_filter, gen_mol)
-            if is_new and is_lead_like:
+            is_drug_like = drug_like_enough(dl_filter, gen_mol)
+            if is_new and is_lead_like and is_drug_like:
                 write_out(gen_mol, count, gen_smi, output)
                 count += 1
     else:
