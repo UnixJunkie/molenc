@@ -331,71 +331,51 @@ def drug_like_enough(dl_filter, mol):
 # Design of chemical libraries with potentially bioactive molecules applying
 # a maximum common substructure concept. Molecular diversity, 14(2), 401-408.
 # SMARTS patterns kindly provided by Michael Lisurek
+pat1 = Chem.MolFromSmarts('[C,c]S(=O)(=O)[F,Cl,Br,I]') # sulfonylhalide
+pat2 = Chem.MolFromSmarts('[C,c]S(=O)(=O)O[CX4]') # sulfone_ester
+pat3 = Chem.MolFromSmarts('C(=O)[F,Cl,Br,I]') # acylhalide
+pat4 = Chem.MolFromSmarts('O=COC=O') # acidanhydride
+pat5 = Chem.MolFromSmarts('c1([F,Cl,Br,I])ncccn1') # 2-halo_pyrimidine
+pat6 = Chem.MolFromSmarts('[H]C=O') # aldehyde
+pat7 = Chem.MolFromSmarts('C(=O)C(=O)') # 1,2-dicarbonyl
+pat8 = Chem.MolFromSmarts('C1OC1') # epoxide
+pat9 = Chem.MolFromSmarts('C1NC1') # aziridine
+pat10 = Chem.MolFromSmarts('C(=O)S') # thioester
+pat11 = Chem.MolFromSmarts('[#7]!@[#7]') # hydrazine
+pat12 = Chem.MolFromSmarts('C=[CH2]') # ethenes
+pat13 = Chem.MolFromSmarts('[H,*,!N][N;!R]=[C;!R]([*,H])[*,H]') # imine
+pat14 = Chem.MolFromSmarts('[CX4]I') # alkyl_iodide
+pat15 = Chem.MolFromSmarts('[Se]') # selenide
+pat16 = Chem.MolFromSmarts('O-O') # peroxide
+pat17 = Chem.MolFromSmarts('[NX3]!@[OX2]') # hetero-hetero_single_bond
+pat18 = Chem.MolFromSmarts('[NX3]!@[NX3]') # hetero-hetero_single_bond
+pat19 = Chem.MolFromSmarts('[NX3]!@[SX2]') # hetero-hetero_single_bond
+pat20 = Chem.MolFromSmarts('[SX2]!@[SX2]') # hetero-hetero_single_bond
+pat21 = Chem.MolFromSmarts('[SX2]!@[OX2]') # hetero-hetero_single_bond
+
 def stable_filter(mol):
-    pat1 = Chem.MolFromSmarts('[C,c]S(=O)(=O)[F,Cl,Br,I]') # sulfonylhalide
-    if mol.HasSubstructMatch(pat1):
-        return False
-    pat2 = Chem.MolFromSmarts('[C,c]S(=O)(=O)O[CX4]') # sulfone_ester
-    if mol.HasSubstructMatch(pat2):
-        return False
-    pat3 = Chem.MolFromSmarts('C(=O)[F,Cl,Br,I]') # acylhalide
-    if mol.HasSubstructMatch(pat3):
-        return False
-    pat4 = Chem.MolFromSmarts('O=COC=O') # acidanhydride
-    if mol.HasSubstructMatch(pat4):
-        return False
-    pat5 = Chem.MolFromSmarts('c1([F,Cl,Br,I])ncccn1') # 2-halo_pyrimidine
-    if mol.HasSubstructMatch(pat5):
-        return False
-    pat6 = Chem.MolFromSmarts('[H]C=O') # aldehyde
-    if mol.HasSubstructMatch(pat6):
-        return False
-    pat7 = Chem.MolFromSmarts('C(=O)C(=O)') # 1,2-dicarbonyl
-    if mol.HasSubstructMatch(pat7):
-        return False
-    pat8 = Chem.MolFromSmarts('C1OC1') # epoxide
-    if mol.HasSubstructMatch(pat8):
-        return False
-    pat9 = Chem.MolFromSmarts('C1NC1') # aziridine
-    if mol.HasSubstructMatch(pat9):
-        return False
-    pat10 = Chem.MolFromSmarts('C(=O)S') # thioester
-    if mol.HasSubstructMatch(pat10):
-        return False
-    pat11 = Chem.MolFromSmarts('[#7]!@[#7]') # hydrazine
-    if mol.HasSubstructMatch(pat11):
-        return False
-    pat12 = Chem.MolFromSmarts('C=[CH2]') # ethenes
-    if mol.HasSubstructMatch(pat12):
-        return False
-    pat13 = Chem.MolFromSmarts('[H,*,!N][N;!R]=[C;!R]([*,H])[*,H]') # imine
-    if mol.HasSubstructMatch(pat13):
-        return False
-    pat14 = Chem.MolFromSmarts('[CX4]I') # alkyl_iodide
-    if mol.HasSubstructMatch(pat14):
-        return False
-    pat15 = Chem.MolFromSmarts('[Se]') # selenide
-    if mol.HasSubstructMatch(pat15):
-        return False
-    pat16 = Chem.MolFromSmarts('O-O') # peroxide
-    if mol.HasSubstructMatch(pat16):
-        return False
-    pat17 = Chem.MolFromSmarts('[NX3]!@[OX2]') # hetero-hetero_single_bond
-    if mol.HasSubstructMatch(pat17):
-        return False
-    pat18 = Chem.MolFromSmarts('[NX3]!@[NX3]') # hetero-hetero_single_bond
-    if mol.HasSubstructMatch(pat18):
-        return False
-    pat19 = Chem.MolFromSmarts('[NX3]!@[SX2]') # hetero-hetero_single_bond
-    if mol.HasSubstructMatch(pat19):
-        return False
-    pat20 = Chem.MolFromSmarts('[SX2]!@[SX2]') # hetero-hetero_single_bond
-    if mol.HasSubstructMatch(pat20):
-        return False
-    pat21 = Chem.MolFromSmarts('[SX2]!@[OX2]') # hetero-hetero_single_bond
-    if mol.HasSubstructMatch(pat21):
-        return False
-    return True # Still there? Not reactive then!
+    return (not (
+        mol.HasSubstructMatch(pat1) or
+        mol.HasSubstructMatch(pat2) or
+        mol.HasSubstructMatch(pat3) or
+        mol.HasSubstructMatch(pat4) or
+        mol.HasSubstructMatch(pat5) or
+        mol.HasSubstructMatch(pat6) or
+        mol.HasSubstructMatch(pat7) or
+        mol.HasSubstructMatch(pat8) or
+        mol.HasSubstructMatch(pat9) or
+        mol.HasSubstructMatch(pat10) or
+        mol.HasSubstructMatch(pat11) or
+        mol.HasSubstructMatch(pat12) or
+        mol.HasSubstructMatch(pat13) or
+        mol.HasSubstructMatch(pat14) or
+        mol.HasSubstructMatch(pat15) or
+        mol.HasSubstructMatch(pat16) or
+        mol.HasSubstructMatch(pat17) or
+        mol.HasSubstructMatch(pat18) or
+        mol.HasSubstructMatch(pat19) or
+        mol.HasSubstructMatch(pat20) or
+        mol.HasSubstructMatch(pat21)))
 
 def stable_enough(s_filter, mol):
     return ((not s_filter) or stable_filter(mol))
