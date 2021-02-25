@@ -102,6 +102,17 @@ def FragmentsSupplier(filename):
                     # print(smi, frag_name, dico, file=sys.stderr) # debug
                     yield (smi, frag_name, dico)
 
+def read_flat_fragments(flat_frags_fn):
+    res = []
+    with open(flat_frags_fn) as f:
+        for line in f:
+            smi, name_dict = line.strip().split("\t") # enforce TAB-separated
+            name, dict_str = name_dict.split(";")
+            dico = ast.literal_eval(dict_str)
+            if len(dico) > 0: # molecule _was_ fragmented (not too small)
+                res.append((smi, name, dico))
+    return res
+
 def read_all_fragments(in_frags_fn, flat_frags_out_fn):
     res = []
     with open(flat_frags_out_fn, 'w') as out:
@@ -447,7 +458,7 @@ if __name__ == '__main__':
     not_new_fails = 0
     count = 0
     if assemble: # assembling fragments ---------------------------------------
-        smi_fragments = read_all_fragments(input_fn, "/dev/null")
+        smi_fragments = read_flat_fragments(input_fn)
         nb_uniq = count_uniq_fragment(smi_fragments)
         print('read %d fragments (uniq: %d)' % (len(smi_fragments), nb_uniq))
         index = index_fragments(smi_fragments)
