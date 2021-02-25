@@ -261,8 +261,6 @@ def write_out(gen_mol, count, gen_smi, output):
     name_prfx = 'genmol%d' % count
     print("%s\t%s:%s" % (gen_smi, name_prfx, frag_names), file=output)
 
-lead_filter_fails = 0
-
 # Oprea's lead-like filter
 # Hann, M. M., & Oprea, T. I. (2004).
 # Pursuing the leadlikeness concept in pharmaceutical research.
@@ -270,33 +268,25 @@ lead_filter_fails = 0
 def lead_like_filter(mol):
     # MolW <= 460
     if Descriptors.MolWt(mol) > 460:
-        lead_filter_fails += 1
         return False
     # -4.0 <= LogP <= 4.2
     LogP = Descriptors.MolLogP(mol)
     if LogP < -4.0 or LogP > 4.2:
-        lead_filter_fails += 1
         return False
     # # LogSw >= -5 # ignored
     # rotB <= 10
     if Descriptors.NumRotatableBonds(mol) > 10:
-        lead_filter_fails += 1
         return False
     # nRings <= 4 (number of SSSR rings, _not_ aromatic rings)
     if Chem.GetSSSR(mol) > 4:
-        lead_filter_fails += 1
         return False
     # HBD <= 5
     if Descriptors.NumHDonors(mol) > 5:
-        lead_filter_fails += 1
         return False
     # HBA <= 9
     if Descriptors.NumHAcceptors(mol) > 9:
-        lead_filter_fails += 1
         return False
     return True # lead-like then!
-
-not_new_fails = 0
 
 def new_enough(filter_diverse, gen_smi, seen_smiles):
     if not filter_diverse:
@@ -306,13 +296,10 @@ def new_enough(filter_diverse, gen_smi, seen_smiles):
             seen_smiles.add(gen_smi)
             return True
         else:
-            not_new_fails += 1
             return False
 
 def lead_like_enough(ll_filter, mol):
     return ((not ll_filter) or lead_like_filter(mol))
-
-drug_filter_fails = 0
 
 # Tran-Nguyen, V. K., Jacquemard, C., & Rognan, D. (2020).
 # LIT-PCBA: An unbiased data set for machine learning and virtual screening.
@@ -320,27 +307,21 @@ drug_filter_fails = 0
 def drug_like_filter(mol):
     MolW = Descriptors.MolWt(mol)
     if MolW <= 150 or MolW >= 800: # 150 < MolW < 800 Da
-        drug_filter_fails += 1
         return False
     cLogP = Descriptors.MolLogP(mol)
     if cLogP <= -3.0 or cLogP >= 5.0: # −3.0 < AlogP < 5.0
-        drug_filter_fails += 1
         return False
     RotB = Descriptors.NumRotatableBonds(mol)
     if RotB >= 15: # RotB < 15
-        drug_filter_fails += 1
         return False
     HBA = Descriptors.NumHAcceptors(mol)
     if HBA >= 10: # HBA < 10
-        drug_filter_fails += 1
         return False
     HBD = Descriptors.NumHDonors(mol)
     if HBD >= 10: # HBD < 10
-        drug_filter_fails += 1
         return False
     FC = Chem.rdmolops.GetFormalCharge(mol)
     if FC <= -2 or FC >= 2: # −2.0 < FC < 2.0
-        drug_filter_fails += 1
         return False
     return True # Still here? Drug-like then!
 
@@ -374,8 +355,6 @@ pat19 = Chem.MolFromSmarts('[NX3]!@[SX2]') # hetero-hetero_single_bond
 pat20 = Chem.MolFromSmarts('[SX2]!@[SX2]') # hetero-hetero_single_bond
 pat21 = Chem.MolFromSmarts('[SX2]!@[OX2]') # hetero-hetero_single_bond
 
-stable_filter_fails = 0
-
 def stable_filter(mol):
     if (mol.HasSubstructMatch(pat1) or
         mol.HasSubstructMatch(pat2) or
@@ -398,7 +377,6 @@ def stable_filter(mol):
         mol.HasSubstructMatch(pat19) or
         mol.HasSubstructMatch(pat20) or
         mol.HasSubstructMatch(pat21)):
-        stable_filter_fails += 1
         return False
     else:
         return True
@@ -453,6 +431,10 @@ if __name__ == '__main__':
         # only if the user asked for it, we make experiments repeatable
         random.seed(rng_seed)
     output = open(args.output_fn, 'w')
+    drug_filter_fails = 0
+    lead_filter_fails = 0
+    stable_filter_fails = 0
+    not_new_fails = 0
     count = 0
     if assemble: # assembling fragments ---------------------------------------
         smi_fragments = read_all_fragments(input_fn)
@@ -470,9 +452,17 @@ if __name__ == '__main__':
             gen_mol = grow_fragment(seed_frag, index)
             gen_smi = Chem.MolToSmiles(gen_mol)
             is_new = new_enough(diverse, gen_smi, seen_smiles)
+            if not is_new:
+                not_new_fails += 1
             is_lead_like = lead_like_enough(ll_filter, gen_mol)
+            if not is_lead_like:
+                lead_filter_fails += 1
             is_drug_like = drug_like_enough(dl_filter, gen_mol)
+            if not is_drug_like:
+                drug_filter_fails += 1
             is_stable = stable_enough(s_filter, gen_mol)
+            if not is_stable:
+                stable_filter_fails += 1
             if is_new and is_lead_like and is_drug_like and is_stable:
                 write_out(gen_mol, count, gen_smi, output)
                 count += 1
