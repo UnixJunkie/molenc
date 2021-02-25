@@ -174,7 +174,7 @@ def bind_molecules(m1, m2):
     assert(rw_mol.GetNumAtoms() == m)
     name1 = get_name(m1)
     name2 = get_name(m2)
-    new_name = '%s,%s' % (name1, name2)
+    new_name = '%s|%s' % (name1, name2)
     set_name(rw_mol, new_name)
     # find first compatible attach points between m1 and m2 in rw_mol
     for i in range(n1):
@@ -484,8 +484,6 @@ if __name__ == '__main__':
         print("read %d molecules at %.2f mol/s" %
               (count, count / dt), file=sys.stderr)
     # log failures
-    print("read %d molecules at %.2f mol/s" %
-          (count, count / dt), file=sys.stderr)
     print("Fails: drug: %d lead: %d stable: %d new: %d" %
           (drug_filter_fails,
            lead_filter_fails,
