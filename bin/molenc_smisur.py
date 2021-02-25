@@ -102,8 +102,13 @@ def FragmentsSupplier(filename):
                     # print(smi, frag_name, dico, file=sys.stderr) # debug
                     yield (smi, frag_name, dico)
 
-def read_all_fragments(fn):
-    return [(smi, name, dico) for (smi, name, dico) in FragmentsSupplier(fn)]
+def read_all_fragments(in_frags_fn, flat_frags_out_fn):
+    res = []
+    with open(flat_frags_out_fn, 'w') as out:
+        for (smi, name, dico) in FragmentsSupplier(in_frags_fn):
+            res.append((smi, name, dico))
+            out.write('%s\t%s;%s\n' % (smi, name, str(dico)))
+    return res
 
 def random_choose_one(all_frags):
     n = len(all_frags)
@@ -393,6 +398,10 @@ if __name__ == '__main__':
                         help = "molecules input file")
     parser.add_argument("-o", metavar = "output.smi", dest = "output_fn",
                         help = "output file")
+    parser.add_argument("--frag-dump", metavar = "frags_dump.smi",
+                        dest = "flat_frags_out_fn",
+                        help = "flat fragments dump file",
+                        default = None)
     parser.add_argument("--seed", dest = "seed", default = -1,
                         type = int, help = "RNG seed")
     parser.add_argument("-n", dest = "nb_passes", default = 1,
@@ -418,6 +427,7 @@ if __name__ == '__main__':
         sys.exit(1)
     args = parser.parse_args()
     input_fn = args.input_fn
+    flat_frags_out_fn = args.flat_frags_out_fn
     nb_passes = args.nb_passes
     nmols = args.nmols
     assemble = nmols > 0
@@ -437,7 +447,7 @@ if __name__ == '__main__':
     not_new_fails = 0
     count = 0
     if assemble: # assembling fragments ---------------------------------------
-        smi_fragments = read_all_fragments(input_fn)
+        smi_fragments = read_all_fragments(input_fn, "/dev/null")
         nb_uniq = count_uniq_fragment(smi_fragments)
         print('read %d fragments (uniq: %d)' % (len(smi_fragments), nb_uniq))
         index = index_fragments(smi_fragments)
@@ -447,6 +457,7 @@ if __name__ == '__main__':
         # for k, v in index.items():
         #     print("k:%s -> %d frags" % (k, len(v)))
         while count < nmols:
+            # FBR: parallelize here
             seed_frag = random_choose_one(fragments)
             # print('seed_frag: %s' % get_name(seed_frag)) # debug
             gen_mol = grow_fragment(seed_frag, index)
@@ -490,3 +501,6 @@ if __name__ == '__main__':
            stable_filter_fails,
            not_new_fails))
     output.close()
+    if flat_frags_out_fn != None:
+        # read all fragments back and store them in a "flat" format
+        _smi_fragments = read_all_fragments(args.output_fn, flat_frags_out_fn)
