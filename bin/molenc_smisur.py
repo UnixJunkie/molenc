@@ -458,7 +458,7 @@ if __name__ == '__main__':
     not_new_fails = 0
     count = 0
     if assemble: # assembling fragments ---------------------------------------
-        smi_fragments = read_flat_fragments(input_fn)
+        smi_fragments = read_all_fragments(input_fn, "/dev/null")
         nb_uniq = count_uniq_fragment(smi_fragments)
         print('read %d fragments (uniq: %d)' % (len(smi_fragments), nb_uniq))
         index = index_fragments(smi_fragments)
