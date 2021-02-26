@@ -180,7 +180,7 @@ def extract_fragments(dico):
 # return a new molecule, where m1 and m2 are now attached
 # via a single bond; after this bond is introduced, the former
 # corresponding attachment points/atoms are removed
-def bind_molecules(m1, m2):
+def bind_molecules(m1, m2, dst_idx, idx2):
     # print('m1: %s' % Chem.MolToSmiles(m1)) #debug
     # print('m2: %s' % Chem.MolToSmiles(m2)) #debug
     n1 = m1.GetNumAtoms()
@@ -192,38 +192,32 @@ def bind_molecules(m1, m2):
     name2 = get_name(m2)
     new_name = '%s|%s' % (name1, name2)
     set_name(rw_mol, new_name)
-    # find first compatible attach points between m1 and m2 in rw_mol
-    for i in range(n1):
-        ai = rw_mol.GetAtomWithIdx(i)
-        if ai.GetAtomicNum() == 0: # attachment point
-            dst_idx = ai.GetIdx()
-            dst_typ = ai.GetProp("dst_typ")
-            src_idx = get_src_atom_idx(ai)
-            src_a = rw_mol.GetAtomWithIdx(src_idx)
-            src_typ = common.type_atom(src_a)
-            j = n1
-            while j < m:
-                aj = rw_mol.GetAtomWithIdx(j)
-                if aj.GetAtomicNum() == 0: # attachment point
-                    dst_idx2 = aj.GetIdx()
-                    dst_typ2 = aj.GetProp("dst_typ")
-                    src_idx2 = get_src_atom_idx(aj)
-                    src_a2 = rw_mol.GetAtomWithIdx(src_idx2)
-                    src_typ2 = common.type_atom(src_a2)
-                    if (dst_typ == src_typ2 and
-                        dst_typ2 == src_typ):
-                        # attach. points are compatible
-                        rw_mol.AddBond(
-                            src_idx, src_idx2, Chem.rdchem.BondType.SINGLE)
-                        # remove former attachment points
-                        rw_mol.RemoveAtom(dst_idx2) # to not shift lower atom indexes
-                        rw_mol.RemoveAtom(dst_idx)
-                        return rw_mol
-                j += 1
-    # crash if none was found
-    print("bind_molecules: could not connect fragment %s w/ %s" %
-          (name1, name2), file=sys.stderr)
-    assert(False)
+    ai = rw_mol.GetAtomWithIdx(dst_idx)
+    assert(ai.GetAtomicNum() == 0) # attachment point
+    dst_typ = ai.GetProp("dst_typ")
+    src_idx = get_src_atom_idx(ai)
+    src_a = rw_mol.GetAtomWithIdx(src_idx)
+    src_typ = common.type_atom(src_a)
+    dst_idx2 = n1 + idx2
+    aj = rw_mol.GetAtomWithIdx(dst_idx2)
+    assert(aj.GetAtomicNum() == 0) # attachment point
+    dst_typ2 = aj.GetProp("dst_typ")
+    src_idx2 = get_src_atom_idx(aj)
+    src_a2 = rw_mol.GetAtomWithIdx(src_idx2)
+    src_typ2 = common.type_atom(src_a2)
+    if (dst_typ == src_typ2 and
+        dst_typ2 == src_typ):
+        # attach. points are compatible
+        rw_mol.AddBond(src_idx, src_idx2, Chem.rdchem.BondType.SINGLE)
+        # remove former attachment points
+        rw_mol.RemoveAtom(dst_idx2) # to not shift lower atom indexes
+        rw_mol.RemoveAtom(dst_idx)
+        return rw_mol
+    else:
+        # attach. points are incompatible !!!
+        print("bind_molecules: could not connect fragment %s w/ %s" %
+              (name1, name2), file=sys.stderr)
+        assert(False)
 
 # first attach. point/atom index, or -1 if no more
 def find_first_attach_index(mol):
@@ -268,9 +262,7 @@ def grow_fragment(frag_seed_mol, frags_index):
         assert(src_typ == dst_typ2)
         assert(dst_typ == src_typ2)
         # connect them
-        # FBR: there is no need to scan for the attach. point indexes
-        #      we already know them now
-        new_mol = bind_molecules(frag_seed_mol, frag_mol2)
+        new_mol = bind_molecules(frag_seed_mol, frag_mol2, dst_idx, dst_idx2)
         # rec. call
         return grow_fragment(new_mol, frags_index)
 
