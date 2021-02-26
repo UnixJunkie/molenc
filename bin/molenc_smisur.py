@@ -268,6 +268,8 @@ def grow_fragment(frag_seed_mol, frags_index):
         assert(src_typ == dst_typ2)
         assert(dst_typ == src_typ2)
         # connect them
+        # FBR: there is no need to scan for the attach. point indexes
+        #      we already know them now
         new_mol = bind_molecules(frag_seed_mol, frag_mol2)
         # rec. call
         return grow_fragment(new_mol, frags_index)
@@ -502,15 +504,15 @@ if __name__ == '__main__':
     if assemble:
         print("generated %d molecules at %.2f mol/s" %
               (count, count / dt), file=sys.stderr)
+        # log failures
+        print("Fails: drug: %d lead: %d stable: %d new: %d" %
+              (drug_filter_fails,
+               lead_filter_fails,
+               stable_filter_fails,
+               not_new_fails))
     else:
         print("read %d molecules at %.2f mol/s" %
               (count, count / dt), file=sys.stderr)
-    # log failures
-    print("Fails: drug: %d lead: %d stable: %d new: %d" %
-          (drug_filter_fails,
-           lead_filter_fails,
-           stable_filter_fails,
-           not_new_fails))
     output.close()
     if flat_frags_out_fn != None:
         # read all fragments back and store them in a "flat" format
