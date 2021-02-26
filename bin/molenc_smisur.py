@@ -162,6 +162,7 @@ def index_fragments(frags):
                 # print('insert key: %s' % str(key)) # debug
                 value = (frag_mol, dst_idx)
                 a.SetProp("dst_typ", dst_typ)
+                a.SetProp("src_typ", src_typ)
                 try:
                     previous_frags = res[key]
                     previous_frags.append(value)
@@ -196,17 +197,15 @@ def bind_molecules(m1, m2, dst_idx, idx2):
     assert(ai.GetAtomicNum() == 0) # attachment point
     dst_typ = ai.GetProp("dst_typ")
     src_idx = get_src_atom_idx(ai)
-    src_a = rw_mol.GetAtomWithIdx(src_idx)
-    src_typ = common.type_atom(src_a)
+    src_typ = ai.GetProp("src_typ")
     dst_idx2 = n1 + idx2
     aj = rw_mol.GetAtomWithIdx(dst_idx2)
     assert(aj.GetAtomicNum() == 0) # attachment point
     dst_typ2 = aj.GetProp("dst_typ")
     src_idx2 = get_src_atom_idx(aj)
-    src_a2 = rw_mol.GetAtomWithIdx(src_idx2)
-    src_typ2 = common.type_atom(src_a2)
+    src_typ2 = aj.GetProp("src_typ")
     if (dst_typ == src_typ2 and
-        dst_typ2 == src_typ):
+        src_typ == dst_typ2):
         # attach. points are compatible
         rw_mol.AddBond(src_idx, src_idx2, Chem.rdchem.BondType.SINGLE)
         # remove former attachment points
@@ -244,9 +243,7 @@ def grow_fragment(frag_seed_mol, frags_index):
     else:
         dst_a = frag_seed_mol.GetAtomWithIdx(dst_idx)
         dst_typ = dst_a.GetProp("dst_typ")
-        src_idx = get_src_atom_idx(dst_a)
-        src_a = frag_seed_mol.GetAtomWithIdx(src_idx)
-        src_typ = common.type_atom(src_a)
+        src_typ = dst_a.GetProp("src_typ")
         # draw compatible fragment
         key = (src_typ, dst_typ) # current to wanted direction
         # print('want key: %s' % str(key)) # debug
@@ -255,9 +252,7 @@ def grow_fragment(frag_seed_mol, frags_index):
         (frag_mol2, dst_idx2) = compat_frag
         dst_a2 = frag_mol2.GetAtomWithIdx(dst_idx2)
         dst_typ2 = dst_a2.GetProp("dst_typ")
-        src_idx2 = get_src_atom_idx(dst_a2)
-        src_a2 = frag_mol2.GetAtomWithIdx(src_idx2)
-        src_typ2 = common.type_atom(src_a2)
+        src_typ2 = dst_a2.GetProp("src_typ")
         # check fragments compatibility
         assert(src_typ == dst_typ2)
         assert(dst_typ == src_typ2)
