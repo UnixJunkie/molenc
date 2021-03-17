@@ -27,17 +27,18 @@ def positional_analog_scan(mol, smarts_patt = '[cH]',
                            smi_substs = ['N','CF','CC','CO',
                                          'CCN','CCl','CC(F)(F)(F)','COC']):
     res = []
+    ss = set() # a string set
     patt = Chem.MolFromSmarts(smarts_patt)
     for smi in smi_substs:
         subst = Chem.MolFromSmiles(smi)
         analogs = AllChem.ReplaceSubstructs(mol, patt, subst)
         for a in analogs:
             analog_smi = Chem.MolToSmiles(a) # canonicalization
-            if not analog_smi in res: # remove duplicates
+            # remove duplicates
+            if analog_smi not in ss:
                 res.append(analog_smi)
+                ss.add(analog_smi)
     return res
-
-# FBR: use a string set rather than a list of strings when avoiding duplicates
 
 if __name__ == '__main__':
     before = time.time()
