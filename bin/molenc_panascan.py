@@ -14,9 +14,14 @@
 # Journal of medicinal chemistry (2020).
 # https://doi.org/10.1021/acs.jmedchem.9b02092
 
+import argparse
 import rdkit
+import time
 from rdkit import Chem
 from rdkit.Chem import AllChem
+import sys
+
+from molenc_common import RobustSmilesMolSupplier
 
 def positional_analog_scan(mol, smarts_patt = '[cH]',
                            smi_substs = ['N','CF','CC','CO',
@@ -32,14 +37,35 @@ def positional_analog_scan(mol, smarts_patt = '[cH]',
                 res.append(analog_smi)
     return res
 
-# FBR: implement -i and -o
-# rename molecules: append _AN%03d to the name
+# FBR: use a string set rather than a list of strings when avoiding duplicates
 
-# test
-chinine_smi = \
-'[H][C@@]1([C@@H](C2=CC=NC3=CC=C(C=C23)OC)O)C[C@@H]4CC[N@]1C[C@@H]4C=C'
-print('%s\tchinine' % chinine_smi)
-mol = Chem.MolFromSmiles(chinine_smi)
-analogs = positional_analog_scan(mol)
-for i, a in enumerate(analogs):
-    print('%s\tchinine_%02d' % (a, i))
+if __name__ == '__main__':
+    before = time.time()
+    # CLI options
+    parser = argparse.ArgumentParser(
+        description = "Positional Analog Scanning of each input molecule")
+    parser.add_argument("-i", metavar = "input.smi", dest = "input_fn",
+                        help = "molecules input file")
+    parser.add_argument("-o", metavar = "output.smi", dest = "output_fn",
+                        help = "analogs output file")
+    # parse CLI ----------------------------------------------
+    if len(sys.argv) == 1:
+        # user has no clue of what to do -> usage
+        parser.print_help(sys.stderr)
+        sys.exit(1)
+    args = parser.parse_args()
+    input_fn = args.input_fn
+    output = open(args.output_fn, 'w')
+    count = 0
+    # work ----------------------------------------------
+    mol_supplier = RobustSmilesMolSupplier(input_fn)
+    for name, mol in mol_supplier:
+        analogs = positional_analog_scan(mol)
+        for i, ana_smi in enumerate(analogs):
+            print("%s\t%s_ANA%03d" % (ana_smi, name, i),
+                  file=output)
+        count += 1
+    after = time.time()
+    dt = after - before
+    print("%d molecules at %.2f mol/s" % (count, count / dt), file=sys.stderr)
+    output.close()
