@@ -18,6 +18,7 @@ install: [
   ["cp" "bin/molenc_type_atoms.py" "%{bin}%/molenc_type_atoms.py"]
   ["cp" "bin/smi2png.py" "%{bin}%/molenc_smi2png.py"]
   ["cp" "bin/molenc_smisur.py" "%{bin}%/molenc_smisur.py"]
+  ["cp" "bin/molenc_panascan.py" "%{bin}%/molenc_panascan.py"]
 ]
 depends: [
   "batteries"
