@@ -17,6 +17,7 @@
 import argparse
 import rdkit
 import time
+import random
 from rdkit import Chem
 from rdkit.Chem import AllChem
 import sys
@@ -49,6 +50,10 @@ if __name__ == '__main__':
                         help = "molecules input file")
     parser.add_argument("-o", metavar = "output.smi", dest = "output_fn",
                         help = "analogs output file")
+    parser.add_argument("--rand-one", dest = "rand_one", action = "store_true",
+                        default = False,
+                        help = "output only one randomly-chosen analog \
+                        per input molecule")
     # parse CLI ----------------------------------------------
     if len(sys.argv) == 1:
         # user has no clue of what to do -> usage
@@ -56,15 +61,22 @@ if __name__ == '__main__':
         sys.exit(1)
     args = parser.parse_args()
     input_fn = args.input_fn
+    rand_one = args.rand_one
     output = open(args.output_fn, 'w')
     count = 0
     # work ----------------------------------------------
     mol_supplier = RobustSmilesMolSupplier(input_fn)
     for name, mol in mol_supplier:
         analogs = positional_analog_scan(mol)
-        for i, ana_smi in enumerate(analogs):
-            print("%s\t%s_ANA%03d" % (ana_smi, name, i),
+        if rand_one:
+            l = list(analogs)
+            ana_smi = random.choice(l)
+            print("%s\t%s_ANA%03d" % (ana_smi, name, 0),
                   file=output)
+        else: # print them all
+            for i, ana_smi in enumerate(analogs):
+                print("%s\t%s_ANA%03d" % (ana_smi, name, i),
+                      file=output)
         count += 1
     after = time.time()
     dt = after - before
