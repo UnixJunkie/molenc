@@ -446,6 +446,7 @@ if __name__ == '__main__':
     stable_filter_fails = 0
     not_new_fails = 0
     count = 0
+    grow_frag_errors = 0
     if assemble: # assembling fragments ---------------------------------------
         smi_fragments = read_all_fragments(input_fn, "/dev/null")
         nb_uniq = count_uniq_fragment(smi_fragments)
@@ -460,23 +461,27 @@ if __name__ == '__main__':
             # FBR: parallelize here
             seed_frag = random_choose_one(fragments)
             # print('seed_frag: %s' % get_name(seed_frag)) # debug
-            gen_mol = grow_fragment(seed_frag, index)
-            gen_smi = Chem.MolToSmiles(gen_mol)
-            is_new = new_enough(diverse, gen_smi, seen_smiles)
-            if not is_new:
-                not_new_fails += 1
-            is_lead_like = lead_like_enough(ll_filter, gen_mol)
-            if not is_lead_like:
-                lead_filter_fails += 1
-            is_drug_like = drug_like_enough(dl_filter, gen_mol)
-            if not is_drug_like:
-                drug_filter_fails += 1
-            is_stable = stable_enough(s_filter, gen_mol)
-            if not is_stable:
-                stable_filter_fails += 1
-            if is_new and is_lead_like and is_drug_like and is_stable:
-                write_out(gen_mol, count, gen_smi, output)
-                count += 1
+            try:
+              gen_mol = grow_fragment(seed_frag, index)
+              gen_smi = Chem.MolToSmiles(gen_mol)
+              is_new = new_enough(diverse, gen_smi, seen_smiles)
+              if not is_new:
+                  not_new_fails += 1
+              is_lead_like = lead_like_enough(ll_filter, gen_mol)
+              if not is_lead_like:
+                  lead_filter_fails += 1
+              is_drug_like = drug_like_enough(dl_filter, gen_mol)
+              if not is_drug_like:
+                  drug_filter_fails += 1
+              is_stable = stable_enough(s_filter, gen_mol)
+              if not is_stable:
+                  stable_filter_fails += 1
+              if is_new and is_lead_like and is_drug_like and is_stable:
+                  write_out(gen_mol, count, gen_smi, output)
+                  count += 1
+            except KeyError:
+                # FBR: this means I should correct something somewhere
+                grow_frag_errors += 1
     else:
         # fragmenting ---------------------------------------------------------
         mol_supplier = RobustSmilesMolSupplier(input_fn)
@@ -489,8 +494,8 @@ if __name__ == '__main__':
     after = time.time()
     dt = after - before
     if assemble:
-        print("generated %d molecules at %.2f mol/s" %
-              (count, count / dt), file=sys.stderr)
+        print("generated %d molecules at %.2f mol/s (%d errors)" %
+              (count, count / dt, grow_frag_errors), file=sys.stderr)
         # log failures
         print("Fails: drug: %d lead: %d stable: %d new: %d" %
               (drug_filter_fails,
