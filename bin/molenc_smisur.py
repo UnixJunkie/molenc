@@ -225,22 +225,19 @@ def find_first_attach_index(mol):
             return a.GetIdx()
     return -1
 
+class TooManyFrags(Exception):
+    """Max number of fragments was reached"""
+    pass
+
 # attach matching fragments until no attachment points are left
-# WARNING: this is a recursive function
-def grow_fragment(frag_seed_mol, frags_index):
+def grow_fragment(seed_frag_mol, frags_index):
+    # safeguard: if we are building a molecule with more than
+    # 50 fragments, something is obviously wrong somewhere
+    max_frags = 50
+    frag_seed_mol = seed_frag_mol
     dst_idx = find_first_attach_index(frag_seed_mol)
-    if dst_idx == -1:
-        try:
-            Chem.SanitizeMol(frag_seed_mol)
-            # the constituting fragments might have some stereo info
-            # that we want to preserve up to the final molecule
-            Chem.AssignStereochemistry(frag_seed_mol) # ! MANDATORY _AFTER_ SanitizeMol !
-            # print('after sanitize then stereo: %s' % Chem.MolToSmiles(res_mol), file=sys.stderr)
-            return frag_seed_mol.GetMol()
-        except rdkit.Chem.rdchem.KekulizeException:
-            print("KekulizeException in %s" % get_name(frag_seed_mol), file=sys.stderr)
-            return frag_seed_mol.GetMol()
-    else:
+    i = 0
+    while ((dst_idx != -1) and (i < max_frags)):
         dst_a = frag_seed_mol.GetAtomWithIdx(dst_idx)
         dst_typ = dst_a.GetProp("dst_typ")
         src_typ = dst_a.GetProp("src_typ")
@@ -257,9 +254,25 @@ def grow_fragment(frag_seed_mol, frags_index):
         assert(src_typ == dst_typ2)
         assert(dst_typ == src_typ2)
         # connect them
-        new_mol = bind_molecules(frag_seed_mol, frag_mol2, dst_idx, dst_idx2)
-        # rec. call
-        return grow_fragment(new_mol, frags_index)
+        frag_seed_mol = bind_molecules(frag_seed_mol, frag_mol2,
+                                       dst_idx, dst_idx2)
+        dst_idx = find_first_attach_index(frag_seed_mol)
+        i += 1
+    if i == max_frags:
+        raise TooManyFrags
+    try:
+        Chem.SanitizeMol(frag_seed_mol)
+        # the constituting fragments might have some stereo info
+        # that we want to preserve up to the final molecule
+        # ! MANDATORY _AFTER_ SanitizeMol !
+        Chem.AssignStereochemistry(frag_seed_mol)
+        # print('after sanitize then stereo: %s' % Chem.MolToSmiles(res_mol),
+        #       file=sys.stderr)
+        return frag_seed_mol.GetMol()
+    except rdkit.Chem.rdchem.KekulizeException:
+        print("KekulizeException in %s" % get_name(frag_seed_mol),
+              file=sys.stderr)
+        return frag_seed_mol.GetMol()
 
 def write_out(gen_mol, count, gen_smi, output):
     frag_names = get_name(gen_mol)
@@ -479,6 +492,9 @@ if __name__ == '__main__':
               if is_new and is_lead_like and is_drug_like and is_stable:
                   write_out(gen_mol, count, gen_smi, output)
                   count += 1
+            except TooManyFrags:
+                print("TooManyFrags from %s" % get_name(seed_frag),
+                      file=sys.stderr)
             except KeyError:
                 # FBR: this means I should correct something somewhere
                 grow_frag_errors += 1
