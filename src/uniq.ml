@@ -21,7 +21,7 @@ end
 module HtOnDisk: HT = struct
 
   type t = Dokeysto_camltc.Db_camltc.RW.t
-  
+
   let create input_fn =
     Db.create (input_fn ^ ".uniq.db")
 
@@ -38,7 +38,7 @@ end
 module HtInRAM: HT = struct
 
   type t = (string, unit) Ht.t
-  
+
   let create input_fn =
     Ht.create (Utls.count_lines_of_file input_fn)
 
@@ -63,6 +63,7 @@ let main () =
                -i <filename>: input file\n  \
                -d <char>: field separator (default=\\t)\n  \
                -f <int>: field to filter on\n  \
+               [--sorted]: file already sorted on that field\n  \
                [--in-RAM]: Ht in RAM rather than on disk\n"
         Sys.argv.(0);
       exit 1
@@ -72,24 +73,35 @@ let main () =
       (module HtInRAM: HT)
     else (module HtOnDisk: HT) in
   let module DB = (val mod_db: HT) in
+  let sorted = CLI.get_set_bool ["--sorted"] args in
   let input_fn = CLI.get_string ["-i"] args in
   let db_fn = input_fn ^ ".uniq.db" in
   let db = DB.create db_fn in
+  let prev_field = ref "" in
+  let uniq_field_check, register_field =
+    if sorted then
+      ((fun field -> !prev_field <> field),
+       (fun field -> prev_field := field))
+    else
+      ((fun field -> not (DB.mem db field)),
+       (fun field -> DB.add db field))
+  in
   let sep = CLI.get_char_def ["-d"] args '\t' in
-  let field = (CLI.get_int ["-f"] args) - 1 in
+  let field_num = (CLI.get_int ["-f"] args) - 1 in
+  let count = ref 0 in
   Utls.with_in_file input_fn (fun input ->
       try
-        let count = ref 0 in
         while true do
           let line = input_line input in
-          let field = String.cut_on_char sep field line in
-          (if not (DB.mem db field) then
-             (DB.add db field;
+          let field_str = String.cut_on_char sep field_num line in
+          (if uniq_field_check field_str then
+             (register_field field_str;
               printf "%s\n" line)
           );
           incr count;
           (if !count mod 1000 = 0 then
-             eprintf "done: %d\r%!" !count);
+             eprintf "done: %d\r%!" !count
+          )
         done
       with End_of_file -> DB.close db
     )
