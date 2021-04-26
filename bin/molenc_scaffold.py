@@ -7,12 +7,16 @@
 # Kyushu Institute of Technology,
 # 680-4 Kawazu, Iizuka, Fukuoka, 820-8502, Japan.
 #
+# Compute the Bemis-Murcho generic scaffold / framework
+# of each input molecule.
+#
 # Bemis, G. W., & Murcko, M. A. (1996).
 # "The properties of known drugs. 1. Molecular frameworks."
 # Journal of medicinal chemistry, 39(15), 2887-2893.
 
 import argparse, rdkit, sys
 from rdkit import Chem
+from rdkit.Chem.Scaffolds import MurckoScaffold
 
 def RobustSmilesMolSupplier(filename):
     with open(filename) as f:
@@ -45,11 +49,12 @@ def main():
             if mol is None:
                 error_count += 1
             else:
-                BM_scaff = 
-                print(csv_line, file=out_file)
+                scaff = MurckoScaffold.MakeScaffoldGeneric(mol)
+                scaff_smi = Chem.MolToSmiles(scaff)
+                print("%s\t%s\t%s\n" % (mol, name, scaff_smi), file=out_file)
                 out_count += 1
     total_count = out_count + error_count
-    print("encoded: %d errors: %d total: %d" % \
+    print("encoded: %d errors: %d total: %d" %
           (out_count, error_count, total_count),
           file=sys.stderr)
 
