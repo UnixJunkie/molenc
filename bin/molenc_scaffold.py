@@ -34,6 +34,9 @@ def main():
                         help = "input SMILES file")
     parser.add_argument("-o", metavar = "output_smi", dest = "output_smi",
                         help = "output SMILES file")
+    parser.add_argument('--new-line', dest='new_line',
+                        action='store_true', default=False,
+                        help = "insert a newline before the scaffold")
     # parse CLI
     if len(sys.argv) == 1:
         # show help in case user has no clue of what to do
@@ -42,6 +45,7 @@ def main():
     args = parser.parse_args()
     input_smi = args.input_smi
     output_smi = args.output_smi
+    new_line = args.new_line
     out_count = 0
     error_count = 0
     with open(output_smi, 'w') as out_file:
@@ -51,7 +55,11 @@ def main():
             else:
                 scaff = MurckoScaffold.MakeScaffoldGeneric(mol)
                 scaff_smi = Chem.MolToSmiles(scaff)
-                print("%s\t%s\t%s\n" % (mol, name, scaff_smi), file=out_file)
+                mol_smi = Chem.MolToSmiles(mol)
+                if new_line:
+                    print("%s\t%s\n%s" % (mol_smi, name, scaff_smi), file=out_file)
+                else:
+                    print("%s\t%s\t%s" % (mol_smi, name, scaff_smi), file=out_file)
                 out_count += 1
     total_count = out_count + error_count
     print("encoded: %d errors: %d total: %d" %
