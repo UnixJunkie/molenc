@@ -53,7 +53,7 @@ def main():
             if mol is None:
                 error_count += 1
             else:
-                scaff = MurckoScaffold.MakeScaffoldGeneric(mol)
+                scaff = MurckoScaffold.MakeScaffoldGeneric(MurckoScaffold.GetScaffoldForMol(mol))
                 scaff_smi = Chem.MolToSmiles(scaff)
                 mol_smi = Chem.MolToSmiles(mol)
                 if new_line:
