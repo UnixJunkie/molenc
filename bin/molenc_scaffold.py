@@ -16,7 +16,6 @@
 
 import argparse, rdkit, sys
 from rdkit import Chem
-from rdkit.Chem.Scaffolds import MurckoScaffold
 
 def RobustSmilesMolSupplier(filename):
     with open(filename) as f:
@@ -25,6 +24,40 @@ def RobustSmilesMolSupplier(filename):
             smile = words[0]
             name = words[1]
             yield (i, Chem.MolFromSmiles(smile), name)
+
+def find_terminal_atoms(mol):
+    res = []
+    for a in mol.GetAtoms():
+        if len(a.GetBonds()) == 1:
+            res.append(a)
+    return res
+
+def BemisMurckoFramework(mol):
+    # keep only Heavy Atoms (HA)
+    only_HA = rdkit.Chem.rdmolops.RemoveHs(mol)
+    # switch all HA to Carbon
+    rw_mol = Chem.RWMol(only_HA)
+    for i in range(rw_mol.GetNumAtoms()):
+        rw_mol.ReplaceAtom(i, Chem.Atom(6))
+    # switch all non single bonds to single
+    non_single_bonds = []
+    for b in rw_mol.GetBonds():
+        if b.GetBondType() != Chem.BondType.SINGLE:
+            non_single_bonds.append(b)
+    for b in non_single_bonds:
+        j = b.GetBeginAtomIdx()
+        k = b.GetEndAtomIdx()
+        rw_mol.RemoveBond(j, k)
+        rw_mol.AddBond(j, k, Chem.BondType.SINGLE)
+    # as long as there are terminal atoms, remove them
+    terminal_atoms = find_terminal_atoms(rw_mol)
+    while terminal_atoms != []:
+        for a in terminal_atoms:
+            for b in a.GetBonds():
+                rw_mol.RemoveBond(b.GetBeginAtomIdx(), b.GetEndAtomIdx())
+            rw_mol.RemoveAtom(a.GetIdx())
+        terminal_atoms = find_terminal_atoms(rw_mol)
+    return rw_mol.GetMol()
 
 def main():
     # CLI options parsing
@@ -53,7 +86,7 @@ def main():
             if mol is None:
                 error_count += 1
             else:
-                scaff = MurckoScaffold.MakeScaffoldGeneric(MurckoScaffold.GetScaffoldForMol(mol))
+                scaff = BemisMurckoFramework(mol)
                 scaff_smi = Chem.MolToSmiles(scaff)
                 mol_smi = Chem.MolToSmiles(mol)
                 if new_line:
