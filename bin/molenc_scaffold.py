@@ -7,7 +7,7 @@
 # Kyushu Institute of Technology,
 # 680-4 Kawazu, Iizuka, Fukuoka, 820-8502, Japan.
 #
-# Compute the Bemis-Murcho generic scaffold / framework
+# Compute the Bemis-Murcho generic scaffold (framework)
 # of each input molecule.
 #
 # Bemis, G. W., & Murcko, M. A. (1996).
@@ -19,11 +19,12 @@ from rdkit import Chem
 
 def RobustSmilesMolSupplier(filename):
     with open(filename) as f:
-        for i, line in enumerate(f):
+        for line in f:
             words = line.split()
-            smile = words[0]
+            smi = words[0]
             name = words[1]
-            yield (i, Chem.MolFromSmiles(smile), name)
+            mol = Chem.MolFromSmiles(smi)
+            yield (smi, name, mol)
 
 def find_terminal_atoms(mol):
     res = []
@@ -82,17 +83,16 @@ def main():
     out_count = 0
     error_count = 0
     with open(output_smi, 'w') as out_file:
-        for i, mol, name in RobustSmilesMolSupplier(input_smi):
+        for smi, name, mol in RobustSmilesMolSupplier(input_smi):
             if mol is None:
                 error_count += 1
             else:
                 scaff = BemisMurckoFramework(mol)
                 scaff_smi = Chem.MolToSmiles(scaff)
-                mol_smi = Chem.MolToSmiles(mol)
                 if new_line:
-                    print("%s\t%s\n%s" % (mol_smi, name, scaff_smi), file=out_file)
+                    print("%s\t%s\n%s" % (smi, name, scaff_smi), file=out_file)
                 else:
-                    print("%s\t%s\t%s" % (mol_smi, name, scaff_smi), file=out_file)
+                    print("%s\t%s\t%s" % (smi, name, scaff_smi), file=out_file)
                 out_count += 1
     total_count = out_count + error_count
     print("encoded: %d errors: %d total: %d" %
