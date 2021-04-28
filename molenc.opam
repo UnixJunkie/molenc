@@ -19,6 +19,7 @@ install: [
   ["cp" "bin/smi2png.py" "%{bin}%/molenc_smi2png.py"]
   ["cp" "bin/molenc_smisur.py" "%{bin}%/molenc_smisur.py"]
   ["cp" "bin/molenc_panascan.py" "%{bin}%/molenc_panascan.py"]
+  ["cp" "bin/molenc_scaffold.py" "%{bin}%/molenc_scaffold.py"]
 ]
 depends: [
   "batteries"
