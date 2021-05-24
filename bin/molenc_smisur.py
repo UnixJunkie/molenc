@@ -7,7 +7,7 @@
 # Kyushu Institute of Technology,
 # 680-4 Kawazu, Iizuka, Fukuoka, 820-8502, Japan.
 
-# The Smiling Surgeon: a doctor operating directly at the SMILES level
+# The Smiling Surgeon: fragment/assemble molecules 
 
 import argparse
 import ast
