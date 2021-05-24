@@ -13,6 +13,12 @@ def RobustSmilesMolSupplier(filename):
             mol.SetProp("name", name)
             yield (name, mol)
 
+def RobustSmilesSupplier(filename):
+    with open(filename) as f:
+        for line in f:
+            smile, name = line.strip().split("\t") # enforce TAB-separated
+            yield (smile, name)
+
 def sort_pairs(pairs):
     res = []
     for (a, b) in pairs:
