@@ -18,14 +18,20 @@ import time
 from rdkit import Chem
 from rdkit.Chem import AllChem
 
-from molenc_common import RobustSmilesMolSupplier
+from molenc_common import RobustSmilesSupplier
 
 def encode(converter, smi):
     return converter.encode(smi)
 
 def decode(converter, deep_smi):
     try:
-        return converter.decode(deep_smi)
+        smi = converter.decode(deep_smi)
+        # currently, de decoder does not output a canonical SMILES
+        # https://github.com/baoilleach/deepsmiles/issues/19
+        # I want canonical SMILES, because this is rdkit's default
+        mol = Chem.MolFromSmiles(smi)
+        cano_smi = Chem.MolToSmiles(mol)
+        return cano_smi
     except deepsmiles.DecodeError as e:
         print("molenc_deepsmi.py: decode: '%s'" % e.message,
               file = sys.stderr)
@@ -40,17 +46,20 @@ if __name__ == '__main__':
                         help = "molecules input file")
     parser.add_argument("-o", metavar = "output.smi", dest = "output_fn",
                         help = "molecules output file")
-    parser.add_argument("--no-rings", dest = "rings", action = "store_true",
+    parser.add_argument("--no-rings", dest = "rings",
+                        action = "store_true",
                         default = False,
                         help = "DeepSMILES without ring openings")
-    parser.add_argument("--no-branches", dest = "branches", action = "store_true",
+    parser.add_argument("--no-branches", dest = "branches",
+                        action = "store_true",
                         default = False,
                         help = "DeepSMILES without branches")
-    parser.add_argument("-e", dest = "encode", action = "store_true",
+    parser.add_argument("-e", dest = "do_encode",
+                        action = "store_true",
                         default = True,
                         help = "encode: SMILES to DeepSMILES (default)")
-    parser.add_argument("-d", dest = "decode", action = "store_true",
-                        default = False,
+    parser.add_argument("-d", dest = "do_decode",
+                        action = "store_true",
                         help = "decode: DeepSMILES to SMILES")
     # parse CLI ----------------------------------------------
     if len(sys.argv) == 1:
@@ -62,22 +71,26 @@ if __name__ == '__main__':
     output = open(args.output_fn, 'w')
     rings = args.rings
     branches = args.branches
-    encode = args.encode
-    decode = args.decode
-    if encode and decode:
-        print("use either -e or -d, not both", file=sys.stderr)
-    if (not rings) and (not branches):
-        print("use at least --no-rings or --no-branches", file=sys.stderr)
+    do_encode = args.do_encode
+    do_decode = args.do_decode
+    if do_decode:
+        do_encode = False
+    assert(not (do_encode and do_decode))
+    if not (rings or branches):
+        print("use at least --no-rings or --no-branches",
+              file=sys.stderr)
+        sys.exit(1)
     count = 0
     # work ----------------------------------------------
-    converter = deepsmiles.Converter(rings, branches)
     smi_supplier = RobustSmilesSupplier(input_fn)
-    if encode:
+    converter = deepsmiles.Converter(rings, branches)
+    if do_encode:
+
         for smi, name in smi_supplier:
             deep_smi = encode(converter, smi)
             print("%s\t%s" % (deep_smi, name), file=output)
             count += 1
-    else:
+    else: # decode
         for deep_smi, name in smi_supplier:
             smi = decode(converter, deep_smi)
             if smi != None:
