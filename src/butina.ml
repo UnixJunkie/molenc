@@ -103,6 +103,8 @@ let verify_clusters d_t molecules clusters =
       FpMol.dist c1 c2 >= d_t
     ) clusters)
 
+(* FBR: do some sampling in order to find a reasonable Tanimoto threshold automatically *)
+
 let main () =
   Log.(set_log_level INFO);
   Log.color_on ();
