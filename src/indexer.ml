@@ -58,7 +58,7 @@ let index_one_chunk input_fn (i, chunk') =
   Log.info "creating %s" output_fn;
   let bst = Bstree.of_molecules chunk in
   Utls.save output_fn bst;
-  Utls.run_command (sprintf "gzip %s" output_fn)
+  Utls.run_command (sprintf "gzip -f %s" output_fn)
 
 let main () =
   Log.(set_log_level INFO);
