@@ -10,7 +10,6 @@ module A = BatArray
 module CLI = Minicli.CLI
 module FpMol = Molenc.FpMol
 module Ht = Hashtbl
-module L = BatList
 module LO = Line_oriented
 module Log = Dolog.Log
 module Utls = Molenc.Utls
@@ -26,22 +25,37 @@ end
 let verbose = ref false
 
 (* FBR: several input files *)
-(* FBR: input file so big that we cut it in chunks *)
 (* FBR: integrate into FMGO *)
-(* FBR: compress marshalled index? *)
 
 (* FBR: in library module: index_many_from_files *)
 (* FBR: in library module: nearest_in_many *)
 
-let read_one_chunk in_count csize input =
+let read_one_chunk input_fn in_mol_count chunk_index csize input () =
   let res = ref [] in
-  for _i = 1 to csize do
-    let line = input_line input in
-    let mol = FpMol.parse_one !in_count line in
-    incr in_count;
-    res := mol :: !res
-  done;
-  !res
+  try
+    for _i = 1 to csize do
+      let line = input_line input in
+      let mol = FpMol.parse_one !in_mol_count line in
+      incr in_mol_count;
+      res := mol :: !res
+    done;
+    let idx = !chunk_index in
+    incr chunk_index;
+    (idx, !res)
+  with End_of_file ->
+    if !res = [] then
+      (Log.info "read %d from %s" !in_mol_count input_fn;
+       raise Parany.End_of_input)
+    else
+      (* last chunk, maybe not full *)
+      (!chunk_index, !res)
+
+let index_one_chunk input_fn (i, chunk) =
+  let output_fn = sprintf "%s.%d.bst" input_fn i in
+  Log.info "creating %s" output_fn;
+  let bst = Bstree.of_molecules chunk in
+  Utls.save output_fn bst;
+  Utls.run_command (sprintf "gzip %s" output_fn)
 
 let main () =
   Log.(set_log_level INFO);
@@ -59,24 +73,18 @@ let main () =
       exit 1
     end;
   let input_fn = CLI.get_string ["-i"] args in
-  let _nprocs = CLI.get_int_def ["-np"] args 1 in
+  let nprocs = CLI.get_int_def ["-np"] args 1 in
   let csize = CLI.get_int_def ["-c"] args 50_000 in
+  if CLI.get_set_bool ["-v"] args then
+    verbose := true;
   CLI.finalize (); (* ------------------------------------------------------ *)
-  let i = ref 0 in
-  let in_count = ref 0 in
+  let chunk_count = ref 0 in
+  let in_mol_count = ref 0 in
   LO.with_in_file input_fn (fun input ->
-      try
-        while true do
-          let output_fn = sprintf "%s.%d.bst" input_fn !i in
-          incr i;
-          Log.info "creating %s" output_fn;
-          let chunk = read_one_chunk in_count csize input in
-          let bst = Bstree.of_molecules chunk in
-          Utls.save output_fn bst;
-          Utls.run_command (sprintf "xz -9 %s" output_fn)
-        done
-      with End_of_file ->
-        Log.info "From %s, read %d" input_fn !in_count
+      Parany.run nprocs
+        ~demux:(read_one_chunk input_fn in_mol_count chunk_count csize input)
+        ~work:(index_one_chunk input_fn)
+        ~mux:(fun () -> ())
     )
 
 let () = main ()
