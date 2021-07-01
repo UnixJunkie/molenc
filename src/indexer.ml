@@ -72,7 +72,8 @@ let main () =
           Log.info "creating %s" output_fn;
           let chunk = read_one_chunk in_count csize input in
           let bst = Bstree.of_molecules chunk in
-          Utls.save output_fn bst
+          Utls.save output_fn bst;
+          Utls.run_command (sprintf "xz -9 %s" output_fn)
         done
       with End_of_file ->
         Log.info "From %s, read %d" input_fn !in_count
