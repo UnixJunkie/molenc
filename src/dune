@@ -19,7 +19,7 @@
            sybyl syb_atom mol2 sdf smi rank ap_encoder prune merge MST gram
            palette gnuplot lig_box shannon fragmentable_mol indexer)
   (libraries molenc bst batteries dolog minicli parany cpm dokeysto_camltc
-             ocamlgraph vector3))
+             ocamlgraph vector3 line_oriented))
 
 ;; never installed executables
 (executables
