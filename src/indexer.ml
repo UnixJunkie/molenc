@@ -11,6 +11,7 @@ module CLI = Minicli.CLI
 module FpMol = Molenc.FpMol
 module Ht = Hashtbl
 module L = BatList
+module LO = Line_oriented
 module Log = Dolog.Log
 module Utls = Molenc.Utls
 
@@ -18,8 +19,8 @@ module Bstree = struct
 
   include Bst.Bisec_tree.Make (FpMol)
 
-  let of_molecules a =
-    create 1 Two_bands a
+  let of_molecules l =
+    create 1 Two_bands (A.of_list l)
 end
 
 let verbose = ref false
@@ -31,6 +32,16 @@ let verbose = ref false
 
 (* FBR: in library module: index_many_from_files *)
 (* FBR: in library module: nearest_in_many *)
+
+let read_one_chunk in_count csize input =
+  let res = ref [] in
+  for _i = 1 to csize do
+    let line = input_line input in
+    let mol = FpMol.parse_one !in_count line in
+    incr in_count;
+    res := mol :: !res
+  done;
+  !res
 
 let main () =
   Log.(set_log_level INFO);
@@ -52,20 +63,19 @@ let main () =
   let csize = CLI.get_int_def ["-c"] args 50_000 in
   CLI.finalize (); (* ------------------------------------------------------ *)
   let i = ref 0 in
-  let to_index, rest =
-    let all_mols = FpMol.molecules_of_file input_fn in
-    let l, r = L.takedrop csize all_mols in
-    (ref l, ref r) in
-  while !to_index <> [] do
-    let chunk = A.of_list !to_index in
-    let output_fn = sprintf "%s.%d.bst" input_fn !i in
-    Log.info "creating %s" output_fn;
-    let bst = Bstree.of_molecules chunk in
-    Utls.save output_fn bst;
-    let l, r = L.takedrop csize !rest in
-    to_index := l;
-    rest := r;
-    incr i
-  done
+  let in_count = ref 0 in
+  LO.with_in_file input_fn (fun input ->
+      try
+        while true do
+          let output_fn = sprintf "%s.%d.bst" input_fn !i in
+          incr i;
+          Log.info "creating %s" output_fn;
+          let chunk = read_one_chunk in_count csize input in
+          let bst = Bstree.of_molecules chunk in
+          Utls.save output_fn bst
+        done
+      with End_of_file ->
+        Log.info "From %s, read %d" input_fn !in_count
+    )
 
 let () = main ()
