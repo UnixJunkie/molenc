@@ -10,6 +10,7 @@ module A = BatArray
 module CLI = Minicli.CLI
 module FpMol = Molenc.FpMol
 module Ht = Hashtbl
+module L = BatList
 module LO = Line_oriented
 module Log = Dolog.Log
 module Utls = Molenc.Utls
@@ -35,7 +36,7 @@ let read_one_chunk input_fn in_mol_count chunk_index csize input () =
   try
     for _i = 1 to csize do
       let line = input_line input in
-      let mol = FpMol.parse_one !in_mol_count line in
+      let mol = (!in_mol_count, line) in
       incr in_mol_count;
       res := mol :: !res
     done;
@@ -50,8 +51,10 @@ let read_one_chunk input_fn in_mol_count chunk_index csize input () =
       (* last chunk, maybe not full *)
       (!chunk_index, !res)
 
-let index_one_chunk input_fn (i, chunk) =
-  let output_fn = sprintf "%s.%d.bst" input_fn i in
+let index_one_chunk input_fn (i, chunk') =
+  let chunk = L.rev_map (fun (i, line) -> FpMol.parse_one i line) chunk' in
+  assert(i <= 9999);
+  let output_fn = sprintf "%s.%04d.bst" input_fn i in
   Log.info "creating %s" output_fn;
   let bst = Bstree.of_molecules chunk in
   Utls.save output_fn bst;
@@ -80,6 +83,7 @@ let main () =
   CLI.finalize (); (* ------------------------------------------------------ *)
   let chunk_count = ref 0 in
   let in_mol_count = ref 0 in
+  Log.info "%d molecules in %s" (LO.count input_fn) input_fn;
   LO.with_in_file input_fn (fun input ->
       Parany.run nprocs
         ~demux:(read_one_chunk input_fn in_mol_count chunk_count csize input)
