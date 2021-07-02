@@ -25,7 +25,6 @@ end
 
 let verbose = ref false
 
-(* FBR: several input files *)
 (* FBR: integrate into FMGO *)
 
 (* FBR: in library module: index_many_from_files *)
@@ -59,6 +58,38 @@ let index_one_chunk input_fn (i, chunk') =
   let bst = Bstree.of_molecules chunk in
   Utls.save output_fn bst;
   Utls.run_command (sprintf "gzip -f %s" output_fn)
+
+(* For each molecule, find its nearest neighbor name and distance,
+   over all Bsts *)
+let nearest_neighbor_names _ncores bst_fns mols =
+  match bst_fns with
+  | [] -> assert(false) (* at least one bst fn is required *)
+  | fn :: fns ->
+    let annot_mols =
+      (* load one bst *)
+      let (bst: Bstree.t) = Utls.restore fn in
+      (* FBR: parallelize *)
+      L.map (fun mol ->
+          let nn, dist = Bstree.nearest_neighbor mol bst in
+          (mol, FpMol.get_name nn, dist)
+        ) mols in
+    (* fold on the other BSTs *)
+    L.fold_left (fun annotated bst_fn ->
+        (* load another bst *)
+        let (bst: Bstree.t) = Utls.restore bst_fn in
+        (* FBR: parallelize *)
+        L.map (fun (mol, nn_name, dist) ->
+            if dist = 0.0 then
+              (* already nearest *)
+              (mol, nn_name, dist)
+            else
+              let curr_nn, curr_dist = Bstree.nearest_neighbor mol bst in
+              if curr_dist < dist then
+                (mol, FpMol.get_name curr_nn, curr_dist)
+              else
+                (mol, nn_name, dist)
+          ) annotated                
+      ) annot_mols fns
 
 let main () =
   Log.(set_log_level INFO);
