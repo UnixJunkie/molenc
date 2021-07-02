@@ -7,6 +7,7 @@
 open Printf
 
 module A = BatArray
+module Bstree = Molenc.Index.Bstree
 module CLI = Minicli.CLI
 module FpMol = Molenc.FpMol
 module Ht = Hashtbl
@@ -14,14 +15,6 @@ module L = BatList
 module LO = Line_oriented
 module Log = Dolog.Log
 module Utls = Molenc.Utls
-
-module Bstree = struct
-
-  include Bst.Bisec_tree.Make (FpMol)
-
-  let of_molecules l =
-    create 1 Two_bands (A.of_list l)
-end
 
 let verbose = ref false
 
@@ -56,37 +49,6 @@ let index_one_chunk input_fn (i, chunk') =
   let bst = Bstree.of_molecules chunk in
   Utls.save output_fn bst;
   Utls.run_command (sprintf "gzip -f %s" output_fn)
-
-(* For each molecule, find its nearest neighbor name and distance,
-   over all Bsts *)
-let nearest_neighbor_names ncores bst_fns mols =
-  match bst_fns with
-  | [] -> assert(false) (* at least one bst fn is required *)
-  | fn :: fns ->
-    let annot_mols =
-      (* load one bst *)
-      let (bst: Bstree.t) = Utls.restore fn in
-      Parany.Parmap.parmap ncores
-        (fun mol ->
-           let nn, dist = Bstree.nearest_neighbor mol bst in
-           (mol, FpMol.get_name nn, dist)
-        ) mols in
-    (* fold on the other BSTs *)
-    L.fold_left (fun annotated bst_fn ->
-        (* load another bst *)
-        let (bst: Bstree.t) = Utls.restore bst_fn in
-        Parany.Parmap.parmap ncores (fun (mol, nn_name, dist) ->
-            if dist = 0.0 then
-              (* already nearest *)
-              (mol, nn_name, dist)
-            else
-              let curr_nn, curr_dist = Bstree.nearest_neighbor mol bst in
-              if curr_dist < dist then
-                (mol, FpMol.get_name curr_nn, curr_dist)
-              else
-                (mol, nn_name, dist)
-          ) annotated                
-      ) annot_mols fns
 
 let main () =
   Log.(set_log_level INFO);
