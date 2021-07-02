@@ -385,13 +385,13 @@ let save fn x =
 (* unmarshal x from file; the file might be gzip, bzip2 or xz compressed *)
 let restore fn =
   if S.ends_with fn ".gz" then
-    let in_chan = Unix.open_process_in ("gunzip " ^ fn) in
+    let in_chan = Unix.open_process_in ("gunzip -ck " ^ fn) in
     Marshal.from_channel in_chan
   else if S.ends_with fn ".bz2" then
-    let in_chan = Unix.open_process_in ("bunzip2 " ^ fn) in
+    let in_chan = Unix.open_process_in ("bunzip2 -ck " ^ fn) in
     Marshal.from_channel in_chan
   else if S.ends_with fn ".xz" then
-    let in_chan = Unix.open_process_in ("unxz " ^ fn) in
+    let in_chan = Unix.open_process_in ("unxz -ck " ^ fn) in
     Marshal.from_channel in_chan
   else (* assume file is not compressed *)
     with_in_file fn (fun input ->
