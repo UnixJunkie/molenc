@@ -12,6 +12,7 @@ module A = BatArray
 module Ht = BatHashtbl
 module L = BatList
 module Log = Dolog.Log
+module S = BatString
 
 type filename = string
 
@@ -381,11 +382,21 @@ let save fn x =
       Marshal.to_channel out x [Marshal.No_sharing]
     )
 
-(* unmarshal x from file *)
+(* unmarshal x from file; the file might be gzip, bzip2 or xz compressed *)
 let restore fn =
-  with_in_file fn (fun input ->
-      Marshal.from_channel input
-    )
+  if S.ends_with fn ".gz" then
+    let in_chan = Unix.open_process_args_in "gunzip" [|fn|] in
+    Marshal.from_channel in_chan
+  else if S.ends_with fn ".bz2" then
+    let in_chan = Unix.open_process_args_in "bunzip2" [|fn|] in
+    Marshal.from_channel in_chan
+  else if S.ends_with fn ".xz" then
+    let in_chan = Unix.open_process_args_in "unxz" [|fn|] in
+    Marshal.from_channel in_chan
+  else (* assume file is not compressed *)
+    with_in_file fn (fun input ->
+        Marshal.from_channel input
+      )
 
 let is_odd i =
   i mod 2 = 1
