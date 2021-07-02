@@ -15,7 +15,7 @@ end
    over all Bsts *)
 let nearest_neighbor_names ncores bst_fns mols =
   match bst_fns with
-  | [] -> assert(false) (* at least one bst fn is required *)
+  | [] -> []
   | fn :: fns ->
     let annot_mols =
       (* load one bst *)
