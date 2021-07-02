@@ -26,8 +26,6 @@ end
 let verbose = ref false
 
 (* FBR: integrate into FMGO *)
-
-(* FBR: in library module: index_many_from_files *)
 (* FBR: in library module: nearest_in_many *)
 
 let read_one_chunk input_fn in_mol_count chunk_index csize input () =
@@ -61,24 +59,23 @@ let index_one_chunk input_fn (i, chunk') =
 
 (* For each molecule, find its nearest neighbor name and distance,
    over all Bsts *)
-let nearest_neighbor_names _ncores bst_fns mols =
+let nearest_neighbor_names ncores bst_fns mols =
   match bst_fns with
   | [] -> assert(false) (* at least one bst fn is required *)
   | fn :: fns ->
     let annot_mols =
       (* load one bst *)
       let (bst: Bstree.t) = Utls.restore fn in
-      (* FBR: parallelize *)
-      L.map (fun mol ->
-          let nn, dist = Bstree.nearest_neighbor mol bst in
-          (mol, FpMol.get_name nn, dist)
+      Parany.Parmap.parmap ncores
+        (fun mol ->
+           let nn, dist = Bstree.nearest_neighbor mol bst in
+           (mol, FpMol.get_name nn, dist)
         ) mols in
     (* fold on the other BSTs *)
     L.fold_left (fun annotated bst_fn ->
         (* load another bst *)
         let (bst: Bstree.t) = Utls.restore bst_fn in
-        (* FBR: parallelize *)
-        L.map (fun (mol, nn_name, dist) ->
+        Parany.Parmap.parmap ncores (fun (mol, nn_name, dist) ->
             if dist = 0.0 then
               (* already nearest *)
               (mol, nn_name, dist)
