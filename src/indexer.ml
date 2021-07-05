@@ -18,8 +18,6 @@ module Utls = Molenc.Utls
 
 let verbose = ref false
 
-(* FBR: integrate into FMGO *)
-
 let read_one_chunk input_fn in_mol_count chunk_index csize input () =
   let res = ref [] in
   try
