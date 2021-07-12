@@ -67,12 +67,11 @@ def fragment_on_bonds_and_label(mol, bonds):
     return (smi, name, index_to_atom_type)
 
 # SMILES fragmentation
-def cut_some_bonds(mol, seed):
+def cut_some_bonds(frag_weight, mol, seed):
     cuttable_bonds = common.find_cuttable_bonds(mol)
     cut_bonds_indexes = [b.GetIdx() for b in cuttable_bonds]
     total_weight = Descriptors.MolWt(mol)
-    # 150 Da: D. Rognan's suggested max fragment weight
-    nb_frags = round(total_weight / 150)
+    nb_frags = round(total_weight / frag_weight)
     max_cuts = min(len(cut_bonds_indexes), nb_frags - 1)
     # print("mol %s; cut %d bonds" % (mol.GetProp("name"), max_cuts),
     #       file=sys.stderr)
@@ -433,6 +432,9 @@ if __name__ == '__main__':
     parser.add_argument("--stable", dest = "s_filter", default = False,
                         action = "store_true",
                         help = "only generate stable molecules")
+    # 150 Da: D. Rognan's suggested max fragment weight
+    parser.add_argument("-w", dest = "frag_weight", default = 150.0,
+                        type = float, help = "fragment weight (default=150Da)")
     # parse CLI
     if len(sys.argv) == 1:
         # user has no clue of what to do -> usage
@@ -449,6 +451,7 @@ if __name__ == '__main__':
     ll_filter = args.ll_filter
     dl_filter = args.dl_filter
     s_filter = args.s_filter
+    frag_w = args.frag_weight
     seen_smiles = set()
     if rng_seed != -1:
         # only if the user asked for it, we make experiments repeatable
@@ -503,7 +506,8 @@ if __name__ == '__main__':
         mol_supplier = RobustSmilesMolSupplier(input_fn)
         for name, mol in mol_supplier:
             for i in range(nb_passes):
-                fragments_smi, parent_name, dico = cut_some_bonds(mol, rng_seed)
+                fragments_smi, parent_name, dico = \
+                    cut_some_bonds(frag_w, mol, rng_seed)
                 print("%s\t%s_p%d;%s" %
                       (fragments_smi, name, i, str(dico)), file=output)
             count += 1
