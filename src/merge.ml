@@ -84,9 +84,9 @@ type merge_policy = Min | Avg | Max
 
 let merge_hts policy l =
   let reducer = match policy with
-    | Min -> L.min
-    | Avg -> Utls.faverage
-    | Max -> L.max in
+    | Min -> BatList.min ~cmp:BatFloat.compare
+    | Avg -> BatList.favg
+    | Max -> BatList.max ~cmp:BatFloat.compare in
   let all_names = L.map string_set_of_keys l in
   let common_names = match all_names with
     | [] -> failwith "Merge.merge_hts: no names"
