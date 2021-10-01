@@ -1,5 +1,12 @@
+(* Copyright (C) 2021, Francois Berenger
+   Tsuda laboratory,
+   Graduate School of Frontier Sciences,
+   The University of Tokyo,
+   5-1-5 Kashiwa-no-ha,
+   Kashiwa, Chiba 277-8561, Japan.
 
-(* Compute the Pareto front for a set of solutions *)
+   Compute the Pareto front from a set of solutions.
+   Higher scores (in each dimension) are considered better. *)
 
 open Printf
 
