@@ -52,6 +52,25 @@ let pareto_front solutions =
       loop acc' xs' in
   loop [] sorted
 
+let solution_of_string sep field_nums line =
+  let fields = S.split_on_char sep line in
+  L.map (fun field_num ->
+      let float_str = L.at fields field_num in
+      try (* robust float parsing *)
+        Scanf.sscanf float_str "%f" (fun x -> x)
+      with exn ->
+        let () =
+          Log.fatal "Pareto.solution_of_string: cannot parse: '%s' in '%s'"
+            float_str line in
+        raise exn
+    ) field_nums
+
+let print_solution out sol =
+  L.iteri (fun i x ->
+      fprintf out (if i > 0 then " %f" else "%f") x
+    ) sol;
+  fprintf out "\n"
+
 let main () =
   Log.(set_log_level INFO);
   Log.color_on ();
@@ -67,14 +86,16 @@ let main () =
       exit 1
     end;
   let input_fn = CLI.get_string ["-i"] args in
-  let _all_lines_uniq =
+  let all_lines_uniq =
     L.unique_cmp ~cmp:S.compare
-      (* ignore comment lines (starting with '#') *)
+      (* ignore comment lines / starting with '#' *)
       (LO.filter input_fn (fun l -> not (S.starts_with l "#"))) in
-  let _sep = CLI.get_char_def ["-d"] args '\t' in
+  let sep = CLI.get_char_def ["-d"] args '\t' in
   let field_nums_str = CLI.get_string ["-f"] args in
-  CLI.finalize();
-  let _field_nums = parse_field_nums field_nums_str in
-  failwith "not implemented yet"
+  CLI.finalize(); (* ------------------------------------------------------- *)
+  let field_nums = parse_field_nums field_nums_str in
+  let solutions = L.map (solution_of_string sep field_nums) all_lines_uniq in
+  let front = pareto_front solutions in
+  L.iter (print_solution stdout) front
 
 let () = main ()
