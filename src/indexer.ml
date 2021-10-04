@@ -51,6 +51,7 @@ let main () =
   Log.(set_log_level INFO);
   Log.color_on ();
   let argc, args = CLI.init () in
+  let default_block_size = ref 50_000 in
   if argc = 1 then
     begin
       eprintf "usage:\n\
@@ -58,9 +59,9 @@ let main () =
                -i <filename>: molecules input file\n  \
                -ifs <filename>: file containing a list of files\n  \
                -np <int>: nprocs (default=1)\n  \
-               -c <int>: chunk size (molecules/bloc)\n  \
+               -c <int>: chunk size (molecules/bloc; default=%d)\n  \
                [-v]: verbose mode\n"
-        Sys.argv.(0);
+        Sys.argv.(0) !default_block_size;
       exit 1
     end;
   let input_fns =
@@ -71,7 +72,7 @@ let main () =
     | (Some fn, None) -> [fn]
     | (None, Some fn) -> LO.lines_of_file fn in
   let nprocs = CLI.get_int_def ["-np"] args 1 in
-  let csize = CLI.get_int_def ["-c"] args 50_000 in
+  let csize = CLI.get_int_def ["-c"] args !default_block_size in
   if CLI.get_set_bool ["-v"] args then
     verbose := true;
   CLI.finalize (); (* ------------------------------------------------------ *)
