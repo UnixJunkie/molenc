@@ -92,15 +92,15 @@ let nearest_neighbor_names_a
           fun nearest_name_dists ->
             assert(A.length nearest_name_dists = m);
             for i = 0 to m - 1 do
-              let mol, _prev_nearest_name, prev_dist = A.unsafe_get annot_mols i in
+              let mol, _prev_nearest_name, prev_dist =
+                A.unsafe_get annot_mols i in
               if prev_dist = 0.0 then
                 (* already nearest *) ()
               else
-                let curr_nearest_name, curr_dist = A.unsafe_get nearest_name_dists i in
+                let curr_nearest_name, curr_dist =
+                  A.unsafe_get nearest_name_dists i in
                 if curr_dist < prev_dist then (* update acc *)
                   A.unsafe_set annot_mols i (mol, curr_nearest_name, curr_dist)
-                else
-                  () (* no need to update acc *)
             done
         ) in
     annot_mols
