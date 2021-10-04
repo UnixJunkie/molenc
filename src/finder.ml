@@ -18,6 +18,7 @@ module Ht = Hashtbl
 module L = BatList
 module LO = Line_oriented
 module Log = Dolog.Log
+module MolIndex = Molenc.Index
 module S = BatString
 module Utls = Molenc.Utls
 
@@ -25,7 +26,7 @@ let split_smiles_line l =
   (* Expect '\t' separated SMILES *)
   S.split l ~by:"\t"
 
-let process_smiles_file fn name2smi =
+let process_smiles_file name2smi fn =
   LO.iteri fn (fun i line ->
       let smi, name = split_smiles_line line in
       (if Ht.mem name2smi name then
@@ -55,12 +56,25 @@ let main () =
       exit 1
     end;
   let input_fn = CLI.get_string ["-i"] args in
-  let bst_fns = CLI.get_string ["--bst-fns"] args in
-  let smi_fns = CLI.get_string ["--smi-fns"] args in
+  let output_fn = CLI.get_string ["-o"] args in
+  let bst_fns = S.split_on_char ',' (CLI.get_string ["--bst-fns"] args) in
+  let smi_fns = S.split_on_char ',' (CLI.get_string ["--smi-fns"] args) in
   let nprocs = CLI.get_int_def ["-np"] args 1 in
   CLI.finalize (); (* ------------------------------------------------------ *)
-  let in_mol_count = ref 0 in
-  (* MolIndex.nearest_neighbor_names_a ncores bst_fns to_annotate *)
-  failwith "not implemented yet"
-
+  (* populate the name to SMILES LUT *)
+  let name2smi = Ht.create 1_000_000 in
+  L.iter (process_smiles_file name2smi) smi_fns;
+  let encoded_molecules_in =
+    A.of_list (Molenc.FpMol.molecules_of_file input_fn) in
+  LO.with_out_file output_fn (fun out ->
+      let fp_name_dists =
+        MolIndex.nearest_neighbor_names_a
+          nprocs bst_fns encoded_molecules_in in
+      A.iter (fun (_fp, name, dist) ->
+          let smi = Ht.find name2smi name in
+          let tani = 1.0 -. dist in
+          fprintf out "%s\t%s_%.2f\n" smi name tani
+        ) fp_name_dists
+    )
+  
 let () = main ()
