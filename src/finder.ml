@@ -34,7 +34,7 @@ let ht_insert_name_if_not_there name2smi name smi =
   else
     Ht.add name2smi name smi
 
-let process_smiles_file name2smi fn =
+let process_smiles_file name2smi name2activity fn =
   LO.iteri fn (fun i line ->
       let smi, name = split_smiles_line line in
       ht_insert_name_if_not_there name2smi name smi;
@@ -42,8 +42,9 @@ let process_smiles_file name2smi fn =
          (without postfix pIC50 value) *)
       if S.contains name '_' then
         begin
-          let raw_name, _pIC50 = S.split name ~by:"_" in
-          ht_insert_name_if_not_there name2smi raw_name smi
+          let raw_name, pIC50 = S.split name ~by:"_" in
+          ht_insert_name_if_not_there name2smi raw_name smi;
+          ht_insert_name_if_not_there name2activity raw_name pIC50
         end;
       if (i mod 1000) = 0 then
         printf "Loaded molecules: %d\r%!" (Ht.length name2smi)
@@ -72,7 +73,8 @@ let main () =
   CLI.finalize (); (* ------------------------------------------------------ *)
   (* populate the name to SMILES LUT *)
   let name2smi = Ht.create 1_000_000 in
-  L.iter (process_smiles_file name2smi) smi_fns;
+  let name2activity = Ht.create 1_000_000 in
+  L.iter (process_smiles_file name2smi name2activity) smi_fns;
   let encoded_molecules_in =
     A.of_list (Molenc.FpMol.molecules_of_file input_fn) in
   LO.with_out_file output_fn (fun out ->
@@ -80,13 +82,13 @@ let main () =
         MolIndex.nearest_neighbor_names_a
           nprocs bst_fns encoded_molecules_in in
       A.iter (fun (_fp, name, dist) ->
-          let smi =
-            try Ht.find name2smi name
+          let smi, pIC50 =
+            try (Ht.find name2smi name, Ht.find name2activity name)
             with Not_found ->
               let () = Log.fatal "Finder.main: not in Ht: %s" name in
               exit 1 in
           let tani = 1.0 -. dist in
-          fprintf out "%s\t%s_%.2f\n" smi name tani
+          fprintf out "%s\t%s_T=%.2f_pIC50=%s\n" smi name tani pIC50
         ) fp_name_dists
     )
   
