@@ -5,25 +5,24 @@ MolEnc: a molecular encoder using rdkit and OCaml.
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3546675.svg)](https://doi.org/10.5281/zenodo.3546675)
 
 The implemented fingerprint is J-L Faulon's "Signature Molecular Descriptor"
-(SMD[1]).
+(SMD [1]).
 This is an unfolded-counted chemical fingerprint.
 Such fingerprints are less lossy than famous chemical fingerprints like ECFP4.
 SMD encoding doesn't introduce feature collisions upon encoding.
 Also, a feature dictionary is created at encoding time.
 This dictionary can be used later on to map a given feature index to an
 atom environment.
+Molenc also implements unfolded-counted atom pairs [2].
 
-We recommend using a radius of zero to one (molenc.sh -r 0:1 ...) or
+For SMD, we recommend using a radius of zero to one (molenc.sh -r 0:1 ...) or
 zero to two.
 
-Currently, the fingerprint can be run using atom types
+Currently, the atom typing scheme being used is:
 (#pi-electrons, element symbol, #HA neighbors, formal charge).
 
 In the future, we might add pharmacophore feature points[3]
 (Donor, Acceptor, PosIonizable, NegIonizable, Aromatic, Hydrophobe),
 to allow a fuzzier description of molecules.
-It is also planned to support atom pairs[2] in addition
-to or in combination with SMD.
 
 # How to install the software
 
@@ -51,10 +50,16 @@ or using the software or if you have any question.
 
 ```
 molenc.sh -i input.smi -o output.txt
-         [-d encoding.dix]; reuse existing dictionary
-         [-r i:j]; fingerprint radius (default=0:1)
-         [--seq]; sequential mode (disable parallelization)
-         [--no-std]; don't standardize input file molecules
+         [-d encoding.dix]: reuse existing feature dictionary
+         [-r i:j]: fingerprint radius (default=0:1)
+         [--pairs]: use atom pairs instead of Faulon's FP
+         [-m <int>]: maximum allowed atom-pair distance
+                     (default: no limit)
+         [--seq]: sequential mode (disable parallelization)
+         [-v]: debug mode; keep temp files
+         [-n <int>]: max jobs in parallel
+         [-c <int>]: chunk size
+         [--no-std]: don't standardize input file molecules
                      ONLY USE IF THEY HAVE ALREADY BEEN STANDARDIZED
 ```
 
