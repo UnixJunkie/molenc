@@ -116,11 +116,21 @@ let main () =
   let all_lines_uniq = L.unique_cmp ~cmp:S.compare all_lines in
   let sep = CLI.get_char_def ["-d"] args '\t' in
   let field_nums_str = CLI.get_string ["-f"] args in
-  let _maybe_preserved_field = CLI.get_int_opt ["--preserve"] args in
+  let maybe_preserved_field = CLI.get_int_opt ["--preserve"] args in
   CLI.finalize(); (* ------------------------------------------------------- *)
   let field_nums = parse_field_nums field_nums_str in
+  let maybe_sol2preserved =
+    maybe_create_preserve_ht sep field_nums maybe_preserved_field all_lines in
   let solutions = L.map (solution_of_string sep field_nums) all_lines_uniq in
   let front = pareto_front solutions in
-  L.iter (print_solution stdout) front
+  match maybe_sol2preserved with
+  | None -> L.iter (print_solution stdout) front
+  | Some ht ->
+    (* prefix Pareto front coordinates with preserved field *)
+    L.iter (fun sol ->
+        let preserved = Ht.find ht sol in
+        fprintf stdout "%s " preserved;
+        print_solution stdout sol
+      ) front
 
 let () = main ()
