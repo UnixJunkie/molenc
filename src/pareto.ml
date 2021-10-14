@@ -11,6 +11,7 @@
 open Printf
 
 module CLI = Minicli.CLI
+module Ht = BatHashtbl
 module L = BatList
 module LO = Line_oriented
 module Log = Dolog.Log
@@ -78,27 +79,44 @@ let print_solution out sol =
     ) sol;
   fprintf out "\n"
 
+let maybe_create_preserve_ht
+    sep field_nums maybe_preserve_field_num all_lines =
+  match maybe_preserve_field_num with
+  | None -> None
+  | Some preserve_field_num ->
+    let n = L.length all_lines in
+    let ht = Ht.create n in
+    L.iter (fun line ->
+        let sol = solution_of_string sep field_nums line in
+        let fields = S.split_on_char sep line in
+        let preserved = L.at fields (preserve_field_num - 1) in
+        Ht.replace ht sol preserved
+      ) all_lines;
+    Some ht
+
 let main () =
   Log.(set_log_level INFO);
   Log.color_on ();
   let argc, args = CLI.init () in
   if argc = 1 then
-    begin
-      eprintf "usage:\n\
-               %s\n  \
-               -i <filename>: input file\n  \
-               -d <char>: field separator (default=\\t)\n  \
-               -f <int>,<int>[,...]: fields to filter on \
-               (first field index=1; same as awk)\n" Sys.argv.(0);
-      exit 1
-    end;
+    (eprintf "usage:\n\
+              %s\n  \
+              -i <filename>: input file\n  \
+              -d <char>: field separator (default=\\t)\n  \
+              -f <int>,<int>[,...]: fields to filter on \
+              (first field index=1; same as awk)\n  \
+              [--preserve <int>]: field to preserve in the output\n"
+       Sys.argv.(0);
+     exit 1
+    );
   let input_fn = CLI.get_string ["-i"] args in
-  let all_lines_uniq =
-    L.unique_cmp ~cmp:S.compare
-      (* ignore comment lines / starting with '#' *)
-      (LO.filter input_fn (fun l -> not (S.starts_with l "#"))) in
+  let all_lines =
+    (* ignore comment lines / starting with '#' *)
+    LO.filter input_fn (fun l -> not (S.starts_with l "#")) in
+  let all_lines_uniq = L.unique_cmp ~cmp:S.compare all_lines in
   let sep = CLI.get_char_def ["-d"] args '\t' in
   let field_nums_str = CLI.get_string ["-f"] args in
+  let _maybe_preserved_field = CLI.get_int_opt ["--preserve"] args in
   CLI.finalize(); (* ------------------------------------------------------- *)
   let field_nums = parse_field_nums field_nums_str in
   let solutions = L.map (solution_of_string sep field_nums) all_lines_uniq in
