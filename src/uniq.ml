@@ -75,8 +75,7 @@ let main () =
   let module DB = (val mod_db: HT) in
   let sorted = CLI.get_set_bool ["--sorted"] args in
   let input_fn = CLI.get_string ["-i"] args in
-  let db_fn = input_fn ^ ".uniq.db" in
-  let db = DB.create db_fn in
+  let db = DB.create input_fn in
   let prev_field = ref "" in
   let uniq_field_check, register_field =
     if sorted then
