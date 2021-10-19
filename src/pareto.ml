@@ -28,8 +28,8 @@ type solution = float array
 
 type ranked_solution = int array
 
-let sum_scores (s: solution): float =
-  A.fsum s
+let sum_ranks (s: ranked_solution): int =
+  A.sum s
 
 (* array of ranks for given float array's sorted copy *)
 let rank_array (a: float array): (float array * int array) =
@@ -89,13 +89,21 @@ let rank_solutions (sols: solution list): ranked_solution list =
         ) sol
     ) sols
 
-let sum_scores_decr_sort solutions =
-  L.sort (fun s1 s2 ->
-      BatFloat.compare (sum_scores s2) (sum_scores s1)
-    ) solutions
+let ranked_sol2sol_ht sols ranked_sols =
+  let ht = Ht.create (L.length sols) in
+  L.iter2 (fun sol ranked_sol ->
+      Ht.replace ht ranked_sol sol
+    ) sols ranked_sols;
+  ht
 
-let is_dominated (s1: solution) (s2: solution): bool =
-  A.for_all2 (fun p1 p2 -> p2 >= p1) s1 s2
+(* rank by increasing sum of ranks *)
+let sum_ranks_sort (sols: ranked_solution list): ranked_solution list =
+  L.sort (fun s1 s2 ->
+      BatInt.compare (sum_ranks s1) (sum_ranks s2)
+    ) sols
+
+let is_dominated (s1: ranked_solution) (s2: ranked_solution): bool =
+  A.for_all2 (fun r1 r2 -> r2 <= r1) s1 s2
 
 let is_dominated_by_any candidate competitors =
   L.exists (is_dominated candidate) competitors
@@ -106,8 +114,10 @@ let remove_dominated candidate competitors =
     ) competitors
 
 let pareto_front solutions =
-  (* decr. sum scores sort *)
-  let sorted = sum_scores_decr_sort solutions in
+  (* Heuristic: try to put good solutions at the front, so they
+     will prune weaker solutions and hence lower algorithmic complexity
+     (a good solution has a low sum of ranks) *)
+  let sorted = sum_ranks_sort solutions in
   (* loop until no dominated solution is left *)
   let rec loop acc = function
     | [] -> L.rev acc
@@ -186,15 +196,19 @@ let main () =
   let maybe_sol2preserved =
     maybe_create_preserve_ht sep field_nums preserve_line all_lines in
   let solutions = L.map (solution_of_string sep field_nums) all_lines_uniq in
-  let front = pareto_front solutions in
+  let ranked_solutions = rank_solutions solutions in
+  let ranked_sol2sol = ranked_sol2sol_ht solutions ranked_solutions in
+  let front = pareto_front ranked_solutions in
   match maybe_sol2preserved with
   | None ->
-    L.iter (fun sol ->
+    L.iter (fun ranked_sol ->
+        let sol = Ht.find ranked_sol2sol ranked_sol in
         fprintf stdout "%s\n" (string_of_solution sol)
       ) front
   | Some ht ->
     (* Pareto front coordinates then preserved line *)
-    L.iter (fun sol ->
+    L.iter (fun ranked_sol ->
+        let sol = Ht.find ranked_sol2sol ranked_sol in
         let preserved = Ht.find ht sol in
         fprintf stdout "%s %s\n" (string_of_solution sol) preserved
       ) front
