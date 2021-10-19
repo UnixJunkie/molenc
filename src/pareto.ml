@@ -65,8 +65,19 @@ let score2rank_ht (scores: float array): (float, int) Ht.t =
     ) sorted_scores corresp_ranks;
   ht
 
-let rank_solutions (_sols: solution list): ranked_solution list =
-  failwith "not implemented yet"
+let extract_coord (i: int) (sols: solution list): float array =
+  let n = L.length sols in
+  let res = A.make n 0.0 in
+  L.iteri (fun j sol ->
+      res.(j) <- sol.(i)
+    ) sols;
+  res
+
+(* let rank_solutions (sols: solution list): ranked_solution list =
+ *   let ndims = A.length (L.hd sols) in
+ *   (\* create all score2rank hts *\)
+ *   let score2rank_hts =
+ *   (\* apply them on each coordinate *\) *)
 
 let sum_scores_decr_sort solutions =
   L.sort (fun s1 s2 ->
