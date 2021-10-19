@@ -10,6 +10,7 @@
 
 open Printf
 
+module A = BatArray
 module CLI = Minicli.CLI
 module Ht = BatHashtbl
 module L = BatList
@@ -23,10 +24,13 @@ let parse_field_nums s =
      the 1st index is 0 *)
   L.map (fun num_str -> (int_of_string num_str) - 1) strings
 
-type solution = float list
+type solution = float array
+
+(* FBR *)
+(* type ranked_solution = int list *)
 
 let sum_scores (s: solution): float =
-  L.fsum s
+  A.fsum s
 
 let sum_scores_decr_sort solutions =
   L.sort (fun s1 s2 ->
@@ -34,7 +38,7 @@ let sum_scores_decr_sort solutions =
     ) solutions
 
 let is_dominated (s1: solution) (s2: solution): bool =
-  L.for_all2 (fun p1 p2 -> p2 >= p1) s1 s2
+  A.for_all2 (fun p1 p2 -> p2 >= p1) s1 s2
 
 let is_dominated_by_any candidate competitors =
   L.exists (is_dominated candidate) competitors
@@ -61,20 +65,30 @@ let pareto_front solutions =
   loop [] sorted
 
 let solution_of_string sep field_nums line =
+  let num_fields = L.length field_nums in
+  let res = A.make num_fields 0.0 in
   let fields = S.split_on_char sep line in
-  L.map (fun field_num ->
+  L.iteri (fun i field_num ->
       let float_str = L.at fields field_num in
-      try (* robust float parsing *)
-        Scanf.sscanf float_str "%f" (fun x -> x)
-      with exn ->
-        let () =
-          Log.fatal "Pareto.solution_of_string: cannot parse: '%s' in '%s'"
-            float_str line in
-        raise exn
-    ) field_nums
+      let x =
+        try (* robust float parsing *)
+          Scanf.sscanf float_str "%f" (fun x -> x)
+        with exn ->
+          let () =
+            Log.fatal "Pareto.solution_of_string: cannot parse: '%s' in '%s'"
+              float_str line in
+          raise exn in
+      res.(i) <- x
+    ) field_nums;
+  res
 
 let string_of_solution sol =
-  S.concat " " (L.map string_of_float sol)
+  let buff = Buffer.create 80 in
+  A.iteri (fun i x ->
+      if i > 0 then Buffer.add_char buff ' ';
+      Buffer.add_string buff (string_of_float x)
+    ) sol;
+  Buffer.contents buff
 
 let maybe_create_preserve_ht sep field_nums preserve_line all_lines =
   if not preserve_line then
@@ -104,7 +118,7 @@ let main () =
     );
   let input_fn = CLI.get_string ["-i"] args in
   let all_lines =
-    (* ignore comment lines / starting with '#' *)
+    (* ignore comments / lines starting with '#' *)
     LO.filter input_fn (fun l -> not (S.starts_with l "#")) in
   let all_lines_uniq = L.unique_cmp ~cmp:S.compare all_lines in
   let sep = CLI.get_char_def ["-d"] args '\t' in
