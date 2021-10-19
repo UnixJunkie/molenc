@@ -73,24 +73,17 @@ let solution_of_string sep field_nums line =
         raise exn
     ) field_nums
 
-let print_solution out sol =
-  L.iteri (fun i x ->
-      fprintf out (if i > 0 then " %f" else "%f") x
-    ) sol;
-  fprintf out "\n"
+let string_of_solution sol =
+  S.concat " " (L.map string_of_float sol)
 
-let maybe_create_preserve_ht
-    sep field_nums maybe_preserve_field_num all_lines =
-  match maybe_preserve_field_num with
-  | None -> None
-  | Some preserve_field_num ->
-    let n = L.length all_lines in
-    let ht = Ht.create n in
+let maybe_create_preserve_ht sep field_nums preserve_line all_lines =
+  if not preserve_line then
+    None
+  else
+    let ht = Ht.create (L.length all_lines) in
     L.iter (fun line ->
         let sol = solution_of_string sep field_nums line in
-        let fields = S.split_on_char sep line in
-        let preserved = L.at fields (preserve_field_num - 1) in
-        Ht.replace ht sol preserved
+        Ht.replace ht sol line
       ) all_lines;
     Some ht
 
@@ -102,10 +95,10 @@ let main () =
     (eprintf "usage:\n\
               %s\n  \
               -i <filename>: input file\n  \
-              -d <char>: field separator (default=\\t)\n  \
+              -d <char>: field separator (default=\t)\n  \
               -f <int>,<int>[,...]: fields to filter on \
               (first field index=1; same as awk)\n  \
-              [--preserve <int>]: field to preserve in the output\n"
+              [--preserve]: preserve whole input line in output\n"
        Sys.argv.(0);
      exit 1
     );
@@ -116,21 +109,23 @@ let main () =
   let all_lines_uniq = L.unique_cmp ~cmp:S.compare all_lines in
   let sep = CLI.get_char_def ["-d"] args '\t' in
   let field_nums_str = CLI.get_string ["-f"] args in
-  let maybe_preserved_field = CLI.get_int_opt ["--preserve"] args in
+  let preserve_line = CLI.get_set_bool ["--preserve"] args in
   CLI.finalize(); (* ------------------------------------------------------- *)
   let field_nums = parse_field_nums field_nums_str in
   let maybe_sol2preserved =
-    maybe_create_preserve_ht sep field_nums maybe_preserved_field all_lines in
+    maybe_create_preserve_ht sep field_nums preserve_line all_lines in
   let solutions = L.map (solution_of_string sep field_nums) all_lines_uniq in
   let front = pareto_front solutions in
   match maybe_sol2preserved with
-  | None -> L.iter (print_solution stdout) front
+  | None ->
+    L.iter (fun sol ->
+        fprintf stdout "%s\n" (string_of_solution sol)
+      ) front
   | Some ht ->
-    (* prefix Pareto front coordinates with preserved field *)
+    (* Pareto front coordinates then preserved line *)
     L.iter (fun sol ->
         let preserved = Ht.find ht sol in
-        fprintf stdout "%s " preserved;
-        print_solution stdout sol
+        fprintf stdout "%s %s\n" (string_of_solution sol) preserved
       ) front
 
 let () = main ()
