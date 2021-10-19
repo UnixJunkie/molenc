@@ -32,7 +32,7 @@ let sum_scores (s: solution): float =
   A.fsum s
 
 (* array of ranks for given float array's sorted copy *)
-let rank_array (a: float array): int array =
+let rank_array (a: float array): (float array * int array) =
   let sorted = A.copy a in
   (* sort by decreasing scores: highest score gets lowest rank *)
   A.sort (fun x y -> BatFloat.compare y x) sorted;
@@ -49,11 +49,21 @@ let rank_array (a: float array): int array =
       else
         ranks.(i) <- !curr_rank
     ) sorted;
-  ranks
+  (sorted, ranks)
 
 (* unit test for rank_array *)
 let () =
-  assert(rank_array [|-1.; 0.; 0.; 1.; 1.; 2.; 2.|] = [|0; 0; 1; 1; 2; 2; 3|])
+  assert(snd (rank_array [|-1.; 0.; 0.; 1.; 1.; 2.; 2.|]) =
+         [|0; 0; 1; 1; 2; 2; 3|])
+
+let score2rank_ht (scores: float array): (float, int) Ht.t =
+  let sorted_scores, corresp_ranks = rank_array scores in
+  let ht = Ht.create (A.length sorted_scores) in
+  A.iter2 (fun score rank ->
+      if not (Ht.mem ht score) then
+        Ht.add ht score rank
+    ) sorted_scores corresp_ranks;
+  ht
 
 let rank_solutions (_sols: solution list): ranked_solution list =
   failwith "not implemented yet"
