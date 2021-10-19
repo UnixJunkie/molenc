@@ -26,11 +26,37 @@ let parse_field_nums s =
 
 type solution = float array
 
-(* FBR *)
-(* type ranked_solution = int list *)
+type ranked_solution = int array
 
 let sum_scores (s: solution): float =
   A.fsum s
+
+(* array of ranks for given float array's sorted copy *)
+let rank_array (a: float array): int array =
+  let sorted = A.copy a in
+  (* sort by decreasing scores: highest score gets lowest rank *)
+  A.sort (fun x y -> BatFloat.compare y x) sorted;
+  let ranks =
+    let n = A.length a in
+    A.make n 0 in
+  let curr_rank = ref (-1) in
+  let previous = ref neg_infinity in
+  A.iteri (fun i x ->
+      if x <> !previous then
+        (incr curr_rank;
+         previous := x;
+         ranks.(i) <- !curr_rank)
+      else
+        ranks.(i) <- !curr_rank
+    ) sorted;
+  ranks
+
+(* unit test for rank_array *)
+let () =
+  assert(rank_array [|-1.; 0.; 0.; 1.; 1.; 2.; 2.|] = [|0; 0; 1; 1; 2; 2; 3|])
+
+let rank_solutions (_sols: solution list): ranked_solution list =
+  failwith "not implemented yet"
 
 let sum_scores_decr_sort solutions =
   L.sort (fun s1 s2 ->
