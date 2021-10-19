@@ -73,11 +73,21 @@ let extract_coord (i: int) (sols: solution list): float array =
     ) sols;
   res
 
-(* let rank_solutions (sols: solution list): ranked_solution list =
- *   let ndims = A.length (L.hd sols) in
- *   (\* create all score2rank hts *\)
- *   let score2rank_hts =
- *   (\* apply them on each coordinate *\) *)
+let rank_solutions (sols: solution list): ranked_solution list =
+  let ndims = A.length (L.hd sols) in
+  (* create all score2rank hts *)
+  let score2rank_hts =
+    A.init ndims (fun coord ->
+        let xs = extract_coord coord sols in
+        score2rank_ht xs
+      ) in
+  (* apply them on each coordinate *)
+  L.map (fun sol ->
+      A.mapi (fun i x ->
+          let ht = score2rank_hts.(i) in
+          Ht.find ht x
+        ) sol
+    ) sols
 
 let sum_scores_decr_sort solutions =
   L.sort (fun s1 s2 ->
