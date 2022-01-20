@@ -10,6 +10,11 @@ module Utls = Molenc.Utls
 module FpMol = Molenc.FpMol
 module L = BatList
 
+(* molecular distances are already normalized (Tanimoto dists);
+   hence for visualization it is convenient if the IC50s are also normalized *)
+let normalize mini maxi pIC50 =
+  (pIC50 -. mini) /. (maxi -. mini)
+
 let main () =
   Log.(set_log_level INFO);
   Log.color_on ();
@@ -32,6 +37,8 @@ let main () =
     Log.(set_log_level DEBUG)
   ;
   let molecules_a = A.of_list (FpMol.molecules_of_file input_fn) in
+  let min_pIC50, max_pIC50 = A.min_max (A.map FpMol.get_value molecules_a) in
+  Log.info "pIC50_min/max: %g %g" min_pIC50 max_pIC50;
   let n_mols = A.length molecules_a in
   Utls.enforce (n_mols >= 50)
     (sprintf "less than 50 molecules in %s: %d" input_fn n_mols);
@@ -41,7 +48,10 @@ let main () =
     let m1 = molecules_a.(BatRandom.State.int rng n_mols) in
     let m2 = molecules_a.(BatRandom.State.int rng n_mols) in
     let dist = FpMol.dist m1 m2 in
-    let act_abs_diff = abs_float ((FpMol.get_value m1) -. (FpMol.get_value m2)) in
+    let act_abs_diff =
+      let act1 = normalize min_pIC50 max_pIC50 (FpMol.get_value m1) in
+      let act2 = normalize min_pIC50 max_pIC50 (FpMol.get_value m2) in
+      abs_float (act1 -. act2) in
     Log.debug "%f %f\n" dist act_abs_diff;
     pairs := (dist, act_abs_diff) :: !pairs
   done;
