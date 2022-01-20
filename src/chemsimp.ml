@@ -47,6 +47,6 @@ let main () =
   done;
   let dists, act_abs_diffs = L.split !pairs in
   let rho, t = Utls.spearman_l dists act_abs_diffs in
-  Log.info "N: %d rho: %.2f (p-value: %f\n" num_draws rho t
+  Log.info "N: %d rho: %.2f (p-value: %f)\n" num_draws rho t
 
 let () = main ()
