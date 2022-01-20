@@ -616,3 +616,89 @@ let string_array_concat sep a =
       Buffer.add_string buff s
     ) a;
   Buffer.contents buff
+
+(* approximation of the complementary error function erfc(x),
+   comes from the book "numerical recipes" 3rd edition *)
+let erfcc x =
+  let   z = abs_float x          in
+  let   t = 2. /. (2. +. z) in
+  let ans = t *. exp
+    (-.z *. z -. 1.26551223 +. t *.
+              (  1.00002368 +. t *.
+              (  0.37409196 +. t *.
+              (  0.09678418 +. t *.
+              (-.0.18628806 +. t *.
+              (  0.27886807 +. t *.
+              (-.1.13520398 +. t *.
+              (  1.48851587 +. t *.
+              (-.0.82215223 +. t *.
+                 0.17087277))))))))) in
+  if x >= 0.0 then ans
+              else 2.0 -. ans
+
+(* Pearson correlation coefficient for float arrays, cross validated with some
+   Python implementation of it that I have *)
+let pearson_a a1 a2 =
+  let tiny = 1.0e-20     in
+  let    n = A.length a1 in
+  let   nf = float_of_int n      in
+  if n <> A.length a2 then
+    failwith "my_utils.ml: pearson_a: arrays length differ"
+  else
+    let p      = A.favg a1 in
+    let q      = A.favg a2 in
+    let sum_xx = ref 0.       in
+    let sum_yy = ref 0.       in
+    let sum_xy = ref 0.       in
+    let process x' y' =
+      let x    = x' -. p in
+      let y    = y' -. q in
+      let xx   = x *. x  in
+      let yy   = y *. y  in
+      let xy   = x *. y  in
+        sum_xx := !sum_xx +. xx;
+        sum_yy := !sum_yy +. yy;
+        sum_xy := !sum_xy +. xy;
+    in
+    for i = 0 to n - 1 do
+      process a1.(i) a2.(i);
+    done;
+    let r = !sum_xy /. (sqrt(!sum_xx *. !sum_yy) +. tiny)        in
+    let z = 0.5 *. log((1.0 +. r +. tiny) /. (1.0 -. r +. tiny)) in
+    (* approximation of Student's t probability valid for large n *)
+    let t = erfcc(abs_float(z *. sqrt(nf -. 1.0)) /. 1.4142136)       in
+    (r, t)
+
+(* comes from biocaml, not me *)
+let spearman_rank arr =
+  let arr = Array.copy arr in
+  let arr = Array.mapi (fun i a -> a,i) arr in
+  Array.sort (fun (a,_) (b,_) -> BatFloat.compare a b) arr;
+  let g _prev il ans =
+    let count = List.length il in
+    let n = count + (List.length ans) in
+    let hi = float_of_int n in
+    let lo = float_of_int (n - count + 1) in
+    let rank = (hi +. lo) /. 2. in
+    (List.map (fun i -> rank,i) il) @ ans
+  in
+  let f (prev, il, ans) (x,i) =
+    let count = List.length il in
+    if count = 0 then
+      x, [i], ans
+    else if x = prev then
+      x, i::il, ans
+    else
+      x, [i], g prev il ans
+  in
+  let prev,il,ans = Array.fold_left f (0.,[],[]) arr in
+  let ans = g prev il ans in
+  let ans = List.sort (fun (_,a) (_,b) -> BatInt.compare a b) ans in
+  Array.of_list (List.map fst ans)
+
+(* Spearman rank-order correlation coefficient *)
+let spearman_a (a1:float array) (a2:float array) =
+  pearson_a (spearman_rank a1) (spearman_rank a2)
+
+let spearman_l l1 l2 =
+  spearman_a (A.of_list l1) (A.of_list l2)
