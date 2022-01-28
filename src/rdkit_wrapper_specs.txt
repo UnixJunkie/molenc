@@ -1,0 +1,2 @@
+
+val __init__ : smi:string -> unit -> t
