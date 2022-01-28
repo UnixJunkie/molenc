@@ -83,21 +83,28 @@ let main () =
   if verbose then Log.(set_log_level DEBUG);
   let input_fn = CLI.get_string ["-i"] args in
   let output_fn = CLI.get_string ["-o"] args in
+  CLI.finalize();
   (* default mode: compute BBAD for a set of molecules *)
-  let bbad = Ht.create (LO.count input_fn) in
-  (* FBR: separate the encoding from the creation of the BBAD
-   *      because the encoding could be parallelized *)
-  (* FBR: time #molecules/s for encoding *)
-  LO.iter input_fn (fun line ->
-      let smi, _name = S.split line ~by:"\t" in
-      let mol = mol_of_smiles smi in
-      let counted_pairs = encode_molecule mol in
-      Ht.iter (fun feat count ->
-          let prev_count = Ht.find_default bbad feat count in
-          Ht.replace bbad feat (max count prev_count)
-        ) counted_pairs
-    );
-  (* canonical form: write it out decr. sorted by feature_count *)
+  (* FBR: encoding could be parallelized *)
+  let nb_molecules = LO.count input_fn in
+  let start = Unix.gettimeofday () in
+  let atom_pairs =
+    LO.map input_fn (fun line ->
+        let smi, _name = S.split line ~by:"\t" in
+        let mol = mol_of_smiles smi in
+        encode_molecule mol
+      ) in
+  let stop = Unix.gettimeofday () in
+  let dt = stop -. start in
+  Log.info "encoding: %.1f molecule/s" ((float nb_molecules) /. dt);
+  let bbad = Ht.create nb_molecules in
+  L.iter (
+    Ht.iter (fun feat count ->
+        let prev_count = Ht.find_default bbad feat count in
+        Ht.replace bbad feat (max count prev_count)
+      )
+  ) atom_pairs;
+  (* canonical form: write BBAD out decr. sorted by feature_count *)
   let key_values = A.of_list (Ht.to_list bbad) in
   A.sort (fun (_key1, n1) (_key2, n2) -> BatInt.compare n2 n1) key_values;
   LO.with_out_file output_fn (fun out ->
