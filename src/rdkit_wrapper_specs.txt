@@ -1,2 +1,4 @@
 
-val __init__ : smi:string -> unit -> t
+val __init__: smi:string -> unit -> t
+
+val type_atom: t -> i:int -> unit -> int array
