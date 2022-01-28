@@ -24,7 +24,7 @@ let of_pyobject pyo = pyo
 
 let to_pyobject x = x
 
-let __init__ ~smi () = let callable = Py.Module.get (import_module ()) "Rdkit_wrapper" in let kwargs = filter_opt [ Some ("smi", Py.String.of_string smi); ] in of_pyobject @@ Py.Callable.to_function_with_keywords callable [||] kwargs
+let __init__ ~smi () = let callable = Py.Module.get (import_module ()) "Rdkit" in let kwargs = filter_opt [ Some ("smi", Py.String.of_string smi); ] in of_pyobject @@ Py.Callable.to_function_with_keywords callable [||] kwargs
 
 let type_atom t ~i () = let callable = Py.Object.find_attr_string t "type_atom" in let kwargs = filter_opt [ Some ("i", Py.Int.of_int i); ] in Py.List.to_array_map Py.Int.to_int @@ Py.Callable.to_function_with_keywords callable [||] kwargs
 
