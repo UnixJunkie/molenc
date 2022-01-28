@@ -38,6 +38,7 @@ depends: [
   "ocamlgraph"
   "parany" {>= "12.1.1"}
   "vector3"
+  "pyml" {>= "20211015"}
 ]
 synopsis: "Molecular encoder/featurizer using rdkit and OCaml"
 description: """Chemical fingerprints are lossy encodings of molecules.
