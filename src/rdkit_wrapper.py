@@ -47,7 +47,7 @@ class Rdkit:
         return self.mol.GetNumAtoms()
 
     # get the distance (in bonds) between a pair of atoms
-    def get_distances(self, i, j):
+    def get_distance(self, i, j):
         return int(self.mat[i][j])
 
 # # tests
