@@ -1,7 +1,7 @@
 module Rdkit : sig
 type t
 
-val of_pyobject : Pytypes.pyobject -> t option
+val of_pyobject : Pytypes.pyobject -> t
 
 val to_pyobject : t -> Pytypes.pyobject
 
@@ -20,13 +20,7 @@ let filter_opt l = List.filter_map Fun.id l
 
 type t = Pytypes.pyobject
 
-
-let is_instance pyo =
-  let py_class = Py.Module.get (import_module ()) "Rdkit_wrapper" in
-  Py.Object.is_instance pyo py_class
-
-let of_pyobject pyo = if is_instance pyo then Some pyo else None
-
+let of_pyobject pyo = pyo
 
 let to_pyobject x = x
 
