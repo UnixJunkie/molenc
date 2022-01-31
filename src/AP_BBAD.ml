@@ -119,7 +119,13 @@ let main () =
   ) !atom_pairs;
   (* canonical form: write BBAD out decr. sorted by feature_count *)
   let key_values = A.of_list (Ht.to_list bbad) in
-  A.sort (fun (_key1, n1) (_key2, n2) -> BatInt.compare n2 n1) key_values;
+  A.sort (fun (key1, n1) (key2, n2) ->
+      let cmp = BatInt.compare n2 n1 in
+      if cmp = 0 then
+        compare key1 key2 (* define a total order *)
+      else
+        cmp
+    ) key_values;
   LO.with_out_file output_fn (fun out ->
       A.iter (fun (feat, max_count) ->
           fprintf out "%s %d\n" (string_of_pair feat) max_count
