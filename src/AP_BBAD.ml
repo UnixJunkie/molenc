@@ -24,6 +24,8 @@ let () = Py.initialize () (* because the Rdkit module uses Pyml *)
 type atom = (int * int * int * int * int)
 type pair = (atom * int * atom)
 type mol = Rdkit.t
+type counted_pair = pair * int
+type bbad = (pair, int) Ht.t
 
 (* sorting the types for canonicalization *)
 let create_pair (src: atom) (dist: int) (dst: atom): pair =
@@ -52,7 +54,7 @@ let pair_of_string (s: string): pair =
     let () = Log.fatal "AP_BBAD.pair_of_string: cannot parse: %s" s in
     raise exn
 
-let feature_count_from_line line =
+let feature_count_from_line (line: string): counted_pair =
   (* AP-BBAD line format:
      ^(6,2,2,2,0)-23-(6,3,0,4,0) 174$ *)
   try Scanf.sscanf line "%s@ %d"
@@ -62,7 +64,7 @@ let feature_count_from_line line =
         "AP_BBAD.feature_count_from_line: cannot parse: %s" line in
     raise exn
 
-let bbad_from_file (fn: string): (pair, int) Ht.t =
+let bbad_from_file (fn: string): bbad =
   let lines = LO.lines_of_file fn in
   let n = L.length lines in
   let bbad = Ht.create n in
@@ -72,7 +74,8 @@ let bbad_from_file (fn: string): (pair, int) Ht.t =
     ) lines;
   bbad
 
-let in_AP_BBAD bbad mol =
+(* fun: an encoded molecule is also of type BBAD *)
+let in_AP_BBAD (bbad: bbad) (mol: bbad): bool =
   Ht.for_all (fun feat count ->
       let max_count = Ht.find_default bbad feat 0 in
       count <= max_count
@@ -87,7 +90,7 @@ let type_atom (mol: mol) (i: int): atom =
   (typ.(0), typ.(1), typ.(2), typ.(3), typ.(4))
 
 (* counted atom pairs *)
-let encode_molecule (mol: mol): (pair, int) Ht.t =
+let encode_molecule (mol: mol): bbad =
   let n = Rdkit.get_num_atoms mol () in
   let ht = Ht.create (n * (n - 1) / 2) in
   for i = 0 to n - 1 do
@@ -137,8 +140,7 @@ let record_one count res pairs =
   res := pairs :: !res
 
 (* Create a new AD using the union of two existing ones *)
-let union_AD (ad1: (pair, int) Ht.t) (ad2: (pair, int) Ht.t)
-  : (pair, int) Ht.t =
+let union_AD (ad1: bbad) (ad2: bbad): bbad =
   Ht.merge (fun _feat maybe_count1 maybe_count2 ->
       match (maybe_count1, maybe_count2) with
       | (Some n, None  )
@@ -147,7 +149,7 @@ let union_AD (ad1: (pair, int) Ht.t) (ad2: (pair, int) Ht.t)
       | (None  , None  ) -> assert(false)
     ) ad1 ad2
 
-let write_AD_out output_fn bbad =
+let write_AD_out (output_fn: string) (bbad: bbad): unit =
   (* canonical form: write BBAD out decr. sorted by feature_count *)
   let key_values = A.of_list (Ht.to_list bbad) in
   A.sort (fun (key1, n1) (key2, n2) ->
