@@ -17,8 +17,7 @@ module Rdkit = Molenc.Rdkit.Rdkit
 module S = BatString
 
 let () = Py.initialize () (* because the Rdkit module uses Pyml *)
-
-(* FBR: try to embed the Python source file statically into the exe using crunch *)
+(* FBR: try to embed the Python source file statically into the exe using mirage/crunch *)
 
 (* (atomic_num, nb_HA, nb_H, HA_used_val, formal_charge) cf. rdkit_wrapper.py *)
 type atom = (int * int * int * int * int)
@@ -36,22 +35,31 @@ let string_of_atom ((a,b,c,d,e): atom): string =
   sprintf "(%d,%d,%d,%d,%d)" a b c d e
 
 let atom_of_string (s: string): atom =
-  Scanf.sscanf s "(%d,%d,%d,%d,%d)" (fun a b c d e -> (a,b,c,d,e))
+  try Scanf.sscanf s "(%d,%d,%d,%d,%d)" (fun a b c d e -> (a,b,c,d,e))
+  with exn ->
+    let () = Log.fatal "AP_BBAD.atom_of_string: cannot parse: %s" s in
+    raise exn
 
 let string_of_pair ((src, dist, dst): pair): string =
   Printf.sprintf "%s-%d-%s" (string_of_atom src) dist (string_of_atom dst)
 
 let pair_of_string (s: string): pair =
-  Scanf.sscanf s "%s-%d-%s" (fun src dist dst ->
-      (atom_of_string src, dist, atom_of_string dst)
-    )
+  try Scanf.sscanf s "(%d,%d,%d,%d,%d)-%d-(%d,%d,%d,%d,%d)"
+        (fun a b c d e dist f g h i j ->
+           ((a,b,c,d,e), dist, (f,g,h,i,j)))
+  with exn ->
+    let () = Log.fatal "AP_BBAD.pair_of_string: cannot parse: %s" s in
+    raise exn
 
 let feature_count_from_line line =
   (* AP-BBAD line format:
      ^(6,2,2,2,0)-23-(6,3,0,4,0) 174$ *)
-  Scanf.sscanf line "%s %d" (fun feat max_count ->
-      (pair_of_string feat, max_count)
-    )
+  try Scanf.sscanf line "%s@ %d"
+        (fun feat max_count -> (pair_of_string feat, max_count))
+  with exn ->
+    let () = Log.fatal
+        "AP_BBAD.feature_count_from_line: cannot parse: %s" line in
+    raise exn
 
 let bbad_from_file fn =
   let lines = LO.lines_of_file fn in
@@ -62,6 +70,12 @@ let bbad_from_file fn =
       Ht.add bbad feat max_count
     ) lines;
   bbad
+
+let in_AP_BBAD bbad mol =
+  Ht.for_all (fun feat count ->
+      let max_count = Ht.find_default bbad feat 0 in
+      count <= max_count
+    ) mol
 
 let mol_of_smiles (smi: string): mol =
   Rdkit.__init__ ~smi ()
@@ -87,10 +101,6 @@ let encode_molecule (mol: mol): (pair, int) Ht.t =
   done;
   ht
 
-(* FBR: apply the BBAD on another set of molecules
-   - any unknown feature -> molecule filtered out
-   - feature value too high -> molecule filtered out *)
-
 let read_one_line input () =
   try input_line input
   with End_of_file -> raise Parany.End_of_input
@@ -99,6 +109,11 @@ let process_one line =
   let smi, _name = S.split line ~by:"\t" in
   let mol = mol_of_smiles smi in
   encode_molecule mol
+
+let annotate_one line =
+  let smi, _name = S.split line ~by:"\t" in
+  let mol = mol_of_smiles smi in
+  (encode_molecule mol, line)
 
 let record_one res pairs =
   res := pairs :: !res
@@ -125,7 +140,25 @@ let main () =
   let bbad_fn = CLI.get_string_opt ["--bbad"] args in
   CLI.finalize ();
   match bbad_fn with
-  | Some _fn -> failwith "FBR: TODO"
+  | Some fn ->
+    (* if BBAD fn provided: apply BBAD on set of molecules
+       - any unknown feature -> molecule filtered out
+       - feature value too high -> molecule filtered out *)
+    let bbad = bbad_from_file fn in
+    (* FBR: parallelize the encoding *)
+    let encoded_mols = LO.map input_fn annotate_one in
+    let total = L.length encoded_mols in
+    LO.with_out_file output_fn (fun out ->
+        let in_AD = ref 0 in
+        L.iter (fun (mol, line) ->
+            if in_AP_BBAD bbad mol then
+              begin
+                incr in_AD;
+                fprintf out "%s\n" line
+              end
+          ) encoded_mols;
+        Log.info "in_AD: %d/%d" !in_AD total
+      )
   | None ->
     (* default mode: compute BBAD for a set of molecules *)
     let nb_molecules = LO.count input_fn in
