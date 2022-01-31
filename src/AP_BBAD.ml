@@ -62,7 +62,7 @@ let feature_count_from_line line =
         "AP_BBAD.feature_count_from_line: cannot parse: %s" line in
     raise exn
 
-let bbad_from_file fn =
+let bbad_from_file (fn: string): (pair, int) Ht.t =
   let lines = LO.lines_of_file fn in
   let n = L.length lines in
   let bbad = Ht.create n in
@@ -137,7 +137,8 @@ let record_one count res pairs =
   res := pairs :: !res
 
 (* Create a new AD using the union of two existing ones *)
-let union_AD ad1 ad2 =
+let union_AD (ad1: (pair, int) Ht.t) (ad2: (pair, int) Ht.t)
+  : (pair, int) Ht.t =
   Ht.merge (fun _feat maybe_count1 maybe_count2 ->
       match (maybe_count1, maybe_count2) with
       | (Some n, None  )
@@ -146,6 +147,22 @@ let union_AD ad1 ad2 =
       | (None  , None  ) -> assert(false)
     ) ad1 ad2
 
+let write_AD_out output_fn bbad =
+  (* canonical form: write BBAD out decr. sorted by feature_count *)
+  let key_values = A.of_list (Ht.to_list bbad) in
+  A.sort (fun (key1, n1) (key2, n2) ->
+      let cmp = BatInt.compare n2 n1 in
+      if cmp = 0 then
+        compare key1 key2 (* define a total order *)
+      else
+          cmp
+    ) key_values;
+  LO.with_out_file output_fn (fun out ->
+      A.iter (fun (feat, max_count) ->
+          fprintf out "%s %d\n" (string_of_pair feat) max_count
+        ) key_values
+    )
+
 let main () =
   Log.color_on ();
   Log.(set_log_level INFO);
@@ -153,41 +170,55 @@ let main () =
   if argc = 1 then
     (eprintf "usage:\n  \
               %s\n  \
-              -i <filename>: SMILES input file\n  \
+              [-i <filename>]: SMILES input file\n  \
               -o <filename>: output file\n  \
               [-np <int>]: nprocs (default=1)\n  \
-              [--bbad <filename>]: previously computed BBAD\n  \
+              [--bbad <fn1[,fn2[,...]]>]: previously computed BBAD\n  \
               to apply as filter\n  \
+              will compute the union of ADs if several filenames\n  \
               [-v]: verbose/debug mode\n" Sys.argv.(0);
      exit 1);
   let verbose = CLI.get_set_bool ["-v"] args in
   if verbose then Log.(set_log_level DEBUG);
-  let input_fn = CLI.get_string ["-i"] args in
+  let input_fn = CLI.get_string_def ["-i"] args "/dev/stdin" in
   let output_fn = CLI.get_string ["-o"] args in
   let nprocs = CLI.get_int_def ["-np"] args 1 in
   let bbad_fn = CLI.get_string_opt ["--bbad"] args in
   CLI.finalize ();
   match bbad_fn with
   | Some fn ->
-    (* if BBAD fn provided: apply BBAD on set of molecules
-       - any unknown feature -> molecule filtered out
-       - feature value too high -> molecule filtered out *)
-    let bbad = bbad_from_file fn in
-    let nb_molecules = ref 0 in
-    let in_AD = ref 0 in
-    let start = Unix.gettimeofday () in
-    LO.with_in_file input_fn (fun input ->
-        LO.with_out_file output_fn (fun out ->
-            Parany.run ~preserve:true nprocs
-              ~demux:(read_one_line input)
-              ~work:(filter_one bbad)
-              ~mux:(write_one nb_molecules in_AD out);
-          )
-      );
-    let stop = Unix.gettimeofday () in
-    let dt = stop -. start in
-    Log.info "in_AD: %d/%d" !in_AD !nb_molecules;
-    Log.info "filtering: %.1f molecule/s" ((float !nb_molecules) /. dt)
+    if S.contains fn ',' then
+      let fns = S.split_on_string ~by:"," fn in
+      match fns with
+      | [] -> assert(false)
+      | fn1 :: others ->
+        let ad1 = bbad_from_file fn1 in
+        let union_AD =
+          L.fold (fun acc fn' ->
+              let ad = bbad_from_file fn' in
+              union_AD acc ad
+            ) ad1 others in
+        write_AD_out output_fn union_AD
+    else
+      (* if BBAD fn provided: apply BBAD on set of molecules
+         - any unknown feature -> molecule filtered out
+         - feature value too high -> molecule filtered out *)
+      let bbad = bbad_from_file fn in
+      let nb_molecules = ref 0 in
+      let in_AD = ref 0 in
+      let start = Unix.gettimeofday () in
+      LO.with_in_file input_fn (fun input ->
+          LO.with_out_file output_fn (fun out ->
+              Parany.run ~preserve:true nprocs
+                ~demux:(read_one_line input)
+                ~work:(filter_one bbad)
+                ~mux:(write_one nb_molecules in_AD out);
+            )
+        );
+      let stop = Unix.gettimeofday () in
+      let dt = stop -. start in
+      Log.info "in_AD: %d/%d" !in_AD !nb_molecules;
+      Log.info "filtering: %.1f molecule/s" ((float !nb_molecules) /. dt)
   | None ->
     (* default mode: compute BBAD for a set of molecules *)
     let nb_molecules = ref 0 in
@@ -208,19 +239,6 @@ let main () =
           Ht.replace bbad feat (max count prev_count)
         )
     ) !atom_pairs;
-    (* canonical form: write BBAD out decr. sorted by feature_count *)
-    let key_values = A.of_list (Ht.to_list bbad) in
-    A.sort (fun (key1, n1) (key2, n2) ->
-        let cmp = BatInt.compare n2 n1 in
-        if cmp = 0 then
-          compare key1 key2 (* define a total order *)
-        else
-          cmp
-      ) key_values;
-    LO.with_out_file output_fn (fun out ->
-        A.iter (fun (feat, max_count) ->
-            fprintf out "%s %d\n" (string_of_pair feat) max_count
-          ) key_values
-      )
+    write_AD_out output_fn bbad
 
 let () = main ()
