@@ -26,5 +26,11 @@ rm -f filtered.txt
 _build/default/src/AP_BBAD.exe --bbad seq_AD.txt -i data/chembl1868_std.smi -o filtered.txt -np ${nprocs}
 diff <(cat data/chembl1868_std.smi | wc -l) <(cat filtered.txt | wc -l)
 
-# 5) the BBAD union for two single molecules should be the same as the AD for the two molecules
-# FBR: TODO
+# 5) the BBAD union for two sets of molecules should be the same as the AD for the union of the sets
+rm -f head_AD.txt tail_AD.txt head_tail_AD_union.txt head_tail_AD.txt
+_build/default/src/AP_BBAD.exe -i <(head data/chembl1868_std.smi) -o head_AD.txt -np ${nprocs}
+_build/default/src/AP_BBAD.exe -i <(tail data/chembl1868_std.smi) -o tail_AD.txt -np ${nprocs}
+_build/default/src/AP_BBAD.exe --bbad head_AD.txt,tail_AD.txt -o head_tail_AD_union.txt
+_build/default/src/AP_BBAD.exe -i <(head data/chembl1868_std.smi; tail data/chembl1868_std.smi) \
+                               -o head_tail_AD.txt
+diff head_tail_AD_union.txt head_tail_AD.txt
