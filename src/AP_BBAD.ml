@@ -66,7 +66,17 @@ let encode_molecule (mol: mol): (pair, int) Ht.t =
    - any unknown feature -> molecule filtered out
    - feature value too high -> molecule filtered out *)
 
-(* FBR: rename this module to AP_BBAD then, or so *)
+let read_one_line input () =
+  try input_line input
+  with End_of_file -> raise Parany.End_of_input
+
+let process_one line =
+  let smi, _name = S.split line ~by:"\t" in
+  let mol = mol_of_smiles smi in
+  encode_molecule mol
+
+let record_one res pairs =
+  res := pairs :: !res
 
 let main () =
   Log.color_on ();
@@ -77,6 +87,7 @@ let main () =
               %s\n  \
               -i <filename>: SMILES input file\n  \
               -o <filename>: output file\n  \
+              [-np <int>]: nprocs (default=1)\n  \
               [--bbad <filename>]: previously computed BBAD\n  \
               to apply as filter\n  \
               [-v]: verbose/debug mode\n" Sys.argv.(0);
@@ -85,17 +96,17 @@ let main () =
   if verbose then Log.(set_log_level DEBUG);
   let input_fn = CLI.get_string ["-i"] args in
   let output_fn = CLI.get_string ["-o"] args in
+  let nprocs = CLI.get_int_def ["-np"] args 1 in
   CLI.finalize();
   (* default mode: compute BBAD for a set of molecules *)
-  (* FBR: encoding could be parallelized *)
   let nb_molecules = LO.count input_fn in
   let start = Unix.gettimeofday () in
-  let atom_pairs =
-    LO.map input_fn (fun line ->
-        let smi, _name = S.split line ~by:"\t" in
-        let mol = mol_of_smiles smi in
-        encode_molecule mol
-      ) in
+  let atom_pairs = ref [] in
+  LO.with_in_file input_fn (fun input ->
+      Parany.run nprocs ~demux:(read_one_line input)
+        ~work:process_one
+        ~mux:(record_one atom_pairs)
+    );
   let stop = Unix.gettimeofday () in
   let dt = stop -. start in
   Log.info "encoding: %.1f molecule/s" ((float nb_molecules) /. dt);
@@ -105,7 +116,7 @@ let main () =
         let prev_count = Ht.find_default bbad feat count in
         Ht.replace bbad feat (max count prev_count)
       )
-  ) atom_pairs;
+  ) !atom_pairs;
   (* canonical form: write BBAD out decr. sorted by feature_count *)
   let key_values = A.of_list (Ht.to_list bbad) in
   A.sort (fun (_key1, n1) (_key2, n2) -> BatInt.compare n2 n1) key_values;
