@@ -136,6 +136,16 @@ let record_one count res pairs =
   incr count;
   res := pairs :: !res
 
+(* Create a new AD using the union of two existing ones *)
+let union_AD ad1 ad2 =
+  Ht.merge (fun _feat maybe_count1 maybe_count2 ->
+      match (maybe_count1, maybe_count2) with
+      | (Some n, None  )
+      | (None  , Some n) -> Some n
+      | (Some m, Some n) -> Some (BatInt.max m n)
+      | (None  , None  ) -> assert(false)
+    ) ad1 ad2
+
 let main () =
   Log.color_on ();
   Log.(set_log_level INFO);
