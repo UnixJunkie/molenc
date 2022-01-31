@@ -16,7 +16,9 @@ val get_distance: t -> i:int -> j:int -> unit -> int
 end = struct
 let filter_opt l = List.filter_map Fun.id l
 
- let import_module () = Py.Import.import_module "rdkit_wrapper" 
+let import_module () =
+  Py.Import.import_module "rdkit_wrapper"
+(* FBR: I asked on github in pyml if Py.Import.add_module and Py.Run.eval can be combined  *)
 
 type t = Pytypes.pyobject
 

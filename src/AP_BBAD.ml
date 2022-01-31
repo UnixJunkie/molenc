@@ -17,7 +17,8 @@ module Rdkit = Molenc.Rdkit.Rdkit
 module S = BatString
 
 let () = Py.initialize () (* because the Rdkit module uses Pyml *)
-(* FBR: try to embed the Python source file statically into the exe using mirage/crunch *)
+(* FBR: try to embed the Python source file statically into the exe
+   asked in pyml on github *)
 
 (* (atomic_num, nb_HA, nb_H, HA_used_val, formal_charge) cf. rdkit_wrapper.py *)
 type atom = (int * int * int * int * int)
