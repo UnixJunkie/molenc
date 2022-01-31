@@ -35,8 +35,33 @@ let create_pair (src: atom) (dist: int) (dst: atom): pair =
 let string_of_atom ((a,b,c,d,e): atom): string =
   sprintf "(%d,%d,%d,%d,%d)" a b c d e
 
+let atom_of_string (s: string): atom =
+  Scanf.sscanf s "(%d,%d,%d,%d,%d)" (fun a b c d e -> (a,b,c,d,e))
+
 let string_of_pair ((src, dist, dst): pair): string =
   Printf.sprintf "%s-%d-%s" (string_of_atom src) dist (string_of_atom dst)
+
+let pair_of_string (s: string): pair =
+  Scanf.sscanf s "%s-%d-%s" (fun src dist dst ->
+      (atom_of_string src, dist, atom_of_string dst)
+    )
+
+let feature_count_from_line line =
+  (* AP-BBAD line format:
+     ^(6,2,2,2,0)-23-(6,3,0,4,0) 174$ *)
+  Scanf.sscanf line "%s %d" (fun feat max_count ->
+      (pair_of_string feat, max_count)
+    )
+
+let bbad_from_file fn =
+  let lines = LO.lines_of_file fn in
+  let n = L.length lines in
+  let bbad = Ht.create n in
+  L.iter (fun line ->
+      let feat, max_count = feature_count_from_line line in
+      Ht.add bbad feat max_count
+    ) lines;
+  bbad
 
 let mol_of_smiles (smi: string): mol =
   Rdkit.__init__ ~smi ()
