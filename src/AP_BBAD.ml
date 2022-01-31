@@ -122,39 +122,43 @@ let main () =
   let input_fn = CLI.get_string ["-i"] args in
   let output_fn = CLI.get_string ["-o"] args in
   let nprocs = CLI.get_int_def ["-np"] args 1 in
-  CLI.finalize();
-  (* default mode: compute BBAD for a set of molecules *)
-  let nb_molecules = LO.count input_fn in
-  let start = Unix.gettimeofday () in
-  let atom_pairs = ref [] in
-  LO.with_in_file input_fn (fun input ->
-      Parany.run nprocs ~demux:(read_one_line input)
-        ~work:process_one
-        ~mux:(record_one atom_pairs)
-    );
-  let stop = Unix.gettimeofday () in
-  let dt = stop -. start in
-  Log.info "encoding: %.1f molecule/s" ((float nb_molecules) /. dt);
-  let bbad = Ht.create nb_molecules in
-  L.iter (
-    Ht.iter (fun feat count ->
-        let prev_count = Ht.find_default bbad feat count in
-        Ht.replace bbad feat (max count prev_count)
+  let bbad_fn = CLI.get_string_opt ["--bbad"] args in
+  CLI.finalize ();
+  match bbad_fn with
+  | Some _fn -> failwith "FBR: TODO"
+  | None ->
+    (* default mode: compute BBAD for a set of molecules *)
+    let nb_molecules = LO.count input_fn in
+    let start = Unix.gettimeofday () in
+    let atom_pairs = ref [] in
+    LO.with_in_file input_fn (fun input ->
+        Parany.run nprocs ~demux:(read_one_line input)
+          ~work:process_one
+          ~mux:(record_one atom_pairs)
+      );
+    let stop = Unix.gettimeofday () in
+    let dt = stop -. start in
+    Log.info "encoding: %.1f molecule/s" ((float nb_molecules) /. dt);
+    let bbad = Ht.create nb_molecules in
+    L.iter (
+      Ht.iter (fun feat count ->
+          let prev_count = Ht.find_default bbad feat count in
+          Ht.replace bbad feat (max count prev_count)
+        )
+    ) !atom_pairs;
+    (* canonical form: write BBAD out decr. sorted by feature_count *)
+    let key_values = A.of_list (Ht.to_list bbad) in
+    A.sort (fun (key1, n1) (key2, n2) ->
+        let cmp = BatInt.compare n2 n1 in
+        if cmp = 0 then
+          compare key1 key2 (* define a total order *)
+        else
+          cmp
+      ) key_values;
+    LO.with_out_file output_fn (fun out ->
+        A.iter (fun (feat, max_count) ->
+            fprintf out "%s %d\n" (string_of_pair feat) max_count
+          ) key_values
       )
-  ) !atom_pairs;
-  (* canonical form: write BBAD out decr. sorted by feature_count *)
-  let key_values = A.of_list (Ht.to_list bbad) in
-  A.sort (fun (key1, n1) (key2, n2) ->
-      let cmp = BatInt.compare n2 n1 in
-      if cmp = 0 then
-        compare key1 key2 (* define a total order *)
-      else
-        cmp
-    ) key_values;
-  LO.with_out_file output_fn (fun out ->
-      A.iter (fun (feat, max_count) ->
-          fprintf out "%s %d\n" (string_of_pair feat) max_count
-        ) key_values
-    )
 
 let () = main ()
