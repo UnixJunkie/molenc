@@ -115,7 +115,24 @@ let annotate_one line =
   let mol = mol_of_smiles smi in
   (encode_molecule mol, line)
 
-let record_one res pairs =
+let filter_one bbad line =
+  let mol = process_one line in
+  if in_AP_BBAD bbad mol then
+    Some line
+  else
+    None
+
+let write_one total in_AD out = function
+  | None -> incr total
+  | Some line ->
+    begin
+      incr total;
+      incr in_AD;
+      fprintf out "%s\n" line
+    end
+
+let record_one count res pairs =
+  incr count;
   res := pairs :: !res
 
 let main () =
@@ -145,34 +162,35 @@ let main () =
        - any unknown feature -> molecule filtered out
        - feature value too high -> molecule filtered out *)
     let bbad = bbad_from_file fn in
-    (* FBR: parallelize the encoding *)
-    let encoded_mols = LO.map input_fn annotate_one in
-    let total = L.length encoded_mols in
-    LO.with_out_file output_fn (fun out ->
-        let in_AD = ref 0 in
-        L.iter (fun (mol, line) ->
-            if in_AP_BBAD bbad mol then
-              begin
-                incr in_AD;
-                fprintf out "%s\n" line
-              end
-          ) encoded_mols;
-        Log.info "in_AD: %d/%d" !in_AD total
-      )
+    let nb_molecules = ref 0 in
+    let in_AD = ref 0 in
+    let start = Unix.gettimeofday () in
+    LO.with_in_file input_fn (fun input ->
+        LO.with_out_file output_fn (fun out ->
+            Parany.run ~preserve:true nprocs
+              ~demux:(read_one_line input)
+              ~work:(filter_one bbad)
+              ~mux:(write_one nb_molecules in_AD out);
+          )
+      );
+    let stop = Unix.gettimeofday () in
+    let dt = stop -. start in
+    Log.info "in_AD: %d/%d" !in_AD !nb_molecules;
+    Log.info "filtering: %.1f molecule/s" ((float !nb_molecules) /. dt)
   | None ->
     (* default mode: compute BBAD for a set of molecules *)
-    let nb_molecules = LO.count input_fn in
+    let nb_molecules = ref 0 in
     let start = Unix.gettimeofday () in
     let atom_pairs = ref [] in
     LO.with_in_file input_fn (fun input ->
         Parany.run nprocs ~demux:(read_one_line input)
           ~work:process_one
-          ~mux:(record_one atom_pairs)
+          ~mux:(record_one nb_molecules atom_pairs)
       );
     let stop = Unix.gettimeofday () in
     let dt = stop -. start in
-    Log.info "encoding: %.1f molecule/s" ((float nb_molecules) /. dt);
-    let bbad = Ht.create nb_molecules in
+    Log.info "encoding: %.1f molecule/s" ((float !nb_molecules) /. dt);
+    let bbad = Ht.create !nb_molecules in
     L.iter (
       Ht.iter (fun feat count ->
           let prev_count = Ht.find_default bbad feat count in
