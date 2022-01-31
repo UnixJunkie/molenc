@@ -1,5 +1,7 @@
 #!/bin/bash
 
+#set -x # DEBUG
+
 # check some properties of the AP-BBAD
 
 # 1) the BBAD of a single molecule is the encoded single molecule
@@ -15,7 +17,14 @@ _build/default/src/AP_BBAD.exe -i data/chembl1868_std.smi -o par_AD.txt -np ${np
 diff seq_AD.txt par_AD.txt
 
 # 3) compute a simple BBAD by hand; check this is the one we obtain
+rm -f data/alcools.AD.curr
+_build/default/src/AP_BBAD.exe -i data/alcools.smi -o data/alcools.AD.curr
+diff data/alcools.AD.curr data/alcools.AD.ref
 
 # 4) the BBAD of some molecules doesn't filter out any of those molecules
+rm -f filtered.txt
+_build/default/src/AP_BBAD.exe --bbad seq_AD.txt -i data/chembl1868_std.smi -o filtered.txt -np ${nprocs}
+diff <(cat data/chembl1868_std.smi | wc -l) <(cat filtered.txt | wc -l)
 
-# 5) the BBAD union for two single molecules should be the same as 3)
+# 5) the BBAD union for two single molecules should be the same as the AD for the two molecules
+# FBR: TODO
