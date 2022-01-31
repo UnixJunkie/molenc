@@ -18,6 +18,8 @@ module S = BatString
 
 let () = Py.initialize () (* because the Rdkit module uses Pyml *)
 
+(* FBR: try to embed the Python source file statically into the exe using crunch *)
+
 (* (atomic_num, nb_HA, nb_H, HA_used_val, formal_charge) cf. rdkit_wrapper.py *)
 type atom = (int * int * int * int * int)
 type pair = (atom * int * atom)
