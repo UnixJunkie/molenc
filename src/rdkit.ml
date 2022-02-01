@@ -10,18 +10,9 @@ module Rdkit : sig
 end = struct
   let filter_opt l = List.filter_map Fun.id l
 
-  (* provided by @thierry-martinez *)
-  let import_python_source ~module_name ~filename ~source =
-    let bytecode = Py.compile ~filename ~source `Exec in
-    Py.Import.exec_code_module module_name bytecode
-
   let import_module () =
-    (* FBR: pyml_bindgen generated line *)
-    (* Py.Import.import_module "rdkit_wrapper" *)
-    (* FBR: hack to embed the python code directly into the ocaml exe *)
-    import_python_source
-      ~module_name:"rdkit_wrapper" ~filename:"rdkit_wrapper.py"
-      ~source:{|
+    let source =
+      {pyml_bindgen_string_literal|
 import rdkit
 from rdkit import Chem
 
@@ -62,7 +53,15 @@ class Rdkit:
     # get the distance (in bonds) between a pair of atoms
     def get_distance(self, i, j):
         return int(self.mat[i][j])
-|}
+|pyml_bindgen_string_literal}
+    in
+    let filename =
+      {pyml_bindgen_string_literal|rdkit_wrapper.py|pyml_bindgen_string_literal}
+    in
+    let bytecode = Py.compile ~filename ~source `Exec in
+    Py.Import.exec_code_module
+      {pyml_bindgen_string_literal|rdkit_wrapper|pyml_bindgen_string_literal}
+      bytecode
 
   type t = Pytypes.pyobject
 
