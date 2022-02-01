@@ -26,6 +26,9 @@ type mol = Rdkit.t
 type counted_pair = pair * int
 type bbad = (pair, int) Ht.t
 
+let is_heavy_atom (anum, _, _, _, _) =
+  anum > 1
+
 (* sorting the types for canonicalization *)
 let create_pair (src: atom) (dist: int) (dst: atom): pair =
   if compare src dst <= 0 then
@@ -94,13 +97,15 @@ let encode_molecule (mol: mol): bbad =
   let ht = Ht.create (n * (n - 1) / 2) in
   for i = 0 to n - 1 do
     let src = type_atom mol i in
-    for j = i to n - 1 do
-      let dst = type_atom mol j in
-      let dist = Rdkit.get_distance mol ~i ~j () in
-      let feature = create_pair src dist dst in
-      let prev_count = Ht.find_default ht feature 0 in
-      Ht.replace ht feature (prev_count + 1)
-    done
+    if is_heavy_atom src then
+      for j = i to n - 1 do
+        let dst = type_atom mol j in
+        if is_heavy_atom dst then
+          let dist = Rdkit.get_distance mol ~i ~j () in
+          let feature = create_pair src dist dst in
+          let prev_count = Ht.find_default ht feature 0 in
+          Ht.replace ht feature (prev_count + 1)
+      done
   done;
   ht
 

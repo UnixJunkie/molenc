@@ -26,7 +26,8 @@ class Rdkit:
     def type_atom(self, i):
         a = self.mol.GetAtomWithIdx(i)
         anum = a.GetAtomicNum()
-        assert(anum > 1) # we want to consider only heavy atoms
+        # do this on the ocaml side, since we get anum
+        # assert(anum > 1) # we want to consider only heavy atoms
         nb_HA, nb_H = count_neighbors(a)
         valence = a.GetTotalValence()
         HA_used_val = valence - nb_H
