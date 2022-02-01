@@ -9,8 +9,60 @@ module Rdkit : sig
   val get_distance : t -> i:int -> j:int -> unit -> int
 end = struct
   let filter_opt l = List.filter_map Fun.id l
-  let import_module () = Py.Import.import_module "rdkit_wrapper"
-  (* FBR: I asked on github in pyml if Py.Import.add_module and Py.Run.eval can be combined  *)
+
+  (* provided by @thierry-martinez *)
+  let import_python_source ~module_name ~filename ~source =
+    let bytecode = Py.compile ~filename ~source `Exec in
+    Py.Import.exec_code_module module_name bytecode
+
+  let import_module () =
+    (* FBR: pyml_bindgen generated line *)
+    (* Py.Import.import_module "rdkit_wrapper" *)
+    (* FBR: hack to embed the python code directly into the ocaml exe *)
+    import_python_source
+      ~module_name:"rdkit_wrapper" ~filename:"rdkit_wrapper.py"
+      ~source:{|
+import rdkit
+from rdkit import Chem
+
+def nb_heavy_atom_neighbors(a):
+    res = 0
+    for neighb in a.GetNeighbors():
+        if neighb.GetAtomicNum() > 1:
+            res += 1
+    return res
+
+# return (#HA, #H)
+def count_neighbors(a):
+    nb_heavy = nb_heavy_atom_neighbors(a)
+    nb_H = a.GetTotalNumHs()
+    return (nb_heavy, nb_H)
+
+class Rdkit:
+    # this is needed because the OCaml side want to know how
+    # to get an object of type t
+    def __init__(self, smi):
+        self.mol = Chem.MolFromSmiles(smi)
+        self.mat = Chem.GetDistanceMatrix(self.mol)
+
+    # (atomic_num, #HA, #H, valence - #H, formal_charge)
+    def type_atom(self, i):
+        a = self.mol.GetAtomWithIdx(i)
+        anum = a.GetAtomicNum()
+        assert(anum > 1) # we want to consider only heavy atoms
+        nb_HA, nb_H = count_neighbors(a)
+        valence = a.GetTotalValence()
+        HA_used_val = valence - nb_H
+        formal_charge = a.GetFormalCharge()
+        return [anum, nb_HA, nb_H, HA_used_val, formal_charge]
+
+    def get_num_atoms(self):
+        return self.mol.GetNumAtoms()
+
+    # get the distance (in bonds) between a pair of atoms
+    def get_distance(self, i, j):
+        return int(self.mat[i][j])
+|}
 
   type t = Pytypes.pyobject
 
