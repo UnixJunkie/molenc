@@ -62,13 +62,9 @@ let read_one ff count input =
       with End_of_file | Read_one -> L.rev !res
     end
   | SMILES ->
-    begin
-      try
-        let line = input_line input in
-        incr count;
-        [line]
-      with End_of_file -> []
-    end
+    let line = input_line input in
+    incr count;
+    [line]
   | SDF ->
     let res = ref [] in
     try
@@ -104,15 +100,18 @@ let main () =
   let basename = Filename.chop_suffix input_fn ext in
   let count = ref 0 in
   LO.with_in_file input_fn (fun input ->
-      let output_fn = sprintf "%s_%04d%s" basename !count ext in
-      LO.with_out_file output_fn (fun out ->
-          try
-            for _i = 1 to csize do
-              let mol = read_one ff count input in
-              L.iter (fprintf out "%s\n") mol
-            done
-          with End_of_file -> ()
-        )
+      try
+        while true do
+          let output_fn = sprintf "%s_%09d%s" basename !count ext in
+          LO.with_out_file output_fn (fun out ->
+              for _i = 1 to csize do
+                let mol = read_one ff count input in
+                L.iter (fprintf out "%s\n") mol
+              done;
+              eprintf "read %d\r%!" !count
+            )
+        done
+      with End_of_file -> ()
     );
   Log.info "read %d from %s" !count input_fn
 
