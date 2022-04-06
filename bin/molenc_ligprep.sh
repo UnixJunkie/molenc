@@ -22,12 +22,12 @@ CHARGED=${OUT}_taut74_1conf_mmff.mol2
 obabel $IN -O $PROTONATED -p 7.4
 
 # lowest energy conformer
-~/usr/openeye/bin/omega2 -strictstereo false -maxconfs 1 \
-                         -in $PROTONATED -out $CONFORMER
+~/usr/openeye/arch/Ubuntu-18.04-x64/omega/omega2 \
+    -strictstereo false -maxconfs 1 -in $PROTONATED -out $CONFORMER
 
 # assign partial charges
-~/usr/openeye/bin/molcharge -method mmff -in $CONFORMER \
-                            -out $CHARGED
+~/usr/openeye/arch/Ubuntu-18.04-x64/quacpac/molcharge \
+    -method mmff -in $CONFORMER -out $CHARGED
 
 # rm temp. files
 rm -f $PROTONATED $CONFORMER
