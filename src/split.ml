@@ -38,6 +38,8 @@ let sdf_footer = "$$$$"
 
 exception Read_one
 
+let eof_count = ref 0
+
 let read_one ff count input =
   match ff with
   | Mol2 ->
@@ -59,7 +61,15 @@ let read_one ff count input =
             res := line :: !res
         done;
         assert(false)
-      with End_of_file | Read_one -> L.rev !res
+      with Read_one -> L.rev !res
+         | End_of_file ->
+           if !eof_count = 0 then
+             begin
+               incr eof_count;
+               L.rev !res
+             end
+           else
+             raise End_of_file
     end
   | SMILES ->
     let line = input_line input in
@@ -80,7 +90,15 @@ let read_one ff count input =
           res := line :: !res;
       done;
       assert(false)
-    with Read_one | End_of_file -> L.rev !res
+    with Read_one -> L.rev !res
+       | End_of_file ->
+         if !eof_count = 0 then
+           begin
+             incr eof_count;
+             L.rev !res
+           end
+         else
+           raise End_of_file
 
 let main () =
   Log.color_on ();
