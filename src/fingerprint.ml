@@ -159,6 +159,52 @@ let tanimoto (m1: t) (m2: t): float =
 let distance x y =
   1.0 -. (tanimoto x y)
 
+(* (|AnB|, |A-B|, |B-A|) *)
+let tversky_values (m1: t) (m2: t): (int * int * int) =
+  let icard = ref 0 in
+  let only_a = ref 0 in
+  let only_b = ref 0 in
+  let len1 = BA1.dim m1 in
+  let len2 = BA1.dim m2 in
+  let i = ref 0 in
+  let j = ref 0 in
+  while !i < len1 && !j < len2 do
+    (* unsafe *)
+    let k1 = BA1.unsafe_get m1 !i in
+    let v1 = BA1.unsafe_get m1 (!i + 1) in
+    let k2 = BA1.unsafe_get m2 !j in
+    let v2 = BA1.unsafe_get m2 (!j + 1) in
+    (* process keys in increasing order *)
+    if k1 < k2 then
+      (only_a := !only_a + v1;
+       i := !i + 2)
+    else if k2 < k1 then
+      (only_b := !only_b + v2;
+       j := !j + 2)
+    else (* k1 = k2 *)
+    if v1 <= v2 then
+      (icard := !icard + v1;
+       only_b := !only_b + (v2 - v1);
+       i := !i + 2;
+       j := !j + 2)
+    else (* v2 < v1 *)
+      (icard := !icard + v2;
+       only_a := !only_a + (v1 - v2);
+       i := !i + 2;
+       j := !j + 2)
+  done;
+  incr i; (* go to value *)
+  while !i < len1 do (* finish m1; unsafe *)
+    only_a := !only_a + (BA1.unsafe_get m1 !i);
+    i := !i + 2
+  done;
+  incr j; (* go to value *)
+  while !j < len2 do (* finish m2; unsafe *)
+    only_b := !only_b + (BA1.unsafe_get m2 !j);
+    j := !j + 2
+  done;
+  (!icard, !only_a, !only_b)
+
 (* convert to int map: feat_id -> feat_val *)
 let key_values fp =
   let res = ref IntMap.empty in

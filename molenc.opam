@@ -9,6 +9,7 @@ build: ["dune" "build" "-p" name "-j" jobs]
 install: [
   # ["cp" "bin/molenc_ph4_type_atoms.py" "%{bin}%/molenc_ph4_type_atoms.py"]
   ["cp" "bin/molenc.sh" "%{bin}%/molenc.sh"]
+  ["cp" "bin/molenc_ligprep.sh" "%{bin}%/molenc_ligprep.sh"]
   ["cp" "bin/molenc_common.py" "%{bin}%/molenc_common.py"]
   ["cp" "bin/molenc_lean.py" "%{bin}%/molenc_lean.py"]
   ["cp" "bin/molenc_lizard.py" "%{bin}%/molenc_lizard.py"]
@@ -34,7 +35,7 @@ depends: [
   "dune" {>= "1.11"}
   "line_oriented"
   "minicli" {>= "5.0.0"}
-  "ocaml" {>= "4.07"}
+  "ocaml" {>= "4.08"}
   "ocamlgraph"
   "parany" {>= "12.1.1"}
   "vector3"
