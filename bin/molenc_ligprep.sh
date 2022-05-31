@@ -19,6 +19,11 @@ FAST_MODE=""
 HIGH_ACCURACY=""
 FREE_MODE="TRUE" # default
 
+IN=$1
+BASEDIR=`dirname $IN`
+BASENAME=`basename $IN .smi`
+OUT=${BASEDIR}'/'${BASENAME}
+
 # parse CLI options
 while [[ $# -gt 0 ]]; do
     key="$1"
@@ -44,11 +49,6 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
-
-IN=$1
-BASEDIR=`dirname $IN`
-BASENAME=`basename $IN .smi`
-OUT=${BASEDIR}'/'${BASENAME}
 
 PROTONATED=${OUT}_taut74.smi
 CONFORMER=${OUT}_taut74_1conf.sdf
