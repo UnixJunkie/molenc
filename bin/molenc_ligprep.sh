@@ -24,28 +24,37 @@ BASEDIR=`dirname $IN`
 BASENAME=`basename $IN .smi`
 OUT=${BASEDIR}'/'${BASENAME}
 
+RHEL_OE_BASE=~/usr/openeye/arch/redhat-RHEL7-x64
+UBUN_OE_BASE=~/usr/openeye/arch/Ubuntu-18.04-x64
+
 # parse CLI options
 while [[ $# -gt 0 ]]; do
     key="$1"
     case $key in
         --fast)
             FAST_MODE="TRUE"
-            echo "fast mode"
+            HIGH_ACCURACY=""
+            FREE_MODE=""
+            echo "selected fast mode"
             shift # past argument
             ;;
         --HA)
             HIGH_ACCURACY="TRUE"
-            echo "HA mode"
+            FAST_MODE=""
+            FREE_MODE=""
+            echo "selected HA mode"
             shift # past argument
             ;;
         --free)
             FREE_MODE="TRUE"
-            echo "free mode"
+            FAST_MODE=""
+            HIGH_ACCURACY=""
+            echo "selected free mode"
             shift # past argument
             ;;
-        *) # unknown option
-            echo "molenc_ligprep.sh: unknown option: "$1
-            exit 1
+        *) # unknown option or input file
+            echo "input file: "$1
+            shift # past argument
             ;;
     esac
 done
@@ -56,20 +65,22 @@ CHARGED=${OUT}_taut74_1conf_mmff.mol2
 
 # fast mode -------------------------------------------------------------------
 
-if [ $FAST_MODE == "TRUE" ]; then
+if [ "$FAST_MODE" == "TRUE" ]; then
+    echo "running fast mode"
     # protonation state at physiological pH
     obabel $IN -O $PROTONATED -p 7.4
     # lowest energy conformer w/ OE omega
-    ~/usr/openeye/arch/Ubuntu-18.04-x64/omega/omega2 \
+    ${RHEL_OE_BASE}/omega/omega2 \
         -strictstereo false -maxconfs 1 -in $PROTONATED -out $CONFORMER
     # assign partial charges
-    ~/usr/openeye/arch/Ubuntu-18.04-x64/quacpac/molcharge \
+    ${RHEL_OE_BASE}/quacpac/molcharge \
         -method mmff -in $CONFORMER -out $CHARGED
 fi
 
 # high accuracy mode ----------------------------------------------------------
 
-if [ $HIGH_ACCURACY == "TRUE" ]; then
+if [ "$HIGH_ACCURACY" == "TRUE" ]; then
+    echo "running HA mode"
     PROTONATED=${OUT}_taut74.sdf
     CONFORMER=${OUT}_taut74_1conf.sdf
     CHARGED=${OUT}_taut74_1conf_am1bcc.mol2
@@ -79,16 +90,17 @@ if [ $HIGH_ACCURACY == "TRUE" ]; then
     cxcalc -g majortautomer -H 7.4 -f sdf $OUT.smiles > $PROTONATED
     rm -f $OUT.smiles
     # lowest energy conformer w/ OE omega
-    ~/usr/openeye/arch/Ubuntu-18.04-x64/omega/omega2 \
+    ${RHEL_OE_BASE}/omega/omega2 \
         -strictstereo false -maxconfs 1 -in $PROTONATED -out $CONFORMER
     # assign partial charges
-    ~/usr/openeye/arch/Ubuntu-18.04-x64/quacpac/molcharge \
+    ${RHEL_OE_BASE}/quacpac/molcharge \
         -method am1bcc -in $CONFORMER -out $CHARGED
 fi
 
 # free / open-source mode -----------------------------------------------------
 
-if [ $FREE_MODE == "TRUE" ]; then
+if [ "$FREE_MODE" == "TRUE" ]; then
+    echo "running free mode"
     PROTONATED=${OUT}_taut74.smi
     CONFORMER=${OUT}_taut74_1conf.sdf
     CHARGED=${OUT}_taut74_1conf_mmff.mol2
