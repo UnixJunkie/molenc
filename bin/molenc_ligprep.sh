@@ -1,11 +1,17 @@
 #!/usr/bin/env bash
 
 set -u
-set -x # DEBUG
+#set -x # DEBUG
 
 # from SMILES to 3D protonated molecules with partial charges ready-to-dock
 
-# FBR: check a .smi file was given as (only?) parameter
+# check input filename was given
+if [ $# -eq 0 ]; then
+    echo "usage:"
+    echo "molenc_ligprep.sh molecules.smi"
+    echo "         [--XXX]: XXX option"
+    exit 1
+fi
 
 IN=$1
 BASEDIR=`dirname $IN`
