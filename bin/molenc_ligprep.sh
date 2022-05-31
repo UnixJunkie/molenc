@@ -9,7 +9,9 @@ set -u
 if [ $# -eq 0 ]; then
     echo "usage:"
     echo "molenc_ligprep.sh molecules.smi"
-    echo "         [--XXX]: XXX option"
+    echo "         [--fast]: protonate:obabel; 3D:omega; molcharge:MMFF94"
+    echo "         [--HA]: protonate:cxcalc; 3D:omega; molcharge:AM1BCC"
+    echo "         [--free]: protonate:obabel; 3D:obabel; obabel:MMFF94"
     exit 1
 fi
 
@@ -26,7 +28,7 @@ while [[ $# -gt 0 ]]; do
             echo "fast mode"
             shift # past argument
             ;;
-        --accurate)
+        --HA)
             HIGH_ACCURACY="TRUE"
             echo "HA mode"
             shift # past argument
@@ -92,9 +94,6 @@ if [ $FREE_MODE == "TRUE" ]; then
     CHARGED=${OUT}_taut74_1conf_mmff.mol2
     # protonation state at physiological pH and unsalt
     obabel $IN -O $PROTONATED -p 7.4 -r
-    # -g --> skip erroneous molecules
-    cxcalc -g majortautomer -H 7.4 -f sdf $OUT.smiles > $PROTONATED
-    rm -f $OUT.smiles
     # lowest energy conformer
     obabel $PROTONATED -O $CONFORMER --gen3D
     # assign partial charges
