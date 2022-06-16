@@ -28,6 +28,20 @@ let anum_of_symbol = function
   | "I" -> 53
   | _ -> -1 (* unsupported elt. *)
 
+let symbol_of_anum = function
+ |  6  -> "C"
+ |  1  -> "H"
+ |  7  -> "N"
+ |  8  -> "O"
+ | 15  -> "P"
+ | 16  -> "S"
+ |  9  -> "F"
+ | 17  -> "Cl"
+ | 35  -> "Br"
+ | 53  -> "I"
+ | -1  -> "_" (* unsupported elt. *)
+ | _ -> assert(false)
+
 let read_name input =
   input_line input
 
