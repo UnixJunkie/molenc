@@ -1,7 +1,7 @@
 .PHONY: build install uninstall reinstall test
 
 build:
-	dune build @install -j 16
+	dune build @install -j `getconf _NPROCESSORS_ONLN`
 
 clean:
 	rm -rf _build
