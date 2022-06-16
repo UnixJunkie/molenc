@@ -21,12 +21,11 @@ let skip_header_lines input =
 
 let read_atom_bonds_header input =
   let to_parse = input_line input in
-  try
-    Scanf.sscanf to_parse
-      (* eg: "^ 29 30  0  0  0  0  0  0  0  0999 V2000$" *)
-      "%d %d %d %d %d %d %d %d %d %d %s"
-      (fun num_atoms num_bonds _ _ _ _ _ _ _ _ version ->
-         assert(version = "V2000");
-         (num_atoms, num_bonds)
-      )
+  try Scanf.sscanf to_parse
+        (* eg: "^ 29 30  0  0  0  0  0  0  0  0999 V2000$" *)
+        "%d %d %d %d %d %d %d %d %d %d %s"
+        (fun num_atoms num_bonds _ _ _ _ _ _ _ _ version ->
+           assert(version = "V2000");
+           (num_atoms, num_bonds)
+        )
   with exn -> raise exn
