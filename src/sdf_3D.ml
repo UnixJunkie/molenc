@@ -61,3 +61,25 @@ let parse_atom_line input =
     let () = Log.fatal "Sdf_3D.parse_atom_line: cannot parse: %s"
         to_parse in
     raise exn
+
+let read_one_molecule input =
+  let name = read_name input in
+  (skip_header_lines input);
+  let num_atoms, num_bonds = read_atom_bonds_header input in
+  let elements = Array.make num_atoms 0 in
+  let coords =
+    Array.init num_atoms
+      (fun i ->
+         let (anum, xyz) = parse_atom_line input in
+         elements.(i) <- anum;
+         xyz
+      ) in
+  (* skip all bonds *)
+  for _i = 1 to num_bonds do
+    ignore(input_line input)
+  done;
+  let m_end = input_line input in
+  assert(m_end = "M  END");
+  let four_dollars = input_line input in
+  assert(four_dollars = "$$$$");
+  { name; elements; coords }
