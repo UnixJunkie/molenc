@@ -7,6 +7,7 @@
    holding 3D conformers. *)
 
 module Log = Dolog.Log
+module S = BatString
 
 type t = { name: string;
            elements: int array;
@@ -37,30 +38,26 @@ let skip_header_lines input =
 
 let read_atom_bonds_header input =
   let to_parse = input_line input in
-  try Scanf.sscanf to_parse
-        (* eg: "^ 29 30  0  0  0  0  0  0  0  0999 V2000$" *)
-        "%d %d %d %d %d %d %d %d %d %d %s"
-        (fun num_atoms num_bonds _ _ _ _ _ _ _ _ version ->
-           assert(version = "V2000");
-           (num_atoms, num_bonds)
-        )
-  with exn ->
-    let () = Log.fatal "Sdf_3D.read_atom_bonds_header: cannot parse: %s"
-        to_parse in
-    raise exn
+  (* first integer is 3-char fixed width *)
+  let num_atoms = int_of_string (S.strip (S.left to_parse 3)) in
+  let num_bonds = int_of_string (S.strip (S.left (S.lchop ~n:3 to_parse) 3)) in
+  assert(S.ends_with to_parse "V2000");
+  (num_atoms, num_bonds)
 
 let parse_atom_line input =
   let to_parse = input_line input in
   (* "^    5.0751   -3.8284   -4.0739 Br  0  0  0  0  0  0  0  0  0  0  0  0$" *)
   try
     Scanf.sscanf to_parse
-      "%f %f %f %s@ %d %d %d %d %d %d %d %d %d %d %d %d"
-      (fun x y z elt_symbol _ _ _ _ _ _ _ _ _ _ _ _ ->
+      " %f %f %f %s@ " (* ignore all the rest of the line *)
+      (fun x y z elt_symbol ->
          (anum_of_symbol elt_symbol, Vector3.make x y z))
   with exn ->
-    let () = Log.fatal "Sdf_3D.parse_atom_line: cannot parse: %s"
+    let () = Log.fatal "Sdf_3D.parse_atom_line: cannot parse: '%s'"
         to_parse in
     raise exn
+
+exception Four_dollars
 
 let read_one_molecule input =
   let name = read_name input in
@@ -78,8 +75,13 @@ let read_one_molecule input =
   for _i = 1 to num_bonds do
     ignore(input_line input)
   done;
-  let m_end = input_line input in
-  assert(m_end = "M  END");
-  let four_dollars = input_line input in
-  assert(four_dollars = "$$$$");
+  (try
+     (* look for end of this molecule's record *)
+     while true do
+       if input_line input = "$$$$" then
+         raise Four_dollars
+     done;
+     assert(false)
+   with Four_dollars -> ()
+  );
   { name; elements; coords }
