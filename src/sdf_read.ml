@@ -25,7 +25,7 @@ let main () =
           A.iter2 (fun xyz anum ->
               let (x, y, z) = V3.to_triplet xyz in
               let elt = Sdf_3D.symbol_of_anum anum in
-              printf "%f %f %f %s\n" x y z elt
+              printf "%g %g %g %s\n" x y z elt
             ) coords elts
         done
       with End_of_file -> ()
