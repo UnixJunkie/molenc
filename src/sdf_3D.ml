@@ -29,7 +29,9 @@ let anum_of_symbol = function
   | "Cl" -> 17
   | "Br" -> 35
   | "I" -> 53
-  | _ -> -1 (* unsupported elt. *)
+  | unk ->
+    let () = Log.warn "unsuported elt: %s" unk in
+    -1
 
 let symbol_of_anum = function
  |  6  -> "C"
@@ -161,7 +163,7 @@ let encode_atoms (nb_layers: int) (cutoff: float) (dx: float) (mol: atoms_3D)
         let neighbors = within_cutoff cutoff mol atom_i in
         L.iter (fun (anum, coord) ->
             if anum < 0 then
-              Log.warn "ignored one atom"
+              () (* unsupported elt. already reported before *)
             else
               let chan = channel_of_anum anum in
               (* Log.debug "chan: %d" chan; *)
