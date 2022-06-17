@@ -24,6 +24,9 @@ let main () =
               [-i <filename.sdf>]: input file\n  \
               -o <filename.csv>: output file\n  \
               [-np <int>]: nprocs (default=1)\n  \
+              [-l <int>]: number of layers in [1,2]\n  \
+              [-c <float>]: cutoff distance (default=3.5A)\n  \
+              [-dx <float>]: discretization step (default=0.1A)\n  \
               [-v]: verbose/debug mode\n" Sys.argv.(0);
      exit 1);
   let verbose = CLI.get_set_bool ["-v"] args in
@@ -31,10 +34,9 @@ let main () =
   let input_fn = CLI.get_string_def ["-i"] args "/dev/stdin" in
   let output_fn = CLI.get_string ["-o"] args in
   let _nprocs = CLI.get_int_def ["-np"] args 1 in
-  (* FBR: control those params through the CLI *)
-  let nb_layers = 1 in
-  let cutoff = 3.5 in
-  let dx = 0.1 in
+  let nb_layers = CLI.get_int_def ["-l"] args 1 in
+  let cutoff = CLI.get_float_def ["-c"] args 3.5 in
+  let dx = CLI.get_float_def ["-dx"] args 0.1 in
   CLI.finalize (); (* ------------------------------------------------------ *)
   LO.with_infile_outfile input_fn output_fn (fun input output ->
       try
