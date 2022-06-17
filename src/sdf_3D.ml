@@ -6,8 +6,10 @@
    Read molecule name, element symbols and their 3D coordinates from a .sdf file
    holding 3D conformers. *)
 
+module A = BatArray
 module Log = Dolog.Log
 module S = BatString
+module V3 = Vector3
 
 type t = { name: string;
            elements: int array;
@@ -39,6 +41,8 @@ let symbol_of_anum = function
  | 53  -> "I"
  | -1  -> "_" (* unsupported elt. *)
  | _ -> assert(false)
+
+let nb_channels = 10
 
 let channel_of_anum = function
  |  6  -> 0 (* "C" *)
@@ -110,3 +114,40 @@ let read_one_molecule input =
    with Four_dollars -> ()
   );
   { name; elements; coords }
+
+(* find all atoms within cutoff distance of the center atom *)
+let within_cutoff cut mol i_atom =
+  let cut2 = cut *. cut in
+  let center = mol.coords.(i_atom) in
+  A.fold_lefti (fun acc i coord ->
+      if i = i_atom then
+        acc (* we are just interested in its neighbors *)
+      else
+        begin
+          let dist2 = V3.mag2 (V3.diff center coord) in
+          if dist2 < cut2 then
+            let anum = mol.elements.(i) in
+            (anum, coord) :: acc
+          else
+            acc
+        end
+    ) [] mol.coords
+
+(* FBR: possible evolution: use a vanishing kernel to weight contributions
+        instead of just a hard cutoff distance *)
+
+(* [nb_layers]: how far we should consider from the atom center
+   (distance in bonds on the molecular graph).
+   [cutoff]: how far from the center atom in Angstrom we should consider
+   (in Cartesian space)
+   [dx]: axis discretization step
+   [mol]: molecule to encode *)
+let encode_atoms (nb_layers: int) (cutoff: float) (dx: float) (_mol: t) =
+  let nx = BatFloat.round_to_int (cutoff /. dx) in
+  match nb_layers with
+  | 1 -> (* just encode the center atom's radial environment *)
+    let _res = A.make_matrix nx nb_layers 0.0 in
+    (* FBR: use linear binning *)
+    failwith "not implemented yet"
+  | 2 -> failwith "not implemented yet"
+  | _ -> failwith "not implemented yet"
