@@ -13,8 +13,6 @@ type t = { name: string;
            elements: int array;
            coords: Vector3.t array }
 
-(* FBR: add a driver program for tests: molenc_sdf_read *)
-
 let anum_of_symbol = function
   | "C" -> 6
   | "H" -> 1
@@ -41,6 +39,19 @@ let symbol_of_anum = function
  | 53  -> "I"
  | -1  -> "_" (* unsupported elt. *)
  | _ -> assert(false)
+
+let channel_of_anum = function
+ |  6  -> 0 (* "C" *)
+ |  1  -> 1 (* "H" *)
+ |  7  -> 2 (* "N" *)
+ |  8  -> 3 (* "O" *)
+ | 15  -> 4 (* "P" *)
+ | 16  -> 5 (* "S" *)
+ |  9  -> 6 (* "F" *)
+ | 17  -> 7 (* "Cl" *)
+ | 35  -> 8 (* "Br" *)
+ | 53  -> 9 (* "I" *)
+ | _ -> assert(false) (* atom should have been skipped before *)
 
 let read_name input =
   input_line input
