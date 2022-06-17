@@ -141,29 +141,25 @@ let within_cutoff cut mol i_atom =
         end
     ) [] mol.coords
 
-(* FBR: possible evolution: use a vanishing kernel to weight contributions
+(* FBR: possible evolution 1: as a second layer, add envs. from all connected
+        atoms *)
+(* FBR: possible evolution 2: as a second layer, add envs. from all neighbor
+        atoms (this will be more crowded than evol 1) *)
+(* FBR: possible evolution 3: use a vanishing kernel to weight contributions
         instead of just a hard cutoff distance *)
 
-(* [nb_layers]: how far we should consider from the atom center
-   (distance in bonds on the molecular graph).
-   [cutoff]: how far from the center atom in Angstrom we should consider
-   (in Cartesian space)
-   [dx]: axis discretization step
-   [mol]: molecule to encode *)
-let encode_atoms (nb_layers: int) (cutoff: float) (dx: float) (mol: atoms_3D)
-  : encoded_atom array =
+let encode_1st_layer dx cutoff mol =
   let nx = 1 + int_of_float (cutoff /. dx) in
   (* Log.debug "nx: %d" nx; *)
   let nb_atoms = A.length mol.elements in
-  match nb_layers with
-  | 1 -> (* just encode the center atom's radial environment *)
-    A.init nb_atoms (fun atom_i ->
-        let res = A.make_matrix nx nb_channels 0.0 in
-        let center = mol.coords.(atom_i) in
-        let neighbors = within_cutoff cutoff mol atom_i in
-        L.iter (fun (anum, coord) ->
-            if anum < 0 then
-              () (* unsupported elt. already reported before *)
+  (* just encode the center atom's radial environment *)
+  A.init nb_atoms (fun atom_i ->
+      let res = A.make_matrix nx nb_channels 0.0 in
+      let center = mol.coords.(atom_i) in
+      let neighbors = within_cutoff cutoff mol atom_i in
+      L.iter (fun (anum, coord) ->
+          if anum < 0 then
+            () (* unsupported elt. already reported before *)
             else
               let chan = channel_of_anum anum in
               (* Log.debug "chan: %d" chan; *)
@@ -182,8 +178,19 @@ let encode_atoms (nb_layers: int) (cutoff: float) (dx: float) (mol: atoms_3D)
               let w_r = 1.0 -. (after -. dist) in
               res.(bin_before).(chan) <- res.(bin_before).(chan) +. w_l;
               res.(bin_after).(chan) <- res.(bin_after).(chan) +. w_r
-          ) neighbors;
-        res
-      )
+        ) neighbors;
+      res
+    )
+
+(* [nb_layers]: how far we should consider from the atom center
+   (distance in bonds on the molecular graph).
+   [cutoff]: how far from the center atom in Angstrom we should consider
+   (in Cartesian space)
+   [dx]: axis discretization step
+   [mol]: molecule to encode *)
+let encode_atoms (nb_layers: int) (cutoff: float) (dx: float) (mol: atoms_3D)
+  : encoded_atom array =
+  match nb_layers with
+  | 1 -> encode_1st_layer dx cutoff mol
   | 2 -> failwith "not implemented yet"
   | _ -> failwith "not implemented yet"
