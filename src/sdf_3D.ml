@@ -179,5 +179,3 @@ let encode_atoms (nb_layers: int) (cutoff: float) (dx: float) (mol: atoms_3D)
       )
   | 2 -> failwith "not implemented yet"
   | _ -> failwith "not implemented yet"
-
-(* FBR: dump out to text each atom's code (vector of features) *)
