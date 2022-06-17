@@ -7,6 +7,7 @@
    holding 3D conformers. *)
 
 module A = BatArray
+module L = BatList
 module Log = Dolog.Log
 module S = BatString
 module V3 = Vector3
@@ -116,6 +117,9 @@ let read_one_molecule input =
   { name; elements; coords }
 
 (* find all atoms within cutoff distance of the center atom *)
+(* WARNING: this has O(n^2) complexity; we might index the atoms
+ *   into some computational geometry data structure later on to accelerate
+ * this if bottleneck *)
 let within_cutoff cut mol i_atom =
   let cut2 = cut *. cut in
   let center = mol.coords.(i_atom) in
@@ -142,12 +146,35 @@ let within_cutoff cut mol i_atom =
    (in Cartesian space)
    [dx]: axis discretization step
    [mol]: molecule to encode *)
-let encode_atoms (nb_layers: int) (cutoff: float) (dx: float) (_mol: t) =
+let encode_atoms (nb_layers: int) (cutoff: float) (dx: float) (mol: t) =
   let nx = BatFloat.round_to_int (cutoff /. dx) in
+  let nb_atoms = A.length mol.elements in
   match nb_layers with
   | 1 -> (* just encode the center atom's radial environment *)
-    let _res = A.make_matrix nx nb_layers 0.0 in
-    (* FBR: use linear binning *)
-    failwith "not implemented yet"
+    A.init nb_atoms (fun atom_i ->
+        let res = A.make_matrix nx nb_layers 0.0 in
+        let center = mol.coords.(atom_i) in
+        let neighbors = within_cutoff cutoff mol atom_i in
+        L.iter (fun (anum, coord) ->
+            if anum < 0 then
+              Log.warn "ignored one atom"
+            else
+              let chan = channel_of_anum anum in
+              let dist = V3.dist center coord in
+              let bin_before = int_of_float (dist /. dx) in
+              let bin_after = bin_before + 1 in
+              let before = dx *. (float bin_before) in
+              let after = dx *. (float bin_after) in
+              (* linear binning *)
+              let w_l = 1.0 -. (dist -. before) in
+              let w_r = 1.0 -. (after -. dist) in
+              res.(bin_before).(chan) <- res.(bin_before).(chan) +. w_l;
+              if bin_after < nx then
+                res.(bin_after).(chan) <- res.(bin_after).(chan) +. w_r
+          ) neighbors;
+        res
+      )
   | 2 -> failwith "not implemented yet"
   | _ -> failwith "not implemented yet"
+
+(* FBR: dump out to text each atom's code (vector of features) *)
