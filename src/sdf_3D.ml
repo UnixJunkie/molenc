@@ -12,9 +12,11 @@ module Log = Dolog.Log
 module S = BatString
 module V3 = Vector3
 
-type t = { name: string;
-           elements: int array;
-           coords: Vector3.t array }
+type atoms_3D = { name: string;
+                  elements: int array;
+                  coords: Vector3.t array }
+
+type encoded_atom = float array array (* shape: (nb_dx, nb_channels) *)
 
 let anum_of_symbol = function
   | "C" -> 6
@@ -146,7 +148,8 @@ let within_cutoff cut mol i_atom =
    (in Cartesian space)
    [dx]: axis discretization step
    [mol]: molecule to encode *)
-let encode_atoms (nb_layers: int) (cutoff: float) (dx: float) (mol: t) =
+let encode_atoms (nb_layers: int) (cutoff: float) (dx: float) (mol: atoms_3D)
+  : encoded_atom array =
   let nx = BatFloat.round_to_int (cutoff /. dx) in
   let nb_atoms = A.length mol.elements in
   match nb_layers with
