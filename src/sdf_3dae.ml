@@ -43,8 +43,8 @@ let main () =
           let atoms_3dae = Sdf_3D.encode_atoms nb_layers cutoff dx mol in
           A.iteri (fun i_atom encoded_atom ->
               fprintf output "%d" i_atom;
-              let nb_dx = A.length atoms_3dae in
-              let nb_chans = A.length (atoms_3dae.(0)) in
+              let nb_dx = A.length encoded_atom in
+              let nb_chans = A.length encoded_atom.(0) in
               for i_chan = 0 to nb_chans - 1 do
                 for i_dx = 0 to nb_dx - 1 do
                   let feat = encoded_atom.(i_dx).(i_chan) in
@@ -54,7 +54,7 @@ let main () =
                     fprintf output " %d:%g" feat_idx feat
                 done
               done;
-              fprintf output "'n"
+              fprintf output "\n"
             ) atoms_3dae
         done
       with End_of_file -> ()

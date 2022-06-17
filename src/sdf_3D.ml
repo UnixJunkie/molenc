@@ -150,12 +150,13 @@ let within_cutoff cut mol i_atom =
    [mol]: molecule to encode *)
 let encode_atoms (nb_layers: int) (cutoff: float) (dx: float) (mol: atoms_3D)
   : encoded_atom array =
-  let nx = BatFloat.round_to_int (cutoff /. dx) in
+  let nx = 1 + int_of_float (cutoff /. dx) in
+  (* Log.debug "nx: %d" nx; *)
   let nb_atoms = A.length mol.elements in
   match nb_layers with
   | 1 -> (* just encode the center atom's radial environment *)
     A.init nb_atoms (fun atom_i ->
-        let res = A.make_matrix nx nb_layers 0.0 in
+        let res = A.make_matrix nx nb_channels 0.0 in
         let center = mol.coords.(atom_i) in
         let neighbors = within_cutoff cutoff mol atom_i in
         L.iter (fun (anum, coord) ->
@@ -163,17 +164,22 @@ let encode_atoms (nb_layers: int) (cutoff: float) (dx: float) (mol: atoms_3D)
               Log.warn "ignored one atom"
             else
               let chan = channel_of_anum anum in
+              (* Log.debug "chan: %d" chan; *)
               let dist = V3.dist center coord in
+              (* Log.debug "dist: %g" dist; *)
               let bin_before = int_of_float (dist /. dx) in
+              (* Log.debug "x_l: %d" bin_before; *)
               let bin_after = bin_before + 1 in
+              (* Log.debug "x_r: %d" bin_after; *)
               let before = dx *. (float bin_before) in
-              let after = dx *. (float bin_after) in
+              (* Log.debug "before: %g" before; *)
+              let after = before +. dx in
+              (* Log.debug "after: %g" after; *)
               (* linear binning *)
               let w_l = 1.0 -. (dist -. before) in
               let w_r = 1.0 -. (after -. dist) in
               res.(bin_before).(chan) <- res.(bin_before).(chan) +. w_l;
-              if bin_after < nx then
-                res.(bin_after).(chan) <- res.(bin_after).(chan) +. w_r
+              res.(bin_after).(chan) <- res.(bin_after).(chan) +. w_r
           ) neighbors;
         res
       )
