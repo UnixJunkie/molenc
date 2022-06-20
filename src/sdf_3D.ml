@@ -173,7 +173,8 @@ let connected_atoms mol i_atom =
     ) connected
 
 (* FBR: possible evolution 3: use a vanishing kernel to weight contributions
-        instead of just a hard cutoff distance *)
+        instead of just a hard cutoff distance
+        - get a smooth kernel from ranker's kernel module *)
 
 let encode_first_layer dx cutoff mol =
   let nx = 1 + int_of_float (cutoff /. dx) in
