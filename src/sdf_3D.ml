@@ -129,7 +129,12 @@ let within_cutoff cut mol i_atom =
   let center = mol.coords.(i_atom) in
   A.fold_lefti (fun acc i coord ->
       if i = i_atom then
-        acc (* we are just interested in its neighbors *)
+        (* also include the atom itself: since there must
+         * be one channel with an atom at distance
+         * 0.0 to distinguish different chemical elements being
+         * atom centers *)
+        let anum = mol.elements.(i) in
+        (i, anum, coord) :: acc
       else
         begin
           let dist2 = V3.mag2 (V3.diff center coord) in
