@@ -81,6 +81,15 @@ let read_atom_bonds_header input =
   assert(S.ends_with to_parse "V2000");
   (num_atoms, num_bonds)
 
+let read_bond_line input =
+  let to_parse = input_line input in
+  (* first two integers are 3-char fixed width each *)
+  let src = int_of_string (S.strip (S.sub to_parse 0 3)) in
+  let dst = int_of_string (S.strip (S.sub to_parse 3 3)) in
+  (* indexes start at 1 in the SDF but atom indexes in the atoms array
+   * start at 0 *)
+  (src - 1, dst - 1)
+
 let parse_atom_line input =
   let to_parse = input_line input in
   (* "^    5.0751   -3.8284   -4.0739 Br  0  0  0  0  0  0  0  0  0  0  0  0$" *)
@@ -108,10 +117,15 @@ let read_one_molecule input =
          elements.(i) <- anum;
          xyz
       ) in
-  (* skip all bonds *)
+  (* read all bonds *)
   let bonds = A.create num_atoms [] in
   for _i = 1 to num_bonds do
-    ignore(input_line input)
+    let src, dst = read_bond_line input in
+    bonds.(src) <- dst :: bonds.(src)
+  done;
+  (* put them back in the same order than what was read *)
+  for i = 0 to num_atoms - 1 do
+    bonds.(i) <- L.rev bonds.(i)
   done;
   (try
      (* look for end of this molecule's record *)
