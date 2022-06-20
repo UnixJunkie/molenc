@@ -14,8 +14,6 @@ module Log = Dolog.Log
 module Sdf_3D = Molenc.Sdf_3D
 module V3 = Vector3
 
-(* FBR: output the highest feature index at the end of encoding *)
-
 let main () =
   Log.color_on ();
   Log.(set_log_level INFO);
@@ -39,6 +37,7 @@ let main () =
   let nb_layers = CLI.get_int_def ["-l"] args 1 in
   let cutoff = CLI.get_float_def ["-c"] args 3.5 in
   let dx = CLI.get_float_def ["-dx"] args 0.1 in
+  let max_feat = ref (-1) in
   CLI.finalize (); (* ------------------------------------------------------ *)
   LO.with_infile_outfile input_fn output_fn (fun input output ->
       try
@@ -56,6 +55,9 @@ let main () =
                     (* the feature vector should be very sparse;
                        lilinear wants feature indexes to start at 1 *)
                     let feat_idx = 1 + i_dx + (i_chan * nb_dx) in
+                    (if feat_idx > !max_feat then
+                       max_feat := feat_idx
+                    );
                     fprintf output " %d:%g" feat_idx feat
                 done
               done;
@@ -63,6 +65,7 @@ let main () =
             ) atoms_3dae
         done
       with End_of_file -> ()
-    )
+    );
+  Log.info "max feature index: %d" !max_feat
 
 let () = main ()
