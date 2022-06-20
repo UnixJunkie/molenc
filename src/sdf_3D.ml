@@ -14,7 +14,10 @@ module V3 = Vector3
 
 type atoms_3D = { name: string;
                   elements: int array;
-                  coords: Vector3.t array }
+                  coords: Vector3.t array;
+                  (* just which atom is connected to which other;
+                     no bond order info *)
+                  bonds: int list array }
 
 type encoded_atom = float array array (* shape: (nb_dx, nb_channels) *)
 
@@ -72,9 +75,9 @@ let skip_header_lines input =
 
 let read_atom_bonds_header input =
   let to_parse = input_line input in
-  (* first integer is 3-char fixed width *)
-  let num_atoms = int_of_string (S.strip (S.left to_parse 3)) in
-  let num_bonds = int_of_string (S.strip (S.left (S.lchop ~n:3 to_parse) 3)) in
+  (* first two integers are 3-char fixed width each *)
+  let num_atoms = int_of_string (S.strip (S.sub to_parse 0 3)) in
+  let num_bonds = int_of_string (S.strip (S.sub to_parse 3 3)) in
   assert(S.ends_with to_parse "V2000");
   (num_atoms, num_bonds)
 
@@ -106,6 +109,7 @@ let read_one_molecule input =
          xyz
       ) in
   (* skip all bonds *)
+  let bonds = A.create num_atoms [] in
   for _i = 1 to num_bonds do
     ignore(input_line input)
   done;
@@ -118,7 +122,7 @@ let read_one_molecule input =
      assert(false)
    with Four_dollars -> ()
   );
-  { name; elements; coords }
+  { name; elements; coords; bonds }
 
 (* find all atoms within cutoff distance of the center atom *)
 (* WARNING: this has O(n^2) complexity; we might index the atoms
