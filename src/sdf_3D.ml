@@ -67,18 +67,7 @@ let channel_of_anum = function
  | 53  -> 9 (* "I" *)
  | _ -> assert(false) (* atom should have been skipped before *)
 
-let symbol_of_channel = function
-  | 0 -> "C"
-  | 1 -> "H"
-  | 2 -> "N"
-  | 3 -> "O"
-  | 4 -> "P"
-  | 5 -> "S"
-  | 6 -> "F"
-  | 7 -> "Cl"
-  | 8 -> "Br"
-  | 9 -> "I"
-  | _ -> assert(false)
+let symbol_of_channel = [|"C";"H";"N";"O";"P";"S";"F";"Cl";"Br";"I"|]
 
 let read_name input =
   input_line input
