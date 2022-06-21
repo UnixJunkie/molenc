@@ -9,6 +9,7 @@ open Printf
 
 module A = BatArray
 module CLI = Minicli.CLI
+module L = BatList
 module LO = Line_oriented
 module Log = Dolog.Log
 module Sdf_3D = Molenc.Sdf_3D
@@ -21,8 +22,9 @@ let main () =
   if argc = 1 then
     (eprintf "usage:\n  \
               %s\n  \
-              [-i <filename.sdf>]: input file\n  \
+              -i <filename.sdf>: input file\n  \
               -o <filename.csv>: output file\n  \
+              [--charges <charges.csv>]: prepend charges\n  \
               [-np <int>]: nprocs (default=1)\n  \
               [-l <int>]: number of layers in [1,2]\n  \
               [-c <float>]: cutoff distance (default=3.5A)\n  \
@@ -32,6 +34,7 @@ let main () =
   let verbose = CLI.get_set_bool ["-v"] args in
   if verbose then Log.(set_log_level DEBUG);
   let input_fn = CLI.get_string_def ["-i"] args "/dev/stdin" in
+  let maybe_charges_fn = CLI.get_string_opt ["--charges"] args in
   let output_fn = CLI.get_string ["-o"] args in
   let _nprocs = CLI.get_int_def ["-np"] args 1 in
   let nb_layers = CLI.get_int_def ["-l"] args 1 in
@@ -39,6 +42,17 @@ let main () =
   let dx = CLI.get_float_def ["-dx"] args 0.1 in
   let max_feat = ref (-1) in
   CLI.finalize (); (* ------------------------------------------------------ *)
+  let _charges = match maybe_charges_fn with
+    | None -> [||]
+    | Some charges_fn ->
+      let lines = LO.lines_of_file charges_fn in
+      let n = L.length lines in
+      Log.info "%s: %d charges" charges_fn n;
+      let res = A.create n 0.0 in
+      L.iteri (fun i charge_str ->
+          res.(i) <- float_of_string charge_str
+        ) lines;
+      res in
   LO.with_infile_outfile input_fn output_fn (fun input output ->
       try
         while true do
@@ -53,7 +67,7 @@ let main () =
                   let feat = encoded_atom.(i_dx).(i_chan) in
                   if feat > 0.0 then
                     (* the feature vector should be very sparse;
-                       lilinear wants feature indexes to start at 1 *)
+                       liblinear wants feature indexes to start at 1 *)
                     let feat_idx = 1 + i_dx + (i_chan * nb_dx) in
                     (if feat_idx > !max_feat then
                        max_feat := feat_idx
