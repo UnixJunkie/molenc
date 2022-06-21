@@ -62,6 +62,7 @@ let main () =
           open_out chan_out_fn
         )
     else [||] in
+  let dev_null_chan = open_out "/dev/null" in
   let prepend_charges = A.length charges > 0 in
   let atoms_count = ref 0 in
   LO.with_infile_outfile input_fn output_fn (fun input output' ->
@@ -72,9 +73,14 @@ let main () =
           A.iteri (fun i_atom encoded_atom ->
               let output =
                 if separate_channels then
-                  let anum = mol.elements.(i_atom) in
-                  let chan = Sdf_3D.channel_of_anum anum in
-                  per_channel_output_files.(chan)
+                  begin
+                    let anum = mol.elements.(i_atom) in
+                    let chan = Sdf_3D.channel_of_anum anum in
+                    if chan < Sdf_3D.nb_channels then
+                      per_channel_output_files.(chan)
+                    else
+                      dev_null_chan
+                  end
                 else
                   output' in
               (if prepend_charges then
@@ -105,6 +111,7 @@ let main () =
     );
   Log.info "num_atoms: %d max_feat: %d" !atoms_count !max_feat;
   (* close separate channels, if any *)
-  A.iter close_out per_channel_output_files
+  A.iter close_out per_channel_output_files;
+  close_out dev_null_chan
 
 let () = main ()

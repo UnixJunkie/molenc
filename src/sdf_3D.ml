@@ -65,7 +65,9 @@ let channel_of_anum = function
  | 17  -> 7 (* "Cl" *)
  | 35  -> 8 (* "Br" *)
  | 53  -> 9 (* "I" *)
- | _ -> assert(false) (* atom should have been skipped before *)
+ | x ->
+   let () = Log.warn "anum: %d" x in
+   10
 
 let symbol_of_channel = [|"C";"H";"N";"O";"P";"S";"F";"Cl";"Br";"I"|]
 
