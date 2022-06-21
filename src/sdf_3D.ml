@@ -174,9 +174,6 @@ let connected_atoms mol i_atom =
       (dst, anum, coord)
     ) connected
 
-(* FBR: possible evolution 3: use a vanishing kernel to weight contributions
-        instead of just a hard cutoff distance *)
-
 let pow3 x =
   x *. x *. x
 
