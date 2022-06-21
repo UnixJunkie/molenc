@@ -174,7 +174,7 @@ let connected_atoms mol i_atom =
 
 (* FBR: possible evolution 3: use a vanishing kernel to weight contributions
         instead of just a hard cutoff distance
-        - get a smooth kernel from ranker's kernel module *)
+        - get the triweight kernel from ranker's kernel module *)
 
 let encode_first_layer dx cutoff mol =
   let nx = 1 + int_of_float (cutoff /. dx) in
@@ -210,115 +210,6 @@ let encode_first_layer dx cutoff mol =
       res
     )
 
-(* evolution 2: as a second layer, add envs. from all neighbor
-   atoms (more crowded than evol 1) *)
-let encode_two_layers dx cutoff mol =
-  let nx = 1 + int_of_float (cutoff /. dx) in
-  let nb_atoms = A.length mol.elements in
-  A.init nb_atoms (fun atom_i ->
-      let res = A.make_matrix nx (2 * nb_channels) 0.0 in
-      let center = mol.coords.(atom_i) in
-      let center' = (atom_i, mol.elements.(atom_i), center) in
-      let neighbors = within_cutoff cutoff mol atom_i in
-      (* encode the center atom's radial environment *)
-      L.iter (fun (_atom_j, anum, coord) ->
-          if anum < 0 then
-            () (* unsupported elt. already reported before *)
-            else
-              let chan = channel_of_anum anum in
-              let dist = V3.dist center coord in
-              let bin_before = int_of_float (dist /. dx) in
-              let bin_after = bin_before + 1 in
-              let before = dx *. (float bin_before) in
-              let after = before +. dx in
-              (* linear binning *)
-              let w_l = 1.0 -. (dist -. before) in
-              let w_r = 1.0 -. (after -. dist) in
-              res.(bin_before).(chan) <- res.(bin_before).(chan) +. w_l;
-              res.(bin_after).(chan) <- res.(bin_after).(chan) +. w_r
-        ) neighbors;
-      (* also encode environments of all its Cartesian neighbors;
-         but only those within the sphere centered on the center atom *)
-      let neighbors' = center' :: neighbors in
-      L.iter (fun (atom_j, _anum_j, coord_j) ->
-          let neighbors'' =
-            L.filter (fun (atom_k, _anum_k, coord_k) ->
-                (atom_j <> atom_k) && (* not same atom *)
-                (V3.dist coord_j coord_k < cutoff) (* within cutoff distance *)
-              ) neighbors' in
-          (* encode this atom's radial environment *)
-          L.iter (fun (_atom_l, anum_l, coord_l) ->
-              if anum_l < 0 then
-                () (* unsupported elt. already reported before *)
-              else
-                let chan = nb_channels + (channel_of_anum anum_l) in
-                let dist = V3.dist coord_j coord_l in
-                let bin_before = int_of_float (dist /. dx) in
-                let bin_after = bin_before + 1 in
-                let before = dx *. (float bin_before) in
-                let after = before +. dx in
-                (* linear binning *)
-                let w_l = 1.0 -. (dist -. before) in
-                let w_r = 1.0 -. (after -. dist) in
-                res.(bin_before).(chan) <- res.(bin_before).(chan) +. w_l;
-                res.(bin_after).(chan) <- res.(bin_after).(chan) +. w_r
-            ) neighbors''
-        ) neighbors;
-      res
-    )
-
-(* evolution 1: as a second layer, add envs. from all connected atoms *)
-let encode_two_layers' dx cutoff mol =
-  let nx = 1 + int_of_float (cutoff /. dx) in
-  let nb_atoms = A.length mol.elements in
-  A.init nb_atoms (fun atom_i ->
-      let res = A.make_matrix nx (2 * nb_channels) 0.0 in
-      let center = mol.coords.(atom_i) in
-      let center' = (atom_i, mol.elements.(atom_i), center) in
-      let neighbors = within_cutoff cutoff mol atom_i in
-      (* encode the center atom's radial environment *)
-      L.iter (fun (_atom_j, anum, coord) ->
-          if anum < 0 then
-            () (* unsupported elt. already reported before *)
-            else
-              let chan = channel_of_anum anum in
-              let dist = V3.dist center coord in
-              let bin_before = int_of_float (dist /. dx) in
-              let bin_after = bin_before + 1 in
-              let before = dx *. (float bin_before) in
-              let after = before +. dx in
-              (* linear binning *)
-              let w_l = 1.0 -. (dist -. before) in
-              let w_r = 1.0 -. (after -. dist) in
-              res.(bin_before).(chan) <- res.(bin_before).(chan) +. w_l;
-              res.(bin_after).(chan) <- res.(bin_after).(chan) +. w_r
-        ) neighbors;
-      (* also encode environments of all its connected neighbors
-         within the sphere centered on the center atom *)
-      let neighbors' = connected_atoms mol atom_i in
-      L.iter (fun (_atom_j, _anum_j, coord_j) ->
-          (* encode this atom's radial environment *)
-          L.iter (fun (_atom_l, anum_l, coord_l) ->
-              if anum_l < 0 then
-                () (* unsupported elt. already reported before *)
-              else (* within cutoff distance *)
-              if V3.dist coord_j coord_l < cutoff then
-                let chan = nb_channels + (channel_of_anum anum_l) in
-                let dist = V3.dist coord_j coord_l in
-                let bin_before = int_of_float (dist /. dx) in
-                let bin_after = bin_before + 1 in
-                let before = dx *. (float bin_before) in
-                let after = before +. dx in
-                (* linear binning *)
-                let w_l = 1.0 -. (dist -. before) in
-                let w_r = 1.0 -. (after -. dist) in
-                res.(bin_before).(chan) <- res.(bin_before).(chan) +. w_l;
-                res.(bin_after).(chan) <- res.(bin_after).(chan) +. w_r
-            ) (center' :: neighbors')
-        ) neighbors';
-      res
-    )
-
 (* [nb_layers]: how far we should consider from the atom center
    (distance in bonds on the molecular graph).
    [cutoff]: how far from the center atom in Angstrom we should consider
@@ -329,6 +220,4 @@ let encode_atoms (nb_layers: int) (cutoff: float) (dx: float) (mol: atoms_3D)
   : encoded_atom array =
   match nb_layers with
   | 1 -> encode_first_layer dx cutoff mol
-  | 2 -> encode_two_layers dx cutoff mol
-  | 3 -> encode_two_layers' dx cutoff mol
-  | _ -> failwith "not implemented yet"
+  | _ -> failwith "l <> 1 not supported"
