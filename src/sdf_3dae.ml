@@ -23,7 +23,8 @@ let main () =
               %s\n  \
               -i <filename.sdf>: input file\n  \
               -o <filename.csv>: output file\n  \
-              [--charges <charges.csv>]: prepend charges\n  \
+              [--charges <charges.csv>]: prepend those charges\n  \
+              [--separate]: separate channels in output files\n  \
               [-np <int>]: nprocs (default=1)\n  \
               [-l <int>]: number of layers in [1,2]\n  \
               [-c <float>]: cutoff distance (default=3.5A)\n  \
@@ -39,6 +40,7 @@ let main () =
   let nb_layers = CLI.get_int_def ["-l"] args 1 in
   let cutoff = CLI.get_float_def ["-c"] args 3.5 in
   let dx = CLI.get_float_def ["-dx"] args 0.1 in
+  let separate_channels = CLI.get_set_bool ["--separate"] args in
   let max_feat = ref (-1) in
   CLI.finalize (); (* ------------------------------------------------------ *)
   let charges = match maybe_charges_fn with
@@ -52,14 +54,29 @@ let main () =
           res.(i) <- float_of_string charge_str
         ) lines;
       res in
+  let per_channel_output_files =
+    if separate_channels then
+      A.init Sdf_3D.nb_channels (fun chan ->
+          let symbol = Sdf_3D.symbol_of_channel.(chan) in
+          let chan_out_fn = sprintf "%s.%s" output_fn symbol in
+          open_out chan_out_fn
+        )
+    else [||] in
   let prepend_charges = A.length charges > 0 in
   let atoms_count = ref 0 in
-  LO.with_infile_outfile input_fn output_fn (fun input output ->
+  LO.with_infile_outfile input_fn output_fn (fun input output' ->
       try
         while true do
           let mol = Sdf_3D.read_one_molecule input in
           let atoms_3dae = Sdf_3D.encode_atoms nb_layers cutoff dx mol in
           A.iteri (fun i_atom encoded_atom ->
+              let output =
+                if separate_channels then
+                  let anum = mol.elements.(i_atom) in
+                  let chan = Sdf_3D.channel_of_anum anum in
+                  per_channel_output_files.(chan)
+                else
+                  output' in
               (if prepend_charges then
                  let () = fprintf output "%f" charges.(!atoms_count) in
                  incr atoms_count
@@ -86,6 +103,8 @@ let main () =
         done
       with End_of_file -> ()
     );
-  Log.info "num_atoms: %d max_feat: %d" !atoms_count !max_feat
+  Log.info "num_atoms: %d max_feat: %d" !atoms_count !max_feat;
+  (* close separate channels, if any *)
+  A.iter close_out per_channel_output_files
 
 let () = main ()
