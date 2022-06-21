@@ -13,7 +13,6 @@ module L = BatList
 module LO = Line_oriented
 module Log = Dolog.Log
 module Sdf_3D = Molenc.Sdf_3D
-module V3 = Vector3
 
 let main () =
   Log.color_on ();
@@ -57,55 +56,34 @@ let main () =
   let atoms_count = ref 0 in
   LO.with_infile_outfile input_fn output_fn (fun input output ->
       try
-        if prepend_charges then
-          while true do
-            let mol = Sdf_3D.read_one_molecule input in
-            let atoms_3dae = Sdf_3D.encode_atoms nb_layers cutoff dx mol in
-            A.iter (fun encoded_atom ->
-                fprintf output "%f" charges.(!atoms_count);
-                incr atoms_count;
-                let nb_dx = A.length encoded_atom in
-                let nb_chans = A.length encoded_atom.(0) in
-                for i_chan = 0 to nb_chans - 1 do
-                  for i_dx = 0 to nb_dx - 1 do
-                    let feat = encoded_atom.(i_dx).(i_chan) in
-                    if feat > 0.0 then
-                      (* the feature vector should be very sparse;
+        while true do
+          let mol = Sdf_3D.read_one_molecule input in
+          let atoms_3dae = Sdf_3D.encode_atoms nb_layers cutoff dx mol in
+          A.iteri (fun i_atom encoded_atom ->
+              (if prepend_charges then
+                 let () = fprintf output "%f" charges.(!atoms_count) in
+                 incr atoms_count
+               else
+                 fprintf output "%d" i_atom
+              );
+              let nb_dx = A.length encoded_atom in
+              let nb_chans = A.length encoded_atom.(0) in
+              for i_chan = 0 to nb_chans - 1 do
+                for i_dx = 0 to nb_dx - 1 do
+                  let feat = encoded_atom.(i_dx).(i_chan) in
+                  if feat > 0.0 then
+                    (* the feature vector should be very sparse;
                          liblinear wants feature indexes to start at 1 *)
-                      let feat_idx = 1 + i_dx + (i_chan * nb_dx) in
-                      (if feat_idx > !max_feat then
-                         max_feat := feat_idx
-                      );
-                      fprintf output " %d:%g" feat_idx feat
-                  done
-                done;
-                fprintf output "\n"
-              ) atoms_3dae
-          done
-        else
-          while true do
-            let mol = Sdf_3D.read_one_molecule input in
-            let atoms_3dae = Sdf_3D.encode_atoms nb_layers cutoff dx mol in
-            A.iteri (fun i_atom encoded_atom ->
-                fprintf output "%d" i_atom;
-                let nb_dx = A.length encoded_atom in
-                let nb_chans = A.length encoded_atom.(0) in
-                for i_chan = 0 to nb_chans - 1 do
-                  for i_dx = 0 to nb_dx - 1 do
-                    let feat = encoded_atom.(i_dx).(i_chan) in
-                    if feat > 0.0 then
-                      (* the feature vector should be very sparse;
-                         liblinear wants feature indexes to start at 1 *)
-                      let feat_idx = 1 + i_dx + (i_chan * nb_dx) in
-                      (if feat_idx > !max_feat then
-                         max_feat := feat_idx
-                      );
-                      fprintf output " %d:%g" feat_idx feat
-                  done
-                done;
-                fprintf output "\n"
-              ) atoms_3dae
-          done
+                    let feat_idx = 1 + i_dx + (i_chan * nb_dx) in
+                    (if feat_idx > !max_feat then
+                       max_feat := feat_idx
+                    );
+                    fprintf output " %d:%g" feat_idx feat
+                done
+              done;
+              fprintf output "\n"
+            ) atoms_3dae
+        done
       with End_of_file -> ()
     );
   Log.info "num_atoms: %d max_feat: %d" !atoms_count !max_feat
