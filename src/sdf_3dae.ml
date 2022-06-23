@@ -14,6 +14,31 @@ module LO = Line_oriented
 module Log = Dolog.Log
 module Sdf_3D = Molenc.Sdf_3D
 
+let output_radial_block
+    encoded_atom prepend_charges charges output atoms_count i_atom max_feat =
+  let radial = Sdf_3D.(encoded_atom.radial) in
+  (if prepend_charges then
+     let () = fprintf output "%f" charges.(!atoms_count) in
+     incr atoms_count
+   else
+     fprintf output "%d" i_atom
+  );
+  let nb_dx = A.length radial in
+  let nb_chans = A.length radial.(0) in
+  for i_chan = 0 to nb_chans - 1 do
+    for i_dx = 0 to nb_dx - 1 do
+      let feat = radial.(i_dx).(i_chan) in
+      let feat_idx = 1 + i_dx + (i_chan * nb_dx) in
+      (if feat_idx > !max_feat then
+         max_feat := feat_idx
+      );
+      if feat > 0.0 then
+        (* the feature vector should be very sparse;
+           liblinear wants feature indexes to start at 1 *)
+        fprintf output " %d:%g" feat_idx feat
+    done
+  done
+
 let main () =
   Log.color_on ();
   Log.(set_log_level INFO);
@@ -62,31 +87,16 @@ let main () =
           let mol = Sdf_3D.read_one_molecule input in
           let atoms_3dae = Sdf_3D.encode_atoms nb_layers cutoff dx da mol in
           A.iteri (fun i_atom encoded_atom ->
-              (* output radial block *)
-              let radial = Sdf_3D.(encoded_atom.radial) in
-              (if prepend_charges then
-                 let () = fprintf output "%f" charges.(!atoms_count) in
-                 incr atoms_count
-               else
-                 fprintf output "%d" i_atom
-              );
-              let nb_dx = A.length radial in
-              let nb_chans = A.length radial.(0) in
-              for i_chan = 0 to nb_chans - 1 do
-                for i_dx = 0 to nb_dx - 1 do
-                  let feat = radial.(i_dx).(i_chan) in
-                  let feat_idx = 1 + i_dx + (i_chan * nb_dx) in
-                  (if feat_idx > !max_feat then
-                     max_feat := feat_idx
-                  );
-                  if feat > 0.0 then
-                    (* the feature vector should be very sparse;
-                       liblinear wants feature indexes to start at 1 *)
-                    fprintf output " %d:%g" feat_idx feat
-                done
-              done;
+              output_radial_block
+                encoded_atom
+                prepend_charges
+                charges
+                output
+                atoms_count
+                i_atom
+                max_feat;
               (* FBR:TODO: output angular block *)
-              fprintf output "\n"
+              fprintf output "\n" (* terminate this atom's feature vector *)
             ) atoms_3dae
         done
       with End_of_file -> ()
