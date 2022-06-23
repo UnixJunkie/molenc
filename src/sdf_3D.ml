@@ -312,8 +312,11 @@ let all_angles (center: V3.t) (neighbors: (int * int * V3.t) list)
 
 let encode_first_layer dx cutoff da mol =
   let nx = 1 + int_of_float (cutoff /. dx) in
-  let na = 1 + int_of_float (pi /. da) in
-  (* Log.debug "nx: %d" nx; *)
+  Log.debug "nx: %d" nx;
+  (* FBR: this 2 should be 1 !!! DEBUG TEST ONLY *)
+  let na = 2 + int_of_float (pi /. da) in
+  Log.debug "na: %d" na;
+  Log.debug "nb_angular_channels: %d" nb_angular_channels;
   let nb_atoms = A.length mol.elements in
   (* encode radial environment around center atom *)
   let radial_envs =
@@ -358,15 +361,15 @@ let encode_first_layer dx cutoff da mol =
               () (* unsupported elt. already reported before *)
             else
               let chan = angular_channel_of_anums center_anum anum in
-              (* Log.debug "chan: %d" chan; *)
+              Log.debug "chan: %d" chan;
               let bin_before = int_of_float (angle /. da) in
-              (* Log.debug "x_l: %d" bin_before; *)
+              Log.debug "a_l: %d" bin_before;
               let bin_after = bin_before + 1 in
-              (* Log.debug "x_r: %d" bin_after; *)
+              Log.debug "a_r: %d" bin_after;
               let before = da *. (float bin_before) in
-              (* Log.debug "before: %g" before; *)
+              Log.debug "before: %g" before;
               let after = before +. da in
-              (* Log.debug "after: %g" after; *)
+              Log.debug "after: %g" after;
               (* linear binning *)
               let w_l = 1.0 -. (angle -. before) in
               let w_r = 1.0 -. (after -. angle) in
