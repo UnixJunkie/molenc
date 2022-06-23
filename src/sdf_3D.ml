@@ -21,7 +21,10 @@ type atoms_3D = { name: string;
                      no bond order info *)
                   bonds: int list array }
 
-type encoded_atom = float array array (* shape: (nb_dx, nb_channels) *)
+type encoded_atom =
+  { radial: float array array; (* shape: (nb_dx, nb_chans) *)
+    angular: float array array (* shape: (nb_da, nb_chans +
+                                  nb_chans*(nb_chans-1)/2 *) }
 
 let anum_of_symbol = function
   | "C" -> 6
@@ -39,35 +42,97 @@ let anum_of_symbol = function
     -1
 
 let symbol_of_anum = function
- |  6  -> "C"
- |  1  -> "H"
- |  7  -> "N"
- |  8  -> "O"
- | 15  -> "P"
- | 16  -> "S"
- |  9  -> "F"
- | 17  -> "Cl"
- | 35  -> "Br"
- | 53  -> "I"
- | -1  -> "_" (* unsupported elt. *)
- | _ -> assert(false)
+  |  6  -> "C"
+  |  1  -> "H"
+  |  7  -> "N"
+  |  8  -> "O"
+  | 15  -> "P"
+  | 16  -> "S"
+  |  9  -> "F"
+  | 17  -> "Cl"
+  | 35  -> "Br"
+  | 53  -> "I"
+  | -1  -> "_" (* unsupported elt. *)
+  | _ -> assert(false)
 
 let nb_channels = 10
 
 let channel_of_anum = function
- |  6  -> 0 (* "C" *)
- |  1  -> 1 (* "H" *)
- |  7  -> 2 (* "N" *)
- |  8  -> 3 (* "O" *)
- | 15  -> 4 (* "P" *)
- | 16  -> 5 (* "S" *)
- |  9  -> 6 (* "F" *)
- | 17  -> 7 (* "Cl" *)
- | 35  -> 8 (* "Br" *)
- | 53  -> 9 (* "I" *)
- | x ->
-   let () = Log.warn "anum: %d" x in
-   10
+  |  6  -> 0 (* "C" *)
+  |  1  -> 1 (* "H" *)
+  |  7  -> 2 (* "N" *)
+  |  8  -> 3 (* "O" *)
+  | 15  -> 4 (* "P" *)
+  | 16  -> 5 (* "S" *)
+  |  9  -> 6 (* "F" *)
+  | 17  -> 7 (* "Cl" *)
+  | 35  -> 8 (* "Br" *)
+  | 53  -> 9 (* "I" *)
+  | x ->
+    let () = Log.warn "anum: %d" x in
+    10
+
+let angular_channel_of_anums a1 a2 =
+  let (x, y) =
+    if a1 <= a2 then (a1, a2)
+    else (a2, a1) in
+  match (x, y) with
+  | (1 , 1 ) -> 0
+  | (6 , 6 ) -> 1
+  | (7 , 7 ) -> 2
+  | (8 , 8 ) -> 3
+  | (9 , 9 ) -> 4
+  | (15, 15) -> 5
+  | (16, 16) -> 6
+  | (17, 17) -> 7
+  | (35, 35) -> 8
+  | (53, 53) -> 9
+  | (1 , 6 ) -> 10
+  | (1 , 7 ) -> 11
+  | (1 , 8 ) -> 12
+  | (1 , 9 ) -> 13
+  | (1 , 15) -> 14
+  | (1 , 16) -> 15
+  | (1 , 17) -> 16
+  | (1 , 35) -> 17
+  | (1 , 53) -> 18
+  | (6 , 7 ) -> 19
+  | (6 , 8 ) -> 20
+  | (6 , 9 ) -> 21
+  | (6 , 15) -> 22
+  | (6 , 16) -> 23
+  | (6 , 17) -> 24
+  | (6 , 35) -> 25
+  | (6 , 53) -> 26
+  | (7 , 8 ) -> 27
+  | (7 , 9 ) -> 28
+  | (7 , 15) -> 29
+  | (7 , 16) -> 30
+  | (7 , 17) -> 31
+  | (7 , 35) -> 32
+  | (7 , 53) -> 33
+  | (8 , 9 ) -> 34
+  | (8 , 15) -> 35
+  | (8 , 16) -> 36
+  | (8 , 17) -> 37
+  | (8 , 35) -> 38
+  | (8 , 53) -> 39
+  | (9 , 15) -> 40
+  | (9 , 16) -> 41
+  | (9 , 17) -> 42
+  | (9 , 35) -> 43
+  | (9 , 53) -> 44
+  | (15, 16) -> 45
+  | (15, 17) -> 46
+  | (15, 35) -> 47
+  | (15, 53) -> 48
+  | (16, 17) -> 49
+  | (16, 35) -> 50
+  | (16, 53) -> 51
+  | (17, 35) -> 52
+  | (17, 53) -> 53
+  | (35, 53) -> 54
+  | (_ , _ ) -> assert(false)
 
 let symbol_of_channel = [|"C";"H";"N";"O";"P";"S";"F";"Cl";"Br";"I"|]
 
@@ -209,13 +274,14 @@ let encode_first_layer dx cutoff mol =
   (* Log.debug "nx: %d" nx; *)
   let nb_atoms = A.length mol.elements in
   (* just encode the center atom's radial environment *)
-  A.init nb_atoms (fun atom_i ->
-      let res = A.make_matrix nx nb_channels 0.0 in
-      let center = mol.coords.(atom_i) in
-      let neighbors = within_cutoff cutoff mol atom_i in
-      L.iter (fun (_atom_j, anum, coord) ->
-          if anum < 0 then
-            () (* unsupported elt. already reported before *)
+  let radial_envs =
+    A.init nb_atoms (fun atom_i ->
+        let res = A.make_matrix nx nb_channels 0.0 in
+        let center = mol.coords.(atom_i) in
+        let neighbors = within_cutoff cutoff mol atom_i in
+        L.iter (fun (_atom_j, anum, coord) ->
+            if anum < 0 then
+              () (* unsupported elt. already reported before *)
             else
               let chan = channel_of_anum anum in
               (* Log.debug "chan: %d" chan; *)
@@ -234,22 +300,26 @@ let encode_first_layer dx cutoff mol =
               let w_r = 1.0 -. (after -. dist) in
               res.(bin_before).(chan) <- res.(bin_before).(chan) +. w_l;
               res.(bin_after).(chan) <- res.(bin_after).(chan) +. w_r
-        ) neighbors;
-      res
-    )
+          ) neighbors;
+        res
+      ) in
+  A.map (fun radial ->
+      { radial; angular = [||] }
+    ) radial_envs
 
 let weighted_encode_first_layer dx cutoff mol =
   let nx = 1 + int_of_float (cutoff /. dx) in
   (* Log.debug "nx: %d" nx; *)
   let nb_atoms = A.length mol.elements in
   (* just encode the center atom's radial environment *)
-  A.init nb_atoms (fun atom_i ->
-      let res = A.make_matrix nx nb_channels 0.0 in
-      let center = mol.coords.(atom_i) in
-      let neighbors = within_cutoff cutoff mol atom_i in
-      L.iter (fun (_atom_j, anum, coord) ->
-          if anum < 0 then
-            () (* unsupported elt. already reported before *)
+  let radial_envs =
+    A.init nb_atoms (fun atom_i ->
+        let res = A.make_matrix nx nb_channels 0.0 in
+        let center = mol.coords.(atom_i) in
+        let neighbors = within_cutoff cutoff mol atom_i in
+        L.iter (fun (_atom_j, anum, coord) ->
+            if anum < 0 then
+              () (* unsupported elt. already reported before *)
             else
               let chan = channel_of_anum anum in
               (* Log.debug "chan: %d" chan; *)
@@ -269,9 +339,12 @@ let weighted_encode_first_layer dx cutoff mol =
               let w_r = weight *. (1.0 -. (after -. dist)) in
               res.(bin_before).(chan) <- res.(bin_before).(chan) +. w_l;
               res.(bin_after).(chan) <- res.(bin_after).(chan) +. w_r
-        ) neighbors;
-      res
-    )
+          ) neighbors;
+        res
+      ) in
+  A.map (fun radial ->
+      { radial; angular = [||] }
+    ) radial_envs
 
 (* [nb_layers]: how far we should consider from the atom center
    (distance in bonds on the molecular graph).

@@ -71,6 +71,7 @@ let main () =
           let mol = Sdf_3D.read_one_molecule input in
           let atoms_3dae = Sdf_3D.encode_atoms nb_layers cutoff dx mol in
           A.iteri (fun i_atom encoded_atom ->
+              let radial = Sdf_3D.(encoded_atom.radial) in
               let output =
                 if separate_channels then
                   begin
@@ -89,11 +90,11 @@ let main () =
                else
                  fprintf output "%d" i_atom
               );
-              let nb_dx = A.length encoded_atom in
-              let nb_chans = A.length encoded_atom.(0) in
+              let nb_dx = A.length radial in
+              let nb_chans = A.length radial.(0) in
               for i_chan = 0 to nb_chans - 1 do
                 for i_dx = 0 to nb_dx - 1 do
-                  let feat = encoded_atom.(i_dx).(i_chan) in
+                  let feat = radial.(i_dx).(i_chan) in
                   if feat > 0.0 then
                     (* the feature vector should be very sparse;
                          liblinear wants feature indexes to start at 1 *)
