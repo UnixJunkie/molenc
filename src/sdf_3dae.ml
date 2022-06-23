@@ -62,6 +62,7 @@ let main () =
           let mol = Sdf_3D.read_one_molecule input in
           let atoms_3dae = Sdf_3D.encode_atoms nb_layers cutoff dx da mol in
           A.iteri (fun i_atom encoded_atom ->
+              (* output radial block *)
               let radial = Sdf_3D.(encoded_atom.radial) in
               (if prepend_charges then
                  let () = fprintf output "%f" charges.(!atoms_count) in
@@ -74,16 +75,17 @@ let main () =
               for i_chan = 0 to nb_chans - 1 do
                 for i_dx = 0 to nb_dx - 1 do
                   let feat = radial.(i_dx).(i_chan) in
+                  let feat_idx = 1 + i_dx + (i_chan * nb_dx) in
+                  (if feat_idx > !max_feat then
+                     max_feat := feat_idx
+                  );
                   if feat > 0.0 then
                     (* the feature vector should be very sparse;
-                         liblinear wants feature indexes to start at 1 *)
-                    let feat_idx = 1 + i_dx + (i_chan * nb_dx) in
-                    (if feat_idx > !max_feat then
-                       max_feat := feat_idx
-                    );
+                       liblinear wants feature indexes to start at 1 *)
                     fprintf output " %d:%g" feat_idx feat
                 done
               done;
+              (* FBR:TODO: output angular block *)
               fprintf output "\n"
             ) atoms_3dae
         done
