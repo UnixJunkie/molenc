@@ -307,45 +307,6 @@ let encode_first_layer dx cutoff mol =
       { radial; angular = [||] }
     ) radial_envs
 
-let weighted_encode_first_layer dx cutoff mol =
-  let nx = 1 + int_of_float (cutoff /. dx) in
-  (* Log.debug "nx: %d" nx; *)
-  let nb_atoms = A.length mol.elements in
-  (* just encode the center atom's radial environment *)
-  let radial_envs =
-    A.init nb_atoms (fun atom_i ->
-        let res = A.make_matrix nx nb_channels 0.0 in
-        let center = mol.coords.(atom_i) in
-        let neighbors = within_cutoff cutoff mol atom_i in
-        L.iter (fun (_atom_j, anum, coord) ->
-            if anum < 0 then
-              () (* unsupported elt. already reported before *)
-            else
-              let chan = channel_of_anum anum in
-              (* Log.debug "chan: %d" chan; *)
-              let dist = V3.dist center coord in
-              let weight = eval_K cutoff dist in
-              (* Log.debug "dist: %g" dist; *)
-              let bin_before = int_of_float (dist /. dx) in
-              (* Log.debug "x_l: %d" bin_before; *)
-              let bin_after = bin_before + 1 in
-              (* Log.debug "x_r: %d" bin_after; *)
-              let before = dx *. (float bin_before) in
-              (* Log.debug "before: %g" before; *)
-              let after = before +. dx in
-              (* Log.debug "after: %g" after; *)
-              (* linear binning *)
-              let w_l = weight *. (1.0 -. (dist -. before)) in
-              let w_r = weight *. (1.0 -. (after -. dist)) in
-              res.(bin_before).(chan) <- res.(bin_before).(chan) +. w_l;
-              res.(bin_after).(chan) <- res.(bin_after).(chan) +. w_r
-          ) neighbors;
-        res
-      ) in
-  A.map (fun radial ->
-      { radial; angular = [||] }
-    ) radial_envs
-
 (* [nb_layers]: how far we should consider from the atom center
    (distance in bonds on the molecular graph).
    [cutoff]: how far from the center atom in Angstrom we should consider
@@ -356,5 +317,4 @@ let encode_atoms (nb_layers: int) (cutoff: float) (dx: float) (mol: atoms_3D)
   : encoded_atom array =
   match nb_layers with
   | 1 -> encode_first_layer dx cutoff mol
-  | 2 -> weighted_encode_first_layer dx cutoff mol
   | _ -> failwith (sprintf "unsupported l: %d" nb_layers)
