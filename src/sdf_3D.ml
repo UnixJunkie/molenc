@@ -72,6 +72,9 @@ let channel_of_anum = function
     let () = Log.warn "anum: %d" x in
     10
 
+let nb_angular_channels =
+  nb_channels + (nb_channels * (nb_channels - 1) / 2)
+
 let angular_channel_of_anums a1 a2 =
   let (x, y) =
     if a1 <= a2 then (a1, a2)
@@ -235,6 +238,24 @@ let within_cutoff cut mol i_atom =
         end
     ) [] mol.coords
 
+(* like [within_cutoff]; but the i_atom is not included in the list *)
+let within_cutoff' cut mol i_atom =
+  let cut2 = cut *. cut in
+  let center = mol.coords.(i_atom) in
+  A.fold_lefti (fun acc i coord ->
+      if i = i_atom then
+        acc
+      else
+        begin
+          let dist2 = V3.mag2 (V3.diff center coord) in
+          if dist2 < cut2 then
+            let anum = mol.elements.(i) in
+            (i, anum, coord) :: acc
+          else
+            acc
+        end
+    ) [] mol.coords
+
 let connected_atoms mol i_atom =
   let connected = mol.bonds.(i_atom) in
   L.map (fun dst ->
@@ -267,13 +288,34 @@ let eval_K bwidth x =
 
 (* FBR: output encoding to a data file for gnuplot *)
 
-(* FBR: try one model per center atom type (chemical element) *)
+let pi = 4.0 *. atan 1.0
 
-let encode_first_layer dx cutoff mol =
+(* compute all angles involving given center atom
+   and all its spatial neighbors *)
+let all_angles (center: V3.t) (neighbors: (int * int * V3.t) list)
+  : (int * float) list =
+  let angles (_, _, x_xyz) others =
+    let xc = V3.diff x_xyz center in
+    L.rev_map (fun (_, z_anum, z_xyz) ->
+        let zc = V3.diff z_xyz center in
+        let angle = V3.angle xc zc in
+        assert(0.0 <= angle && angle <= pi);
+        (z_anum, angle)
+      ) others in
+  let rec loop acc = function
+    | [] -> acc
+    | x :: xs ->
+      let ys = angles x xs in
+      let acc' = L.rev_append ys acc in
+      loop acc' xs in
+  loop [] neighbors
+
+let encode_first_layer dx cutoff da mol =
   let nx = 1 + int_of_float (cutoff /. dx) in
+  let na = 1 + int_of_float (pi /. da) in
   (* Log.debug "nx: %d" nx; *)
   let nb_atoms = A.length mol.elements in
-  (* just encode the center atom's radial environment *)
+  (* encode radial environment around center atom *)
   let radial_envs =
     A.init nb_atoms (fun atom_i ->
         let res = A.make_matrix nx nb_channels 0.0 in
@@ -303,9 +345,39 @@ let encode_first_layer dx cutoff mol =
           ) neighbors;
         res
       ) in
-  A.map (fun radial ->
-      { radial; angular = [||] }
-    ) radial_envs
+  (* encode all angles involving the center atom *)
+  let angular_envs =
+    A.init nb_atoms (fun atom_i ->
+        let res = A.make_matrix na nb_angular_channels 0.0 in
+        let center = mol.coords.(atom_i) in
+        let center_anum = mol.elements.(atom_i) in
+        let neighbors = within_cutoff' cutoff mol atom_i in
+        let angles = all_angles center neighbors in
+        L.iter (fun (anum, angle) ->
+            if anum < 0 then
+              () (* unsupported elt. already reported before *)
+            else
+              let chan = angular_channel_of_anums center_anum anum in
+              (* Log.debug "chan: %d" chan; *)
+              let bin_before = int_of_float (angle /. da) in
+              (* Log.debug "x_l: %d" bin_before; *)
+              let bin_after = bin_before + 1 in
+              (* Log.debug "x_r: %d" bin_after; *)
+              let before = da *. (float bin_before) in
+              (* Log.debug "before: %g" before; *)
+              let after = before +. da in
+              (* Log.debug "after: %g" after; *)
+              (* linear binning *)
+              let w_l = 1.0 -. (angle -. before) in
+              let w_r = 1.0 -. (after -. angle) in
+              res.(bin_before).(chan) <- res.(bin_before).(chan) +. w_l;
+              res.(bin_after).(chan) <- res.(bin_after).(chan) +. w_r
+          ) angles;
+        res
+      ) in
+  A.map2 (fun radial angular ->
+      { radial; angular }
+    ) radial_envs angular_envs
 
 (* [nb_layers]: how far we should consider from the atom center
    (distance in bonds on the molecular graph).
@@ -313,8 +385,9 @@ let encode_first_layer dx cutoff mol =
    (in Cartesian space)
    [dx]: axis discretization step
    [mol]: molecule to encode *)
-let encode_atoms (nb_layers: int) (cutoff: float) (dx: float) (mol: atoms_3D)
+let encode_atoms
+    (nb_layers: int) (cutoff: float) (dx: float) (da: float) (mol: atoms_3D)
   : encoded_atom array =
   match nb_layers with
-  | 1 -> encode_first_layer dx cutoff mol
+  | 1 -> encode_first_layer dx cutoff da mol
   | _ -> failwith (sprintf "unsupported l: %d" nb_layers)

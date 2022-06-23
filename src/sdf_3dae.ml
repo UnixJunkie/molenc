@@ -28,7 +28,8 @@ let main () =
               [-np <int>]: nprocs (default=1)\n  \
               [-l <int>]: number of layers in [1,2]\n  \
               [-c <float>]: cutoff distance (default=3.5A)\n  \
-              [-dx <float>]: discretization step (default=0.1A)\n  \
+              [-dx <float>]: radial discretization step (default=0.01A)\n  \
+              [-da <float>]: angular discretization step (default=pi/100)\n  \
               [-v]: verbose/debug mode\n" Sys.argv.(0);
      exit 1);
   let verbose = CLI.get_set_bool ["-v"] args in
@@ -39,7 +40,8 @@ let main () =
   let _nprocs = CLI.get_int_def ["-np"] args 1 in
   let nb_layers = CLI.get_int_def ["-l"] args 1 in
   let cutoff = CLI.get_float_def ["-c"] args 3.5 in
-  let dx = CLI.get_float_def ["-dx"] args 0.1 in
+  let dx = CLI.get_float_def ["-dx"] args 0.01 in
+  let da = CLI.get_float_def ["-da"] args (Sdf_3D.pi /. 100.0) in
   let separate_channels = CLI.get_set_bool ["--separate"] args in
   let max_feat = ref (-1) in
   CLI.finalize (); (* ------------------------------------------------------ *)
@@ -69,7 +71,7 @@ let main () =
       try
         while true do
           let mol = Sdf_3D.read_one_molecule input in
-          let atoms_3dae = Sdf_3D.encode_atoms nb_layers cutoff dx mol in
+          let atoms_3dae = Sdf_3D.encode_atoms nb_layers cutoff dx da mol in
           A.iteri (fun i_atom encoded_atom ->
               let radial = Sdf_3D.(encoded_atom.radial) in
               let output =
