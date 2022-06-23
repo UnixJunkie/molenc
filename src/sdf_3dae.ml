@@ -25,14 +25,11 @@ let output_radial_block
   );
   let nb_dx = A.length radial in
   let nb_chans = A.length radial.(0) in
+  max_feat := 1 + nb_chans * nb_dx; (* FBR: check *)
   for i_chan = 0 to nb_chans - 1 do
     for i_dx = 0 to nb_dx - 1 do
       let feat = radial.(i_dx).(i_chan) in
       let feat_idx = 1 + i_dx + (i_chan * nb_dx) in
-      (if feat_idx > !max_feat then
-         (* FBR: max_feat could be computed once and for all *)
-         max_feat := feat_idx
-      );
       if feat > 0.0 then
         (* the feature vector should be very sparse;
            liblinear wants feature indexes to start at 1 *)
@@ -45,14 +42,11 @@ let output_angular_block encoded_atom output max_feat =
   let angular = Sdf_3D.(encoded_atom.angular) in
   let nb_da = A.length angular in
   let nb_chans = A.length angular.(0) in
+  max_feat := offset + nb_chans * nb_da;
   for i_chan = 0 to nb_chans - 1 do
     for i_da = 0 to nb_da - 1 do
       let feat = angular.(i_da).(i_chan) in
       let feat_idx = offset + i_da + (i_chan * nb_da) in
-      (if feat_idx > !max_feat then
-         (* FBR: max_feat could be computed once and for all *)
-         max_feat := feat_idx
-      );
       if feat > 0.0 then
         (* the feature vector should be very sparse *)
         fprintf output " %d:%g" feat_idx feat
@@ -109,7 +103,9 @@ let main () =
           A.iteri (fun i_atom encoded_atom ->
               output_radial_block encoded_atom prepend_charges charges
                 output atoms_count i_atom max_feat;
+              Log.debug "max radial block feat: %d" !max_feat;
               output_angular_block encoded_atom output max_feat;
+              Log.debug "max angular block feat: %d" !max_feat;
               fprintf output "\n" (* terminate this atom's feature vector *)
             ) atoms_3dae
         done
