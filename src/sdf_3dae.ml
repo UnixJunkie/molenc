@@ -68,6 +68,8 @@ let main () =
               [-c <float>]: cutoff distance (default=3.5A)\n  \
               [-dx <float>]: radial discretization step (default=0.01A)\n  \
               [-da <float>]: angular discretization step (default=pi/100)\n  \
+              [--no-angular]: disable angular block output \
+              (it is still computed)\n  \
               [-v]: verbose/debug mode\n" Sys.argv.(0);
      exit 1);
   let verbose = CLI.get_set_bool ["-v"] args in
@@ -81,6 +83,7 @@ let main () =
   let dx = CLI.get_float_def ["-dx"] args 0.01 in
   let da = CLI.get_float_def ["-da"] args (Sdf_3D.pi /. 100.0) in
   let max_feat = ref (-1) in
+  let no_angular = CLI.get_set_bool ["--no-angular"] args in
   CLI.finalize (); (* ------------------------------------------------------ *)
   let charges = match maybe_charges_fn with
     | None -> [||]
@@ -104,8 +107,11 @@ let main () =
               output_radial_block encoded_atom prepend_charges charges
                 output atoms_count i_atom max_feat;
               Log.debug "max radial block feat: %d" !max_feat;
-              output_angular_block encoded_atom output max_feat;
-              Log.debug "max angular block feat: %d" !max_feat;
+              if not no_angular then
+                begin
+                  output_angular_block encoded_atom output max_feat;
+                  Log.debug "max angular block feat: %d" !max_feat;
+                end;
               fprintf output "\n" (* terminate this atom's feature vector *)
             ) atoms_3dae
         done
