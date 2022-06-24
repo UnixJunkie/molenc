@@ -388,7 +388,7 @@ let all_angles (center: V3.t) (neighbors: (int * int * V3.t) list)
       loop acc' xs in
   loop [] neighbors
 
-let encode_first_layer dx cutoff da mol =
+let encode_first_layer verbose dx cutoff da mol =
   let nx = 1 + int_of_float (cutoff /. dx) in
   Log.debug "nx: %d" nx;
   (* FBR: this 2 should be 1 ?! DEBUG TEST *)
@@ -407,17 +407,20 @@ let encode_first_layer dx cutoff da mol =
               () (* unsupported elt. already reported before *)
             else
               let chan = channel_of_anum anum in
-              (* Log.debug "chan: %d" chan; *)
               let dist = V3.dist center coord in
-              (* Log.debug "dist: %g" dist; *)
               let bin_before = int_of_float (dist /. dx) in
-              (* Log.debug "x_l: %d" bin_before; *)
               let bin_after = bin_before + 1 in
-              (* Log.debug "x_r: %d" bin_after; *)
               let before = dx *. (float bin_before) in
-              (* Log.debug "before: %g" before; *)
               let after = before +. dx in
-              (* Log.debug "after: %g" after; *)
+              if verbose then
+                begin
+                  Log.debug "chan: %d" chan;
+                  Log.debug "dist: %g" dist;
+                  Log.debug "x_l: %d" bin_before;
+                  Log.debug "x_r: %d" bin_after;
+                  Log.debug "before: %g" before;
+                  Log.debug "after: %g" after;
+                end;
               (* linear binning *)
               let w_l = 1.0 -. (dist -. before) in
               let w_r = 1.0 -. (after -. dist) in
@@ -439,15 +442,18 @@ let encode_first_layer dx cutoff da mol =
               () (* unsupported elt. already reported before *)
             else
               let chan = angular_channel_of_anums center_anum anum in
-              (* Log.debug "chan: %d" chan; *)
               let bin_before = int_of_float (angle /. da) in
-              (* Log.debug "a_l: %d" bin_before; *)
               let bin_after = bin_before + 1 in
-              (* Log.debug "a_r: %d" bin_after; *)
               let before = da *. (float bin_before) in
-              (* Log.debug "before: %g" before; *)
               let after = before +. da in
-              (* Log.debug "after: %g" after; *)
+              if verbose then
+                begin
+                  Log.debug "chan: %d" chan;
+                  Log.debug "a_l: %d" bin_before;
+                  Log.debug "a_r: %d" bin_after;
+                  Log.debug "before: %g" before;
+                  Log.debug "after: %g" after;
+                end;
               (* linear binning *)
               let w_l = 1.0 -. (angle -. before) in
               let w_r = 1.0 -. (after -. angle) in
@@ -466,9 +472,9 @@ let encode_first_layer dx cutoff da mol =
    (in Cartesian space)
    [dx]: axis discretization step
    [mol]: molecule to encode *)
-let encode_atoms
+let encode_atoms verbose
     (nb_layers: int) (cutoff: float) (dx: float) (da: float) (mol: atoms_3D)
   : encoded_atom array =
   match nb_layers with
-  | 1 -> encode_first_layer dx cutoff da mol
+  | 1 -> encode_first_layer verbose dx cutoff da mol
   | _ -> failwith (sprintf "unsupported l: %d" nb_layers)
