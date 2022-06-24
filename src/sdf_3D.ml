@@ -55,6 +55,21 @@ let symbol_of_anum = function
   | -1  -> "_" (* unsupported elt. *)
   | _ -> assert(false)
 
+(* chemical symbol, but two letters fixed width *)
+let symbol2_of_anum = function
+  |  6  -> "C_"
+  |  1  -> "H_"
+  |  7  -> "N_"
+  |  8  -> "O_"
+  | 15  -> "P_"
+  | 16  -> "S_"
+  |  9  -> "F_"
+  | 17  -> "Cl"
+  | 35  -> "Br"
+  | 53  -> "I_"
+  | -1  -> "__" (* unsupported elt. *)
+  | _ -> assert(false)
+
 let nb_channels = 10
 
 let channel_of_anum = function
