@@ -210,7 +210,7 @@ let symbols_of_angular_channel chan =
     | 53 -> (17, 53)
     | 54 -> (35, 53)
     | _  -> assert(false) in
-  (symbol2_of_anum x, symbol2_of_anum y)
+  (symbol2_of_anum x) ^ (symbol2_of_anum y)
 
 let symbol2channel = [|"C";"H";"N";"O";"P";"S";"F";"Cl";"Br";"I"|]
 
