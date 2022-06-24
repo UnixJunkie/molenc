@@ -37,11 +37,13 @@ let output_radial_block
     done
   done
 
+(* for gnuplot visu *)
 let txt_output_radial_block dx encoded_atom output =
   let radial = Sdf_3D.(encoded_atom.radial) in
   let nb_dx = A.length radial in
   let nb_chans = A.length radial.(0) in
   for i_chan = 0 to nb_chans - 1 do
+    fprintf output "#%d=%s\n" i_chan (Sdf_3D.symbol_of_channel i_chan);
     for i_dx = 0 to nb_dx - 1 do
       let feat = radial.(i_dx).(i_chan) in
       if feat > 0.0 then
@@ -65,11 +67,14 @@ let output_angular_block encoded_atom output max_feat =
     done
   done
 
+(* for gnuplot visu *)
 let txt_output_angular_block da encoded_atom output =
   let angular = Sdf_3D.(encoded_atom.angular) in
   let nb_da = A.length angular in
   let nb_chans = A.length angular.(0) in
   for i_chan = 0 to nb_chans - 1 do
+    fprintf output "#%d=%s\n"
+      i_chan (Sdf_3D.symbols_of_angular_channel i_chan);
     for i_da = 0 to nb_da - 1 do
       let feat = angular.(i_da).(i_chan) in
       if feat > 0.0 then
