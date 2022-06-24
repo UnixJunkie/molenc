@@ -1,6 +1,6 @@
 (* Copyright (C) 2022, Francois Berenger
 
-   Tsuda laboratory, Graduate School of Frontier Sciences,
+   Tsuda Laboratory, Graduate School of Frontier Sciences,
    The University of Tokyo, Japan.
 
    Dump a 3D .sdf file's atoms using 3DAE. *)

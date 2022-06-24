@@ -1,6 +1,6 @@
 (* Copyright (C) 2022, Francois Berenger
 
-   Tsuda laboratory, Graduate School of Frontier Sciences,
+   Tsuda Laboratory, Graduate School of Frontier Sciences,
    The University of Tokyo, Japan.
 
    Read molecule name, element symbols and their 3D coordinates from a .sdf file
@@ -151,6 +151,66 @@ let angular_channel_of_anums a1 a2 =
   | (17, 53) -> 53
   | (35, 53) -> 54
   | (_ , _ ) -> assert(false)
+
+let symbols_of_angular_channel chan =
+  let (x, y) = match chan with
+    | 0  -> (1 , 1 )
+    | 1  -> (6 , 6 )
+    | 2  -> (7 , 7 )
+    | 3  -> (8 , 8 )
+    | 4  -> (9 , 9 )
+    | 5  -> (15, 15)
+    | 6  -> (16, 16)
+    | 7  -> (17, 17)
+    | 8  -> (35, 35)
+    | 9  -> (53, 53)
+    | 10 -> (1 , 6 )
+    | 11 -> (1 , 7 )
+    | 12 -> (1 , 8 )
+    | 13 -> (1 , 9 )
+    | 14 -> (1 , 15)
+    | 15 -> (1 , 16)
+    | 16 -> (1 , 17)
+    | 17 -> (1 , 35)
+    | 18 -> (1 , 53)
+    | 19 -> (6 , 7 )
+    | 20 -> (6 , 8 )
+    | 21 -> (6 , 9 )
+    | 22 -> (6 , 15)
+    | 23 -> (6 , 16)
+    | 24 -> (6 , 17)
+    | 25 -> (6 , 35)
+    | 26 -> (6 , 53)
+    | 27 -> (7 , 8 )
+    | 28 -> (7 , 9 )
+    | 29 -> (7 , 15)
+    | 30 -> (7 , 16)
+    | 31 -> (7 , 17)
+    | 32 -> (7 , 35)
+    | 33 -> (7 , 53)
+    | 34 -> (8 , 9 )
+    | 35 -> (8 , 15)
+    | 36 -> (8 , 16)
+    | 37 -> (8 , 17)
+    | 38 -> (8 , 35)
+    | 39 -> (8 , 53)
+    | 40 -> (9 , 15)
+    | 41 -> (9 , 16)
+    | 42 -> (9 , 17)
+    | 43 -> (9 , 35)
+    | 44 -> (9 , 53)
+    | 45 -> (15, 16)
+    | 46 -> (15, 17)
+    | 47 -> (15, 35)
+    | 48 -> (15, 53)
+    | 49 -> (16, 17)
+    | 50 -> (16, 35)
+    | 51 -> (16, 53)
+    | 52 -> (17, 35)
+    | 53 -> (17, 53)
+    | 54 -> (35, 53)
+    | _  -> assert(false) in
+  (symbol2_of_anum x, symbol2_of_anum y)
 
 let symbol_of_channel = [|"C";"H";"N";"O";"P";"S";"F";"Cl";"Br";"I"|]
 
