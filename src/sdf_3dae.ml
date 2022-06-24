@@ -57,7 +57,7 @@ let txt_output_radial_block dx encoded_atom maybe_out =
                 fprintf output "#%d=%s\n"
                   i_chan (Sdf_3D.symbol_of_channel i_chan) in
               has_header := true in
-          fprintf output "%d %g %g\n" i_chan ((float i_dx) *. dx) feat
+          fprintf output "%d\t%.2f\t%.3f\n" i_chan ((float i_dx) *. dx) feat
       done
     done
 
@@ -98,9 +98,10 @@ let txt_output_angular_block da encoded_atom maybe_output =
                   i_chan (Sdf_3D.symbols_of_angular_channel i_chan) in
               has_header := true
           in
-          fprintf output "%d %g %g\n" i_chan ((float i_da) *. da) feat
+          fprintf output "%d\t%.2f\t%.3f\n" i_chan ((float i_da) *. da) feat
       done
-    done
+    done;
+    fprintf output "\n" (* molecule separator *)
 
 let main () =
   Log.color_on ();
@@ -156,7 +157,8 @@ let main () =
       try
         while true do
           let mol = Sdf_3D.read_one_molecule input in
-          let atoms_3dae = Sdf_3D.encode_atoms nb_layers cutoff dx da mol in
+          let atoms_3dae =
+            Sdf_3D.encode_atoms verbose nb_layers cutoff dx da mol in
           A.iteri (fun i_atom encoded_atom ->
               output_radial_block encoded_atom prepend_charges charges
                 output atoms_count i_atom max_feat;
