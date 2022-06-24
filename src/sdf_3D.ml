@@ -212,7 +212,10 @@ let symbols_of_angular_channel chan =
     | _  -> assert(false) in
   (symbol2_of_anum x, symbol2_of_anum y)
 
-let symbol_of_channel = [|"C";"H";"N";"O";"P";"S";"F";"Cl";"Br";"I"|]
+let symbol2channel = [|"C";"H";"N";"O";"P";"S";"F";"Cl";"Br";"I"|]
+
+let symbol_of_channel chan =
+  symbol2channel.(chan)
 
 let read_name input =
   input_line input
