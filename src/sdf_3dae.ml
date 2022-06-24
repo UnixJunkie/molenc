@@ -38,18 +38,21 @@ let output_radial_block
   done
 
 (* for gnuplot visu *)
-let txt_output_radial_block dx encoded_atom output =
-  let radial = Sdf_3D.(encoded_atom.radial) in
-  let nb_dx = A.length radial in
-  let nb_chans = A.length radial.(0) in
-  for i_chan = 0 to nb_chans - 1 do
-    fprintf output "#%d=%s\n" i_chan (Sdf_3D.symbol_of_channel i_chan);
-    for i_dx = 0 to nb_dx - 1 do
-      let feat = radial.(i_dx).(i_chan) in
-      if feat > 0.0 then
-        fprintf output "%d %g %g\n" i_chan ((float i_dx) *. dx) feat
+let txt_output_radial_block dx encoded_atom maybe_out =
+  match maybe_out with
+  | None -> ()
+  | Some output ->
+    let radial = Sdf_3D.(encoded_atom.radial) in
+    let nb_dx = A.length radial in
+    let nb_chans = A.length radial.(0) in
+    for i_chan = 0 to nb_chans - 1 do
+      fprintf output "#%d=%s\n" i_chan (Sdf_3D.symbol_of_channel i_chan);
+      for i_dx = 0 to nb_dx - 1 do
+        let feat = radial.(i_dx).(i_chan) in
+        if feat > 0.0 then
+          fprintf output "%d %g %g\n" i_chan ((float i_dx) *. dx) feat
+      done
     done
-  done
 
 let output_angular_block encoded_atom output max_feat =
   let offset = !max_feat + 1 in
@@ -68,19 +71,22 @@ let output_angular_block encoded_atom output max_feat =
   done
 
 (* for gnuplot visu *)
-let txt_output_angular_block da encoded_atom output =
-  let angular = Sdf_3D.(encoded_atom.angular) in
-  let nb_da = A.length angular in
-  let nb_chans = A.length angular.(0) in
-  for i_chan = 0 to nb_chans - 1 do
-    fprintf output "#%d=%s\n"
-      i_chan (Sdf_3D.symbols_of_angular_channel i_chan);
-    for i_da = 0 to nb_da - 1 do
-      let feat = angular.(i_da).(i_chan) in
-      if feat > 0.0 then
-        fprintf output "%d %g %g\n" i_chan ((float i_da) *. da) feat
+let txt_output_angular_block da encoded_atom maybe_output =
+  match maybe_output with
+  | None -> ()
+  | Some output ->
+    let angular = Sdf_3D.(encoded_atom.angular) in
+    let nb_da = A.length angular in
+    let nb_chans = A.length angular.(0) in
+    for i_chan = 0 to nb_chans - 1 do
+      fprintf output "#%d=%s\n"
+        i_chan (Sdf_3D.symbols_of_angular_channel i_chan);
+      for i_da = 0 to nb_da - 1 do
+        let feat = angular.(i_da).(i_chan) in
+        if feat > 0.0 then
+          fprintf output "%d %g %g\n" i_chan ((float i_da) *. da) feat
+      done
     done
-  done
 
 let main () =
   Log.color_on ();
@@ -91,6 +97,7 @@ let main () =
               %s\n  \
               -i <filename.sdf>: input file\n  \
               -o <filename.csv>: output file\n  \
+              [--gpl <filename.txt>: dump for gnuplot\n  \
               [--charges <charges.csv>]: prepend those charges\n  \
               [-np <int>]: nprocs (default=1)\n  \
               [-l <int>]: number of layers in [1,2]\n  \
@@ -105,6 +112,7 @@ let main () =
   if verbose then Log.(set_log_level DEBUG);
   let input_fn = CLI.get_string_def ["-i"] args "/dev/stdin" in
   let maybe_charges_fn = CLI.get_string_opt ["--charges"] args in
+  let maybe_gnuplot_data_fn = CLI.get_string_opt ["--gpl"] args in
   let output_fn = CLI.get_string ["-o"] args in
   let _nprocs = CLI.get_int_def ["-np"] args 1 in
   let nb_layers = CLI.get_int_def ["-l"] args 1 in
@@ -127,6 +135,9 @@ let main () =
       res in
   let prepend_charges = A.length charges > 0 in
   let atoms_count = ref 0 in
+  let gnuplot_out = match maybe_gnuplot_data_fn with
+    | Some fn -> Some (open_out fn)
+    | None -> None in
   LO.with_infile_outfile input_fn output_fn (fun input output ->
       try
         while true do
@@ -135,10 +146,12 @@ let main () =
           A.iteri (fun i_atom encoded_atom ->
               output_radial_block encoded_atom prepend_charges charges
                 output atoms_count i_atom max_feat;
+              txt_output_radial_block dx encoded_atom gnuplot_out;
               Log.debug "max radial block feat: %d" !max_feat;
               if not no_angular then
                 begin
                   output_angular_block encoded_atom output max_feat;
+                  txt_output_angular_block da encoded_atom gnuplot_out;
                   Log.debug "max angular block feat: %d" !max_feat;
                 end;
               fprintf output "\n" (* terminate this atom's feature vector *)
@@ -146,6 +159,9 @@ let main () =
         done
       with End_of_file -> ()
     );
-  Log.info "num_atoms: %d max_feat: %d" !atoms_count !max_feat
+  Log.info "num_atoms: %d max_feat: %d" !atoms_count !max_feat;
+  match gnuplot_out with
+  | Some out -> close_out out
+  | None -> ()
 
 let () = main ()
