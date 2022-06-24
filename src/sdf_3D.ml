@@ -364,8 +364,6 @@ let eval_K bwidth x =
     let x' = x /. bwidth in
     scale *. (triweight_K x')
 
-(* FBR: output encoding to a data file for gnuplot *)
-
 let pi = 4.0 *. atan 1.0
 
 (* compute all angles involving given center atom
@@ -391,7 +389,7 @@ let all_angles (center: V3.t) (neighbors: (int * int * V3.t) list)
 let encode_first_layer verbose dx cutoff da mol =
   let nx = 1 + int_of_float (cutoff /. dx) in
   Log.debug "nx: %d" nx;
-  (* FBR: this 2 should be 1 ?! DEBUG TEST *)
+  (* FBR:TODO this 2 should be 1 ?! DEBUG TEST *)
   let na = 2 + int_of_float (pi /. da) in
   Log.debug "na: %d" na;
   Log.debug "nb_angular_channels: %d" nb_angular_channels;
@@ -412,6 +410,9 @@ let encode_first_layer verbose dx cutoff da mol =
               let bin_after = bin_before + 1 in
               let before = dx *. (float bin_before) in
               let after = before +. dx in
+              (* linear binning *)
+              let w_l = 1.0 -. (dist -. before) in
+              let w_r = 1.0 -. (after -. dist) in
               if verbose then
                 begin
                   Log.debug "chan: %d" chan;
@@ -420,10 +421,9 @@ let encode_first_layer verbose dx cutoff da mol =
                   Log.debug "x_r: %d" bin_after;
                   Log.debug "before: %g" before;
                   Log.debug "after: %g" after;
+                  Log.debug "w_l: %g" w_l;
+                  Log.debug "w_r: %g" w_r
                 end;
-              (* linear binning *)
-              let w_l = 1.0 -. (dist -. before) in
-              let w_r = 1.0 -. (after -. dist) in
               res.(bin_before).(chan) <- res.(bin_before).(chan) +. w_l;
               res.(bin_after).(chan) <- res.(bin_after).(chan) +. w_r
           ) neighbors;
@@ -446,6 +446,9 @@ let encode_first_layer verbose dx cutoff da mol =
               let bin_after = bin_before + 1 in
               let before = da *. (float bin_before) in
               let after = before +. da in
+              (* linear binning *)
+              let w_l = 1.0 -. (angle -. before) in
+              let w_r = 1.0 -. (after -. angle) in
               if verbose then
                 begin
                   Log.debug "chan: %d" chan;
@@ -453,10 +456,9 @@ let encode_first_layer verbose dx cutoff da mol =
                   Log.debug "a_r: %d" bin_after;
                   Log.debug "before: %g" before;
                   Log.debug "after: %g" after;
+                  Log.debug "w_l: %g" w_l;
+                  Log.debug "w_r: %g" w_r
                 end;
-              (* linear binning *)
-              let w_l = 1.0 -. (angle -. before) in
-              let w_r = 1.0 -. (after -. angle) in
               res.(bin_before).(chan) <- res.(bin_before).(chan) +. w_l;
               res.(bin_after).(chan) <- res.(bin_after).(chan) +. w_r
           ) angles;
