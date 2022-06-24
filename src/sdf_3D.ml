@@ -370,10 +370,10 @@ let pi = 4.0 *. atan 1.0
 let all_angles (center: V3.t) (neighbors: (int * int * V3.t) list)
   : (int * float) list =
   let angles (_, _, x_xyz) others =
-    let xc = V3.diff x_xyz center in
+    let cx = V3.diff x_xyz center in
     L.rev_map (fun (_, z_anum, z_xyz) ->
-        let zc = V3.diff z_xyz center in
-        let angle = V3.angle xc zc in
+        let cz = V3.diff z_xyz center in
+        let angle = V3.angle cx cz in
         assert(0.0 <= angle && angle <= pi);
         (z_anum, angle)
       ) others in
@@ -388,7 +388,7 @@ let all_angles (center: V3.t) (neighbors: (int * int * V3.t) list)
 let encode_first_layer dx cutoff da mol =
   let nx = 1 + int_of_float (cutoff /. dx) in
   Log.debug "nx: %d" nx;
-  (* FBR: this 2 should be 1 !!! DEBUG TEST ONLY *)
+  (* FBR: this 2 should be 1 ?! DEBUG TEST *)
   let na = 2 + int_of_float (pi /. da) in
   Log.debug "na: %d" na;
   Log.debug "nb_angular_channels: %d" nb_angular_channels;
