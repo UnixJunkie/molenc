@@ -37,6 +37,20 @@ let output_radial_block
     done
   done
 
+let txt_output_radial_block dx encoded_atom output =
+  let radial = Sdf_3D.(encoded_atom.radial) in
+  let nb_dx = A.length radial in
+  let nb_chans = A.length radial.(0) in
+  for i_chan = 0 to nb_chans - 1 do
+    for i_dx = 0 to nb_dx - 1 do
+      let feat = radial.(i_dx).(i_chan) in
+      if feat > 0.0 then
+        (* the feature vector should be very sparse;
+           liblinear wants feature indexes to start at 1 *)
+        fprintf output "%d %g %g\n" i_chan ((float i_dx) *. dx) feat
+    done
+  done
+
 let output_angular_block encoded_atom output max_feat =
   let offset = !max_feat + 1 in
   let angular = Sdf_3D.(encoded_atom.angular) in
