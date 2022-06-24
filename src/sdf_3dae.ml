@@ -42,14 +42,21 @@ let txt_output_radial_block dx encoded_atom maybe_out =
   match maybe_out with
   | None -> ()
   | Some output ->
+    fprintf output "#radial\n";
     let radial = Sdf_3D.(encoded_atom.radial) in
     let nb_dx = A.length radial in
     let nb_chans = A.length radial.(0) in
     for i_chan = 0 to nb_chans - 1 do
-      fprintf output "#%d=%s\n" i_chan (Sdf_3D.symbol_of_channel i_chan);
+      let has_header = ref false in
       for i_dx = 0 to nb_dx - 1 do
         let feat = radial.(i_dx).(i_chan) in
         if feat > 0.0 then
+          let () =
+            if not !has_header then
+              let () =
+                fprintf output "#%d=%s\n"
+                  i_chan (Sdf_3D.symbol_of_channel i_chan) in
+              has_header := true in
           fprintf output "%d %g %g\n" i_chan ((float i_dx) *. dx) feat
       done
     done
@@ -75,15 +82,22 @@ let txt_output_angular_block da encoded_atom maybe_output =
   match maybe_output with
   | None -> ()
   | Some output ->
+    fprintf output "#angular\n";
     let angular = Sdf_3D.(encoded_atom.angular) in
     let nb_da = A.length angular in
     let nb_chans = A.length angular.(0) in
     for i_chan = 0 to nb_chans - 1 do
-      fprintf output "#%d=%s\n"
-        i_chan (Sdf_3D.symbols_of_angular_channel i_chan);
+      let has_header = ref false in
       for i_da = 0 to nb_da - 1 do
         let feat = angular.(i_da).(i_chan) in
         if feat > 0.0 then
+          let () =
+            if not !has_header then
+              let () =
+                fprintf output "#%d=%s\n"
+                  i_chan (Sdf_3D.symbols_of_angular_channel i_chan) in
+              has_header := true
+          in
           fprintf output "%d %g %g\n" i_chan ((float i_da) *. da) feat
       done
     done
