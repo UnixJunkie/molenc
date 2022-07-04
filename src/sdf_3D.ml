@@ -411,8 +411,8 @@ let encode_first_layer verbose dx cutoff da mol =
               let before = dx *. (float bin_before) in
               let after = before +. dx in
               (* linear binning *)
-              let w_l = 1.0 -. (dist -. before) in
-              let w_r = 1.0 -. (after -. dist) in
+              let w_l = (after -. dist) /. dx in
+              let w_r = 1.0 -. w_l in
               if verbose then
                 begin
                   Log.debug "chan: %d" chan;
@@ -447,8 +447,8 @@ let encode_first_layer verbose dx cutoff da mol =
               let before = da *. (float bin_before) in
               let after = before +. da in
               (* linear binning *)
-              let w_l = 1.0 -. (angle -. before) in
-              let w_r = 1.0 -. (after -. angle) in
+              let w_l = (after -. angle) /. da in
+              let w_r = 1.0 -. w_l in
               if verbose then
                 begin
                   Log.debug "chan: %d" chan;
