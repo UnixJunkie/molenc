@@ -413,17 +413,10 @@ let encode_first_layer verbose dx cutoff da mol =
               (* linear binning *)
               let w_l = (after -. dist) /. dx in
               let w_r = 1.0 -. w_l in
-              if verbose then
-                begin
-                  Log.debug "chan: %d" chan;
-                  Log.debug "dist: %g" dist;
-                  Log.debug "x_l: %d" bin_before;
-                  Log.debug "x_r: %d" bin_after;
-                  Log.debug "before: %g" before;
-                  Log.debug "after: %g" after;
-                  Log.debug "w_l: %g" w_l;
-                  Log.debug "w_r: %g" w_r
-                end;
+              (if verbose then
+                 Log.debug "chan: %d %s left: %g x_l: %d w_l: %g dist: %g right: %g x_r: %d w_r: %g"
+                   chan (symbol_of_channel chan) before bin_before w_l dist after bin_after w_r
+              );
               res.(bin_before).(chan) <- res.(bin_before).(chan) +. w_l;
               res.(bin_after).(chan) <- res.(bin_after).(chan) +. w_r
           ) neighbors;
@@ -449,16 +442,11 @@ let encode_first_layer verbose dx cutoff da mol =
               (* linear binning *)
               let w_l = (after -. angle) /. da in
               let w_r = 1.0 -. w_l in
-              if verbose then
-                begin
-                  Log.debug "chan: %d" chan;
-                  Log.debug "a_l: %d" bin_before;
-                  Log.debug "a_r: %d" bin_after;
-                  Log.debug "before: %g" before;
-                  Log.debug "after: %g" after;
-                  Log.debug "w_l: %g" w_l;
-                  Log.debug "w_r: %g" w_r
-                end;
+              (if verbose then
+                 Log.debug "chan: %d (%s) left: %g a_l: %d w_l: %g angle: %g right: %g a_r: %d w_r: %g"
+                   chan (symbols_of_angular_channel chan)
+                   before bin_before w_l angle after bin_after w_r
+              );
               res.(bin_before).(chan) <- res.(bin_before).(chan) +. w_l;
               res.(bin_after).(chan) <- res.(bin_after).(chan) +. w_r
           ) angles;
