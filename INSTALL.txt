@@ -1,0 +1,88 @@
+Molenc install guide
+====================
+
+Author: Francois Berenger
+Date: 6th July 2022
+
+Example installation instructions on a fresh Debian 11.3 system.
+On Ubuntu Linux, installation should be very similar.
+
+On Mac computers, this software has worked in the past, but
+installation is a pain; hence we don't maintain anymore
+neither recommend this setup.
+
+The Bash shell is assumed for all commands.
+
+Sudo rights are assumed for the user performing the installation.
+
+I) Install system-wide packages
+-------------------------------
+
+$ sudo apt install git opam python3-pip python3-numpy
+
+II) Configure the OCaml package manager
+---------------------------------------
+
+$ opam init -y
+$ eval `opam config env` # path setup for ocaml executables
+                         # might be needed in your ~/.bashrc
+
+III) Install OCaml packages
+---------------------------
+
+$ opam depext -i molenc # this will also install rdkit system-wide
+
+II) Install user-space packages
+-------------------------------
+
+$ pip3 install six # required by chemo-standardizer
+$ pip3 install chemo-standardizer # requires system-wide rdkit
+
+III) Tests
+----------
+
+Test the molecular standardiser is correctly installed.
+It is used by molenc in case molecules need to be standardized.
+
+$ standardiser -h
+
+If not, it may be missing from PATH:
+
+$ export PATH=$PATH:~/.local/bin # might be needed in your ~/.bashrc
+$ standardiser -h # test again
+
+IV) Encode some molecules
+-------------------------
+
+Get some molecules in the SMILES format:
+
+$ wget https://raw.githubusercontent.com/UnixJunkie/molenc/master/data/chembl_antivirals.smi -O antivirals.smi
+
+Encode those molecules using counted atom pairs fingerprint:
+
+$ molenc.sh --pairs -i antivirals.smi -o antivirals_std.AP
+
+Look at what was obtained:
+$ head -1 antivirals_std.AP
+CHEMBL807,0.0,[2:6;8:1;15:3;25:12;26:2;70:3;93:3;372:6;393:6;407:1;412:2;453:3;466:2;524:9;917:9;1095:3;1742:1;1776:3;2063:3;2576:4;2646:1;4428:3;5906:2;5916:1;6005:2]
+
+V) Encode more molecules with an existing encoding dictionary
+-------------------------------------------------------------
+
+Let's say we want to encode some new molecules using an existing encoding dictionary
+(a dictionary was created in the previous step for antivirals.smi).
+In the real world, you might want the encoding dictionary to cover the whole ChEMBL database
+(or your company's whole compound collection), so that the dictionary is exhaustive enough.
+
+In the following, you need to replace MY_MOLECULES.smi with the SMILES file of your choice.
+
+$ molenc.sh --pairs -d antivirals.smi.dix -i MY_MOLECULES.smi -o MY_MOLECULES_std.AP
+
+Concluding remarks
+------------------
+
+Molenc is a research software prototype.
+As such, it might be be a little difficult to install and under-documented.
+So is the fate of research by-products.
+Don't hesitate to contact the author in case you cannot install the software,
+find any bug or encounter some problems while using it.
