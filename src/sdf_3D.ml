@@ -21,6 +21,9 @@ type atoms_3D = { name: string;
                      no bond order info *)
                   bonds: int list array }
 
+(* FBR: If there are N atom types, there are not enough radial channels
+   we need (N center atoms x N neighbor atoms) *)
+
 type encoded_atom =
   { radial: float array array; (* shape: (nb_dx, nb_chans) *)
     angular: float array array (* shape: (nb_da, nb_chans +

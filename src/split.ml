@@ -108,26 +108,40 @@ let main () =
     (eprintf "usage:\n  \
               %s\n  \
               -i <filename.{smi|mol2|sdf}>: molecules input file\n  \
+              [--per-dir <int>]: create a directory every N molecules\n  \
               [-c <int>]: chunk size (molecules per output file; default=50)\n"
        Sys.argv.(0);
      exit 1);
   let input_fn = CLI.get_string ["-i"] args in
   let csize = CLI.get_int_def ["-c"] args 50 in
-  CLI.finalize ();
+  let per_dir = CLI.get_int_def ["--per-dir"] args 0 in
+  CLI.finalize (); (* ------------------------------------------------------ *)
   let ff, ext = file_format_of_filename input_fn in
   let basename = Filename.chop_suffix input_fn ext in
   let count = ref 0 in
+  let dir_count = ref 0 in
   LO.with_in_file input_fn (fun input ->
       try
         while true do
-          let output_fn = sprintf "%s_%09d%s" basename !count ext in
+          let dir_prfx =
+            if per_dir <= 0 then
+              ""
+            else
+              if !count mod per_dir = 0 then
+                let () = incr dir_count in
+                let dir_name = sprintf "d%07d" (!dir_count - 1) in
+                Sys.mkdir dir_name 0o700;
+                dir_name ^ "/"
+              else
+                sprintf "d%07d/" (!dir_count - 1) in
+          let output_fn = sprintf "%s%s_%09d%s" dir_prfx basename !count ext in
           LO.with_out_file output_fn (fun out ->
               for _i = 1 to csize do
                 let mol = read_one ff count input in
                 L.iter (fprintf out "%s\n") mol
               done;
               eprintf "read %d\r%!" !count
-            )
+            );
         done
       with End_of_file -> ()
     );
