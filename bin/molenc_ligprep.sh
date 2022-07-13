@@ -10,7 +10,7 @@ if [ $# -eq 0 ]; then
     echo "usage:"
     echo "molenc_ligprep.sh molecules.smi"
     echo "         [--fast]: protonate:obabel; 3D:omega; molcharge:MMFF94"
-    echo "         [--HA]: protonate:cxcalc; 3D:omega; molcharge:AM1BCC"
+    echo "         [--HA]: protonate:tautomers; 3D:omega; molcharge:AM1BCC"
     echo "         [--free]: protonate:obabel; 3D:obabel; obabel:MMFF94"
     exit 1
 fi
@@ -81,14 +81,12 @@ fi
 
 if [ "$HIGH_ACCURACY" == "TRUE" ]; then
     echo "running HA mode"
-    PROTONATED=${OUT}_taut74.sdf
-    CONFORMER=${OUT}_taut74_1conf.sdf
-    CHARGED=${OUT}_taut74_1conf_am1bcc.mol2
-    # protonation state at physiological pH
-    cp $IN $OUT.smiles # chemaxon cxcalc requires .smiles file extension...
-    # -g --> skip erroneous molecules
-    cxcalc -g majortautomer -H 7.4 -f sdf $OUT.smiles > $PROTONATED
-    rm -f $OUT.smiles
+    PROTONATED=${OUT}_OEtaut74.smi
+    CONFORMER=${OUT}_OEtaut74_1conf.sdf
+    CHARGED=${OUT}_OEtaut74_1conf_am1bcc.mol2
+    # most reasonable tautomer at physiological pH (7.4)
+    ~/usr/openeye/bin/tautomers -pkanorm true -rank true -maxtoreturn 1 \
+                                -in $IN -out $PROTONATED
     # lowest energy conformer w/ OE omega
     ${RHEL_OE_BASE}/omega/omega2 \
         -strictstereo false -maxconfs 1 -in $PROTONATED -out $CONFORMER
