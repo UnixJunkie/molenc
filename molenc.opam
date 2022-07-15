@@ -22,6 +22,7 @@ install: [
   ["cp" "bin/molenc_panascan.py" "%{bin}%/molenc_panascan.py"]
   ["cp" "bin/molenc_scaffold.py" "%{bin}%/molenc_scaffold.py"]
   ["cp" "bin/molenc_deepsmi.py" "%{bin}%/molenc_deepsmi.py"]
+  ["cp" "bin/molenc_lead.py" "%{bin}%/molenc_lead.py"]
 ]
 depends: [
   "batteries" {>= "3.5.0"}
