@@ -86,13 +86,14 @@ if [ "$HIGH_ACCURACY" == "TRUE" ]; then
     CHARGED=${OUT}_OEtaut74_1conf_am1bcc.mol2
     # most reasonable tautomer at physiological pH (7.4)
     ~/usr/openeye/bin/tautomers -pkanorm true -rank true -maxtoreturn 1 \
-                                -in $IN -out $PROTONATED
+                                -maxtime 10 -in $IN -out $PROTONATED
     # lowest energy conformer w/ OE omega
     ${RHEL_OE_BASE}/omega/omega2 \
-        -strictstereo false -maxconfs 1 -in $PROTONATED -out $CONFORMER
-    # assign partial charges
-    ${RHEL_OE_BASE}/quacpac/molcharge \
-        -method am1bcc -in $CONFORMER -out $CHARGED
+                   -maxtime 10 -strictstereo false -maxconfs 1 \
+                   -in $PROTONATED -out $CONFORMER
+    # assign partial charges; no -maxtime CLI option hence timeout
+    timeout 10s ${RHEL_OE_BASE}/quacpac/molcharge \
+            -method am1bcc -in $CONFORMER -out $CHARGED
 fi
 
 # free / open-source mode -----------------------------------------------------
