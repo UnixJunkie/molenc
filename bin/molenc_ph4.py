@@ -1,26 +1,18 @@
 #!/usr/bin/env python3
-
+#
+# Copyright (C) 2022, Francois Berenger
+# Tsuda laboratory, Tokyo University,
+# 5-1-5 Kashiwa-no-ha, Kashiwa-shi, Chiba-ken, 277-8561, Japan.
+#
 # project molecules 3D conformers into the pharmacophore features/points space
 
-import os, sys, time
+import sys, time
 from rdkit import Chem
-
-def matching_indexes(mol, pat_str):
-    res = []
-    pat = mol.GetSubstructMatches(pat_str)
-    for i in pat:
-        for j in i:
-            res.append(j)
-    return res
 
 # ph4 feature SMARTS from the Pharmer software
 # definitions from Lidio Meireles and David Ryan Koes
 # Article: https://doi.org/10.1021/ci200097m
 # Code: https://raw.githubusercontent.com/UnixJunkie/pharmer/master/pharmarec.cpp
-
-def pattern_of_smarts(s):
-    return Chem.MolFromSmarts(s)
-
 aro_smarts = ["a1aaaaa1",
               "a1aaaa1"]
 
@@ -66,6 +58,9 @@ hyd_smarts = ["a1aaaaa1",
 	      # sulfur (apparently)
 	      "[$([S]~[#6])&!$(S~[!#6])]"]
 
+def pattern_of_smarts(s):
+    return Chem.MolFromSmarts(s)
+
 # compile all SMARTS
 aro_patterns = map(pattern_of_smarts, aro_smarts)
 hbd_patterns = map(pattern_of_smarts, hbd_smarts)
@@ -74,6 +69,59 @@ pos_patterns = map(pattern_of_smarts, pos_smarts)
 neg_patterns = map(pattern_of_smarts, neg_smarts)
 hyd_patterns = map(pattern_of_smarts, hyd_smarts)
 
+# geometric center of a matched pattern
+# WARNING: single-conformer molecule is assumed
+def average_match(mol, matched_pattern):
+    avg_x = 0.0
+    avg_y = 0.0
+    avg_z = 0.0
+    count = 0.0
+    conf0 = mol.GetConformer(0)
+    for i in matched_pattern:
+        xyz = conf0.GetAtomPosition(i)
+        avg_x += xyz.x
+        avg_y += xyz.y
+        avg_z += xyz.z
+        count += 1.0
+    center = (avg_x / count,
+              avg_y / count,
+              avg_z / count)
+    return center
+
+def find_matches(mol, patterns):
+    res = []
+    for pat in patterns:
+        # get all matches for that pattern
+        matched = mol.GetSubstructMatches(pat)
+        for m in matched:
+            # get the center of each matched group
+            avg = average_match(mol, m)
+            res.append(avg)
+    return res
+
+def find_ARO(mol):
+    return find_matches(mol, aro_patterns)
+
+def find_HBD(mol):
+    return find_matches(mol, hbd_patterns)
+
+def find_HBA(mol):
+    return find_matches(mol, hba_patterns)
+
+def find_POS(mol):
+    return find_matches(mol, pos_patterns)
+
+def find_NEG(mol):
+    return find_matches(mol, neg_patterns)
+
+def find_HYD(mol):
+    return find_matches(mol, hyd_patterns)
+
+def prfx_print(prfx, x, y, z):
+    print("%s %f %f %f" % (prfx, x, y, z))
+
+# FBR: dump in simple text format: nb_features-mol_name line then feature lines
+# FBR: regroup all hydrophobic features within 2.0A
 # FBR: dump them in a format chimera can read (BILD)
 
 if __name__ == '__main__':
@@ -81,7 +129,26 @@ if __name__ == '__main__':
     mol_supplier = Chem.SDMolSupplier(sys.argv[1]) # FBR: handle CLI options properly
     count = 0
     for mol in mol_supplier:
-        print("#atoms:%d %s" % (mol.GetNumAtoms(), mol.GetProp('_Name')))
+        print("#atoms:%d" % mol.GetNumAtoms())
+        # mol.GetProp('_Name') # FBR the name is probably 2nd line in each SDF block
+        aromatics = find_ARO(mol)
+        donors = find_HBD(mol)
+        acceptors = find_HBA(mol)
+        positives = find_POS(mol)
+        negatives = find_NEG(mol)
+        hydrohobes = find_HYD(mol)
+        for (x, y, z) in aromatics:
+            prfx_print("ARO", x, y, z)
+        for (x, y, z) in donors:
+            prfx_print("HBD", x, y, z)
+        for (x, y, z) in acceptors:
+            prfx_print("HBA", x, y, z)
+        for (x, y, z) in positives:
+            prfx_print("POS", x, y, z)
+        for (x, y, z) in negatives:
+            prfx_print("NEG", x, y, z)
+        for (x, y, z) in hydrohobes:
+            prfx_print("HYD", x, y, z)
         count += 1
     after = time.time()
     dt = after - before
