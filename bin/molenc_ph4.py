@@ -18,6 +18,9 @@ def matching_indexes(mol, pat_str):
 # Article: https://doi.org/10.1021/ci200097m
 # Code: https://raw.githubusercontent.com/UnixJunkie/pharmer/master/pharmarec.cpp
 
+def pattern_of_smarts(s):
+    return Chem.MolFromSmarts(s)
+
 aro_smarts = ["a1aaaaa1",
               "a1aaaa1"]
 
@@ -62,6 +65,16 @@ hyd_smarts = ["a1aaaaa1",
 	      "[$([CH2X4,CH1X3,CH0X2]~[CH2X4,CH1X3,CH0X2]~[$([CH2X4,CH1X3,CH0X2]~[$([!#1]);!$([CH2X4,CH1X3,CH0X2])])])]~[CH2X4,CH1X3,CH0X2]~[CH2X4,CH1X3,CH0X2]~[CH2X4,CH1X3,CH0X2]",
 	      # sulfur (apparently)
 	      "[$([S]~[#6])&!$(S~[!#6])]"]
+
+# compile all SMARTS
+aro_patterns = map(pattern_of_smarts, aro_smarts)
+hbd_patterns = map(pattern_of_smarts, hbd_smarts)
+hba_patterns = map(pattern_of_smarts, hba_smarts)
+pos_patterns = map(pattern_of_smarts, pos_smarts)
+neg_patterns = map(pattern_of_smarts, neg_smarts)
+hyd_patterns = map(pattern_of_smarts, hyd_smarts)
+
+# FBR: dump them in a format chimera can read (BILD)
 
 if __name__ == '__main__':
     before = time.time()
