@@ -122,11 +122,38 @@ def prfx_print(prfx, x, y, z):
 
 # FBR: dump in simple text format: nb_features-mol_name line then feature lines
 # FBR: regroup all hydrophobic features within 2.0A
-# FBR: dump them in a format chimera can read (BILD)
+
+def bild_print(out, color, trans, radius, feats):
+    if len(feats) > 0:
+        out.write(".color %s\n" % color)
+        out.write(".transparency %f\n" % trans)
+        for (x, y, z) in feats:
+            out.write(".sphere %f %f %f %f\n" % (x, y, z, radius))
+
+def bild_print_ARO(out, feats):
+    bild_print(out, "green", 0.75, 1.5, feats)
+
+def bild_print_HBD(out, feats):
+    bild_print(out, "white", 0.75, 1.0, feats)
+
+def bild_print_HBA(out, feats):
+    bild_print(out, "orange", 0.75, 1.0, feats)
+
+def bild_print_POS(out, feats):
+    bild_print(out, "blue", 0.75, 1.2, feats)
+
+def bild_print_NEG(out, feats):
+    bild_print(out, "red", 0.75, 1.2, feats)
+
+def bild_print_HYD(out, feats):
+    bild_print(out, "grey", 0.75, 1.1, feats)
 
 if __name__ == '__main__':
     before = time.time()
-    mol_supplier = Chem.SDMolSupplier(sys.argv[1]) # FBR: handle CLI options properly
+    input_fn = sys.argv[1]
+    mol_supplier = Chem.SDMolSupplier(input_fn) # FBR: handle CLI options properly
+    bild_fn = input_fn + ".bild"
+    bild_out = open(bild_fn, "w")
     count = 0
     for mol in mol_supplier:
         print("#atoms:%d" % mol.GetNumAtoms())
@@ -139,17 +166,24 @@ if __name__ == '__main__':
         hydrohobes = find_HYD(mol)
         for (x, y, z) in aromatics:
             prfx_print("ARO", x, y, z)
+        bild_print_ARO(bild_out, aromatics)
         for (x, y, z) in donors:
             prfx_print("HBD", x, y, z)
+        bild_print_HBD(bild_out, donors)
         for (x, y, z) in acceptors:
             prfx_print("HBA", x, y, z)
+        bild_print_HBA(bild_out, acceptors)
         for (x, y, z) in positives:
             prfx_print("POS", x, y, z)
+        bild_print_POS(bild_out, positives)
         for (x, y, z) in negatives:
             prfx_print("NEG", x, y, z)
+        bild_print_NEG(bild_out, negatives)
         for (x, y, z) in hydrohobes:
             prfx_print("HYD", x, y, z)
+        bild_print_HYD(bild_out, hydrohobes)
         count += 1
+    bild_out.close()
     after = time.time()
     dt = after - before
     print("%d molecules at %.2f mol/s" % (count, count / dt), file=sys.stderr)
