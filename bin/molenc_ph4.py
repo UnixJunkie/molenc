@@ -217,19 +217,18 @@ def read_line_EOF(input):
 
 # list all molecule names
 def names_of_sdf_file(input_fn):
-    res = []
     try:
         with open(input_fn, 'r') as input:
             fst_name = read_line_EOF(input).strip()
-            res.append(fst_name)
+            yield fst_name
             while True:
                 line = read_line_EOF(input).strip()
                 while line != "$$$$":
                     line = read_line_EOF(input).strip()
                 next_name = read_line_EOF(input).strip()
-                res.append(next_name)
+                yield next_name
     except EOFError:
-        return res
+        pass
 
 def path_prepend(dir, fn):
     if dir == '':
@@ -281,6 +280,7 @@ if __name__ == '__main__':
     count = 0
     with open(output_fn, 'w') as out:
         for mol, name in zip(mol_supplier, mol_names):
+            # print("%d atoms" % mol.GetNumHeavyAtoms(), file=sys.stderr)
             aromatics = find_ARO(mol)
             donors = find_HBD(mol)
             acceptors = find_HBA(mol)
