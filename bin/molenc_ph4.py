@@ -134,28 +134,33 @@ def average(l):
             sum_y / n,
             sum_z / n)
 
+cluster_HYD = True # as in Pharmer
+
 def find_HYD(mol):
     hydros = find_matches(mol, hyd_patterns)
-    # regroup all hydrophobic features within 2.0A
-    res = []
-    n = len(hydros)
-    idx2cluster = list(range(n))
-    for i in range(n):
-        h_i = hydros[i]
-        cluster_id = idx2cluster[i]
-        for j in range(i+1, n):
-            h_j = hydros[j]
-            if euclid(h_i, h_j) <= 2.0:
-                # same cluster
-                idx2cluster[j] = cluster_id
-    cluster_ids = set(idx2cluster)
-    for cid in cluster_ids:
-        group = []
-        for i, h in enumerate(hydros):
-            if idx2cluster[i] == cid:
-                group.append(h)
-        res.append(average(group))
-    return res
+    if not cluster_HYD:
+        return hydros
+    else:
+        # regroup all hydrophobic features within 2.0A
+        res = []
+        n = len(hydros)
+        idx2cluster = list(range(n))
+        for i in range(n):
+            h_i = hydros[i]
+            cluster_id = idx2cluster[i]
+            for j in range(i+1, n):
+                h_j = hydros[j]
+                if euclid(h_i, h_j) <= 2.0:
+                    # same cluster
+                    idx2cluster[j] = cluster_id
+        cluster_ids = set(idx2cluster)
+        for cid in cluster_ids:
+            group = []
+            for i, h in enumerate(hydros):
+                if idx2cluster[i] == cid:
+                    group.append(h)
+            res.append(average(group))
+        return res
 
 def prfx_print(prfx, x, y, z):
     print("%s %f %f %f" % (prfx, x, y, z))
