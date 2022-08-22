@@ -7,7 +7,7 @@ dev-repo: "git+https://github.com/UnixJunkie/molenc.git"
 license: "BSD-3-Clause"
 build: ["dune" "build" "-p" name "-j" jobs]
 install: [
-  # ["cp" "bin/molenc_ph4_type_atoms.py" "%{bin}%/molenc_ph4_type_atoms.py"]
+  ["cp" "bin/molenc_ph4.py" "%{bin}%/molenc_ph4.py"]
   ["cp" "bin/molenc.sh" "%{bin}%/molenc.sh"]
   ["cp" "bin/molenc_ligprep.sh" "%{bin}%/molenc_ligprep.sh"]
   ["cp" "bin/molenc_common.py" "%{bin}%/molenc_common.py"]
