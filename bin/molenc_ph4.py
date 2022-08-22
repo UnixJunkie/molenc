@@ -6,7 +6,7 @@
 #
 # project molecules 3D conformers into the pharmacophore features/points space
 
-import math, os, sys, time
+import argparse, math, os, sys, time
 from rdkit import Chem
 
 # ph4 feature SMARTS from the Pharmer software
@@ -134,9 +134,7 @@ def average(l):
             sum_y / n,
             sum_z / n)
 
-cluster_HYD = True # as in Pharmer
-
-def find_HYD(mol):
+def find_HYD(cluster_HYD, mol):
     hydros = find_matches(mol, hyd_patterns)
     if not cluster_HYD:
         return hydros
@@ -165,8 +163,6 @@ def find_HYD(mol):
 def prfx_print(prfx, positions_3d):
     for (x, y, z) in positions_3d:
         print("%s %f %f %f" % (prfx, x, y, z))
-
-# FBR: handle CLI options properly
 
 def bild_print(out, color, trans, radius, feats):
     if len(feats) > 0:
@@ -255,11 +251,32 @@ def bild_output(input_dir, mol_name,
 
 if __name__ == '__main__':
     before = time.time()
-    input_fn = sys.argv[1]
+    # CLI options parsing
+    parser = argparse.ArgumentParser(
+        description = "compute pharmacophore features for 3D molecules")
+    parser.add_argument("-i", metavar = "input.sdf", dest = "input_fn",
+                        help = "conformers input file")
+    parser.add_argument("-o", metavar = "output.ph4", dest = "output_fn",
+                        help = "ph4 features output file")
+    parser.add_argument('--bild', dest='output_bild',
+                        action='store_true', default=False,
+                        help = "output BILD files for visu in chimera")
+    parser.add_argument('--no-group', dest='cluster_HYD',
+                        action='store_false', default=True,
+                        help = "turn OFF grouping of HYD features")
+    # parse CLI ---------------------------------------------------------------
+    if len(sys.argv) == 1:
+        # user has no clue of what to do -> usage
+        parser.print_help(sys.stderr)
+        sys.exit(1)
+    args = parser.parse_args()
+    input_fn = args.input_fn
     mol_names = names_of_sdf_file(input_fn)
     input_dir = os.path.dirname(input_fn)
     mol_supplier = Chem.SDMolSupplier(input_fn)
-    output_bild = True
+    output_bild = args.output_bild
+    cluster_HYD = args.cluster_HYD
+    # parse CLI end -----------------------------------------------------------
     count = 0
     for mol, name in zip(mol_supplier, mol_names):
         aromatics = find_ARO(mol)
@@ -267,7 +284,7 @@ if __name__ == '__main__':
         acceptors = find_HBA(mol)
         positives = find_POS(mol)
         negatives = find_NEG(mol)
-        hydrophobes = find_HYD(mol)
+        hydrophobes = find_HYD(cluster_HYD, mol)
         num_feats = sum(map(len, [aromatics, donors, acceptors, positives, negatives, hydrophobes]))
         print("%d:%s" % (num_feats, name))
         print_ARO(aromatics)
