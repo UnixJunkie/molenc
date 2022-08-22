@@ -62,12 +62,12 @@ def pattern_of_smarts(s):
     return Chem.MolFromSmarts(s)
 
 # compile all SMARTS
-aro_patterns = map(pattern_of_smarts, aro_smarts)
-hbd_patterns = map(pattern_of_smarts, hbd_smarts)
-hba_patterns = map(pattern_of_smarts, hba_smarts)
-pos_patterns = map(pattern_of_smarts, pos_smarts)
-neg_patterns = map(pattern_of_smarts, neg_smarts)
-hyd_patterns = map(pattern_of_smarts, hyd_smarts)
+aro_patterns = list(map(pattern_of_smarts, aro_smarts))
+hbd_patterns = list(map(pattern_of_smarts, hbd_smarts))
+hba_patterns = list(map(pattern_of_smarts, hba_smarts))
+pos_patterns = list(map(pattern_of_smarts, pos_smarts))
+neg_patterns = list(map(pattern_of_smarts, neg_smarts))
+hyd_patterns = list(map(pattern_of_smarts, hyd_smarts))
 
 # geometric center of a matched pattern
 # WARNING: single-conformer molecule is assumed
