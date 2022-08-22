@@ -6,7 +6,7 @@
 #
 # project molecules 3D conformers into the pharmacophore features/points space
 
-import math, sys, time
+import math, os, sys, time
 from rdkit import Chem
 
 # ph4 feature SMARTS from the Pharmer software
@@ -166,7 +166,6 @@ def prfx_print(prfx, x, y, z):
     print("%s %f %f %f" % (prfx, x, y, z))
 
 # FBR: handle CLI options properly
-# FBR: one bild file per input molecule, if bild format asked for
 
 def bild_print(out, color, trans, radius, feats):
     if len(feats) > 0:
@@ -217,13 +216,18 @@ def names_of_sdf_file(input_fn):
     except EOFError:
         return res
 
+def path_prepend(dir, fn):
+    if dir == '':
+        return fn
+    else:
+        return (dir + '/' + fn)
+
 if __name__ == '__main__':
     before = time.time()
     input_fn = sys.argv[1]
     mol_names = names_of_sdf_file(input_fn)
+    input_dir = os.path.dirname(input_fn)
     mol_supplier = Chem.SDMolSupplier(input_fn)
-    bild_fn = input_fn + ".bild"
-    bild_out = open(bild_fn, "w")
     count = 0
     for mol, name in zip(mol_supplier, mol_names):
         aromatics = find_ARO(mol)
@@ -234,6 +238,8 @@ if __name__ == '__main__':
         hydrophobes = find_HYD(mol)
         num_feats = sum(map(len, [aromatics, donors, acceptors, positives, negatives, hydrophobes]))
         print("%d:%s" % (num_feats, name))
+        bild_fn = path_prepend(input_dir, name + ".bild")
+        bild_out = open(bild_fn, "w")
         for (x, y, z) in aromatics:
             prfx_print("ARO", x, y, z)
         bild_print_ARO(bild_out, aromatics)
@@ -252,8 +258,8 @@ if __name__ == '__main__':
         for (x, y, z) in hydrophobes:
             prfx_print("HYD", x, y, z)
         bild_print_HYD(bild_out, hydrophobes)
+        bild_out.close()
         count += 1
-    bild_out.close()
     after = time.time()
     dt = after - before
     print("%d molecules at %.2f mol/s" % (count, count / dt), file=sys.stderr)
