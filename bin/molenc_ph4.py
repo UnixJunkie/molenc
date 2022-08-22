@@ -165,8 +165,8 @@ def find_HYD(mol):
 def prfx_print(prfx, x, y, z):
     print("%s %f %f %f" % (prfx, x, y, z))
 
-# FBR: dump in simple text format: nb_features-mol_name line then feature lines
 # FBR: handle CLI options properly
+# FBR: one bild file per input molecule, if bild format asked for
 
 def bild_print(out, color, trans, radius, feats):
     if len(feats) > 0:
@@ -226,13 +226,14 @@ if __name__ == '__main__':
     bild_out = open(bild_fn, "w")
     count = 0
     for mol, name in zip(mol_supplier, mol_names):
-        print("#atoms:%d %s" % (mol.GetNumAtoms(), name))
         aromatics = find_ARO(mol)
         donors = find_HBD(mol)
         acceptors = find_HBA(mol)
         positives = find_POS(mol)
         negatives = find_NEG(mol)
-        hydrohobes = find_HYD(mol)
+        hydrophobes = find_HYD(mol)
+        num_feats = sum(map(len, [aromatics, donors, acceptors, positives, negatives, hydrophobes]))
+        print("%d:%s" % (num_feats, name))
         for (x, y, z) in aromatics:
             prfx_print("ARO", x, y, z)
         bild_print_ARO(bild_out, aromatics)
@@ -248,9 +249,9 @@ if __name__ == '__main__':
         for (x, y, z) in negatives:
             prfx_print("NEG", x, y, z)
         bild_print_NEG(bild_out, negatives)
-        for (x, y, z) in hydrohobes:
+        for (x, y, z) in hydrophobes:
             prfx_print("HYD", x, y, z)
-        bild_print_HYD(bild_out, hydrohobes)
+        bild_print_HYD(bild_out, hydrophobes)
         count += 1
     bild_out.close()
     after = time.time()
