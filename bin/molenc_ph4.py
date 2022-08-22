@@ -162,8 +162,9 @@ def find_HYD(mol):
             res.append(average(group))
         return res
 
-def prfx_print(prfx, x, y, z):
-    print("%s %f %f %f" % (prfx, x, y, z))
+def prfx_print(prfx, positions_3d):
+    for (x, y, z) in positions_3d:
+        print("%s %f %f %f" % (prfx, x, y, z))
 
 # FBR: handle CLI options properly
 
@@ -191,6 +192,24 @@ def bild_print_POS(out, feats):
 
 def bild_print_NEG(out, feats):
     bild_print(out, "red", 0.75, 1.0, feats)
+
+def print_ARO(aromatics):
+    prfx_print("ARO", aromatics)
+
+def print_HBD(donors):
+    prfx_print("HBD", donors)
+
+def print_HBA(acceptors):
+    prfx_print("HBA", acceptors)
+
+def print_POS(positives):
+    prfx_print("POS", positives)
+
+def print_NEG(negatives):
+    prfx_print("NEG", negatives)
+
+def print_HYD(hydrophobes):
+    prfx_print("HYD", hydrophobes)
 
 # better than default readline() never throwing an exception
 def read_line_EOF(input):
@@ -222,12 +241,25 @@ def path_prepend(dir, fn):
     else:
         return (dir + '/' + fn)
 
+def bild_output(input_dir, mol_name,
+                aromatics, donors, acceptors,
+                positives, negatives, hydrophobes):
+    bild_fn = path_prepend(input_dir, mol_name + ".bild")
+    with open(bild_fn, 'w') as bild_out:
+        bild_print_ARO(bild_out, aromatics)
+        bild_print_HBD(bild_out, donors)
+        bild_print_HBA(bild_out, acceptors)
+        bild_print_POS(bild_out, positives)
+        bild_print_NEG(bild_out, negatives)
+        bild_print_HYD(bild_out, hydrophobes)
+
 if __name__ == '__main__':
     before = time.time()
     input_fn = sys.argv[1]
     mol_names = names_of_sdf_file(input_fn)
     input_dir = os.path.dirname(input_fn)
     mol_supplier = Chem.SDMolSupplier(input_fn)
+    output_bild = True
     count = 0
     for mol, name in zip(mol_supplier, mol_names):
         aromatics = find_ARO(mol)
@@ -238,27 +270,16 @@ if __name__ == '__main__':
         hydrophobes = find_HYD(mol)
         num_feats = sum(map(len, [aromatics, donors, acceptors, positives, negatives, hydrophobes]))
         print("%d:%s" % (num_feats, name))
-        bild_fn = path_prepend(input_dir, name + ".bild")
-        bild_out = open(bild_fn, "w")
-        for (x, y, z) in aromatics:
-            prfx_print("ARO", x, y, z)
-        bild_print_ARO(bild_out, aromatics)
-        for (x, y, z) in donors:
-            prfx_print("HBD", x, y, z)
-        bild_print_HBD(bild_out, donors)
-        for (x, y, z) in acceptors:
-            prfx_print("HBA", x, y, z)
-        bild_print_HBA(bild_out, acceptors)
-        for (x, y, z) in positives:
-            prfx_print("POS", x, y, z)
-        bild_print_POS(bild_out, positives)
-        for (x, y, z) in negatives:
-            prfx_print("NEG", x, y, z)
-        bild_print_NEG(bild_out, negatives)
-        for (x, y, z) in hydrophobes:
-            prfx_print("HYD", x, y, z)
-        bild_print_HYD(bild_out, hydrophobes)
-        bild_out.close()
+        print_ARO(aromatics)
+        print_HBD(donors)
+        print_HBA(acceptors)
+        print_POS(positives)
+        print_NEG(negatives)
+        print_HYD(hydrophobes)
+        if output_bild:
+            bild_output(input_dir, name,
+                        aromatics, donors, acceptors,
+                        positives, negatives, hydrophobes)
         count += 1
     after = time.time()
     dt = after - before
