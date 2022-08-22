@@ -130,7 +130,7 @@ let main () =
               if !count mod per_dir = 0 then
                 let () = incr dir_count in
                 let dir_name = sprintf "d%07d" (!dir_count - 1) in
-                Sys.mkdir dir_name 0o700;
+                Unix.mkdir dir_name 0o700;
                 dir_name ^ "/"
               else
                 sprintf "d%07d/" (!dir_count - 1) in
