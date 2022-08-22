@@ -6,7 +6,7 @@
 #
 # project molecules 3D conformers into the pharmacophore features/points space
 
-import sys, time
+import math, sys, time
 from rdkit import Chem
 
 # ph4 feature SMARTS from the Pharmer software
@@ -75,14 +75,13 @@ def average_match(mol, matched_pattern):
     avg_x = 0.0
     avg_y = 0.0
     avg_z = 0.0
-    count = 0.0
+    count = float(len(matched_pattern))
     conf0 = mol.GetConformer(0)
     for i in matched_pattern:
         xyz = conf0.GetAtomPosition(i)
         avg_x += xyz.x
         avg_y += xyz.y
         avg_z += xyz.z
-        count += 1.0
     center = (avg_x / count,
               avg_y / count,
               avg_z / count)
@@ -114,13 +113,53 @@ def find_POS(mol):
 def find_NEG(mol):
     return find_matches(mol, neg_patterns)
 
+def euclid(xyz0, xyz1):
+    x0, y0, z0 = xyz0
+    x1, y1, z1 = xyz1
+    dx = x0 - x1
+    dy = y0 - y1
+    dz = z0 - z1
+    return math.sqrt(dx*dx + dy*dy + dz*dz)
+
+def average(l):
+    sum_x = 0.0
+    sum_y = 0.0
+    sum_z = 0.0
+    n = float(len(l))
+    for (x, y, z) in l:
+        sum_x += x
+        sum_y += y
+        sum_z += z
+    return (sum_x / n,
+            sum_y / n,
+            sum_z / n)
+
 def find_HYD(mol):
-    return find_matches(mol, hyd_patterns)
+    hydros = find_matches(mol, hyd_patterns)
+    # regroup all hydrophobic features within 2.0A
+    res = []
+    n = len(hydros)
+    idx2cluster = list(range(n))
+    for i in range(n):
+        h_i = hydros[i]
+        cluster_id = idx2cluster[i]
+        for j in range(i+1, n):
+            h_j = hydros[j]
+            if euclid(h_i, h_j) <= 2.0:
+                # same cluster
+                idx2cluster[j] = cluster_id
+    cluster_ids = set(idx2cluster)
+    for cid in cluster_ids:
+        group = []
+        for i, h in enumerate(hydros):
+            if idx2cluster[i] == cid:
+                group.append(h)
+        res.append(average(group))
+    return res
 
 def prfx_print(prfx, x, y, z):
     print("%s %f %f %f" % (prfx, x, y, z))
 
-# FBR: regroup all hydrophobic features within 2.0A
 # FBR: dump in simple text format: nb_features-mol_name line then feature lines
 # FBR: handle CLI options properly
 
