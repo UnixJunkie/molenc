@@ -122,6 +122,8 @@ def prfx_print(prfx, x, y, z):
 
 # FBR: dump in simple text format: nb_features-mol_name line then feature lines
 # FBR: regroup all hydrophobic features within 2.0A
+# FBR: mol.GetProp('_Name') # FBR the name is probably 2nd line in each SDF block
+# FBR: handle CLI options properly
 
 def bild_print(out, color, trans, radius, feats):
     if len(feats) > 0:
@@ -148,16 +150,38 @@ def bild_print_NEG(out, feats):
 def bild_print_HYD(out, feats):
     bild_print(out, "grey", 0.75, 1.1, feats)
 
+# better than default readline() never throwing an exception
+def read_line_EOF(input):
+    line = input.readline()
+    if line == "":
+        raise EOFError
+    else:
+        return line
+
+def names_of_sdf_file(input_fn):
+    res = []
+    try:
+        with open(input_fn, 'r') as input:
+            fst_name = read_line_EOF(input).strip()
+            res.append(fst_name)
+            while True:
+                line = read_line_EOF(input).strip()
+                while line != "$$$$":
+                    line = read_line_EOF(input).strip()
+                next_name = read_line_EOF(input).strip()
+                res.append(next_name)
+    except EOFError:
+        return res
+
 if __name__ == '__main__':
     before = time.time()
     input_fn = sys.argv[1]
-    mol_supplier = Chem.SDMolSupplier(input_fn) # FBR: handle CLI options properly
+    mol_supplier = Chem.SDMolSupplier(input_fn)
     bild_fn = input_fn + ".bild"
     bild_out = open(bild_fn, "w")
     count = 0
     for mol in mol_supplier:
         print("#atoms:%d" % mol.GetNumAtoms())
-        # mol.GetProp('_Name') # FBR the name is probably 2nd line in each SDF block
         aromatics = find_ARO(mol)
         donors = find_HBD(mol)
         acceptors = find_HBA(mol)
