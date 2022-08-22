@@ -160,9 +160,9 @@ def find_HYD(cluster_HYD, mol):
             res.append(average(group))
         return res
 
-def prfx_print(prfx, positions_3d):
+def prfx_print(prfx, out, positions_3d):
     for (x, y, z) in positions_3d:
-        print("%s %f %f %f" % (prfx, x, y, z))
+        out.write("%s %f %f %f\n" % (prfx, x, y, z))
 
 def bild_print(out, color, trans, radius, feats):
     if len(feats) > 0:
@@ -189,23 +189,23 @@ def bild_print_POS(out, feats):
 def bild_print_NEG(out, feats):
     bild_print(out, "red", 0.75, 1.0, feats)
 
-def print_ARO(aromatics):
-    prfx_print("ARO", aromatics)
+def print_ARO(out, aromatics):
+    prfx_print("ARO", out, aromatics)
 
-def print_HBD(donors):
-    prfx_print("HBD", donors)
+def print_HBD(out, donors):
+    prfx_print("HBD", out, donors)
 
-def print_HBA(acceptors):
-    prfx_print("HBA", acceptors)
+def print_HBA(out, acceptors):
+    prfx_print("HBA", out, acceptors)
 
-def print_POS(positives):
-    prfx_print("POS", positives)
+def print_POS(out, positives):
+    prfx_print("POS", out, positives)
 
-def print_NEG(negatives):
-    prfx_print("NEG", negatives)
+def print_NEG(out, negatives):
+    prfx_print("NEG", out, negatives)
 
-def print_HYD(hydrophobes):
-    prfx_print("HYD", hydrophobes)
+def print_HYD(out, hydrophobes):
+    prfx_print("HYD", out, hydrophobes)
 
 # better than default readline() never throwing an exception
 def read_line_EOF(input):
@@ -271,6 +271,7 @@ if __name__ == '__main__':
         sys.exit(1)
     args = parser.parse_args()
     input_fn = args.input_fn
+    output_fn = args.output_fn
     mol_names = names_of_sdf_file(input_fn)
     input_dir = os.path.dirname(input_fn)
     mol_supplier = Chem.SDMolSupplier(input_fn)
@@ -278,26 +279,27 @@ if __name__ == '__main__':
     cluster_HYD = args.cluster_HYD
     # parse CLI end -----------------------------------------------------------
     count = 0
-    for mol, name in zip(mol_supplier, mol_names):
-        aromatics = find_ARO(mol)
-        donors = find_HBD(mol)
-        acceptors = find_HBA(mol)
-        positives = find_POS(mol)
-        negatives = find_NEG(mol)
-        hydrophobes = find_HYD(cluster_HYD, mol)
-        num_feats = sum(map(len, [aromatics, donors, acceptors, positives, negatives, hydrophobes]))
-        print("%d:%s" % (num_feats, name))
-        print_ARO(aromatics)
-        print_HBD(donors)
-        print_HBA(acceptors)
-        print_POS(positives)
-        print_NEG(negatives)
-        print_HYD(hydrophobes)
-        if output_bild:
-            bild_output(input_dir, name,
-                        aromatics, donors, acceptors,
-                        positives, negatives, hydrophobes)
-        count += 1
+    with open(output_fn, 'w') as out:
+        for mol, name in zip(mol_supplier, mol_names):
+            aromatics = find_ARO(mol)
+            donors = find_HBD(mol)
+            acceptors = find_HBA(mol)
+            positives = find_POS(mol)
+            negatives = find_NEG(mol)
+            hydrophobes = find_HYD(cluster_HYD, mol)
+            num_feats = sum(map(len, [aromatics, donors, acceptors, positives, negatives, hydrophobes]))
+            out.write("%d:%s\n" % (num_feats, name))
+            print_ARO(out, aromatics)
+            print_HBD(out, donors)
+            print_HBA(out, acceptors)
+            print_POS(out, positives)
+            print_NEG(out, negatives)
+            print_HYD(out, hydrophobes)
+            if output_bild:
+                bild_output(input_dir, name,
+                            aromatics, donors, acceptors,
+                            positives, negatives, hydrophobes)
+            count += 1
     after = time.time()
     dt = after - before
-    print("%d molecules at %.2f mol/s" % (count, count / dt), file=sys.stderr)
+    print("%d molecules; %.2fHz" % (count, count / dt), file=sys.stderr)
