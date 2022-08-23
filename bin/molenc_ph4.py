@@ -162,14 +162,14 @@ def find_HYD(cluster_HYD, mol):
 
 def prfx_print(prfx, out, positions_3d):
     for (x, y, z) in positions_3d:
-        out.write("%s %f %f %f\n" % (prfx, x, y, z))
+        out.write("%s %g %g %g\n" % (prfx, x, y, z))
 
 def bild_print(out, color, trans, radius, feats):
     if len(feats) > 0:
         out.write(".color %s\n" % color)
-        out.write(".transparency %f\n" % trans)
+        out.write(".transparency %g\n" % trans)
         for (x, y, z) in feats:
-            out.write(".sphere %f %f %f %f\n" % (x, y, z, radius))
+            out.write(".sphere %g %g %g %g\n" % (x, y, z, radius))
 
 def bild_print_ARO(out, feats):
     bild_print(out, "green", 0.75, 1.5, feats)
