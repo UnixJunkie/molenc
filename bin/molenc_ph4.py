@@ -278,28 +278,34 @@ if __name__ == '__main__':
     cluster_HYD = args.cluster_HYD
     # parse CLI end -----------------------------------------------------------
     count = 0
+    errors = 0
     with open(output_fn, 'w') as out:
         for mol, name in zip(mol_supplier, mol_names):
             # print("%d atoms" % mol.GetNumHeavyAtoms(), file=sys.stderr)
-            aromatics = find_ARO(mol)
-            donors = find_HBD(mol)
-            acceptors = find_HBA(mol)
-            positives = find_POS(mol)
-            negatives = find_NEG(mol)
-            hydrophobes = find_HYD(cluster_HYD, mol)
-            num_feats = sum(map(len, [aromatics, donors, acceptors, positives, negatives, hydrophobes]))
-            out.write("%d:%s\n" % (num_feats, name))
-            print_ARO(out, aromatics)
-            print_HBD(out, donors)
-            print_HBA(out, acceptors)
-            print_POS(out, positives)
-            print_NEG(out, negatives)
-            print_HYD(out, hydrophobes)
-            if output_bild:
-                bild_output(input_dir, name,
-                            aromatics, donors, acceptors,
-                            positives, negatives, hydrophobes)
+            if mol == None:
+                errors += 1
+            else:
+                aromatics = find_ARO(mol)
+                donors = find_HBD(mol)
+                acceptors = find_HBA(mol)
+                positives = find_POS(mol)
+                negatives = find_NEG(mol)
+                hydrophobes = find_HYD(cluster_HYD, mol)
+                num_feats = sum(map(len, [aromatics, donors, acceptors,
+                                          positives, negatives, hydrophobes]))
+                out.write("%d:%s\n" % (num_feats, name))
+                print_ARO(out, aromatics)
+                print_HBD(out, donors)
+                print_HBA(out, acceptors)
+                print_POS(out, positives)
+                print_NEG(out, negatives)
+                print_HYD(out, hydrophobes)
+                if output_bild:
+                    bild_output(input_dir, name,
+                                aromatics, donors, acceptors,
+                                positives, negatives, hydrophobes)
             count += 1
     after = time.time()
     dt = after - before
-    print("%d molecules; %.2fHz" % (count, count / dt), file=sys.stderr)
+    print("%d molecules @ %.2fHz; %d errors" % (count, count / dt, errors),
+          file=sys.stderr)
