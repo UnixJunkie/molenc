@@ -84,8 +84,6 @@ let db_open_or_create verbose force input_fn =
       ) db;
   db
 
-(* FBR: add option to select all confs of one molecule *)
-
 let main () =
   let argc, args = CLI.init () in
   if argc = 1 then
