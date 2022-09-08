@@ -22,7 +22,8 @@ let mol_reader_for_file fn =
   if S.ends_with fn ".mol2" then Mol2.(read_one_raw, get_name)
   else if S.ends_with fn ".sdf" then Sdf.(read_one, get_fst_line)
   else if S.ends_with fn ".smi" then Smi.(read_one, get_name)
-  else failwith ("Get_mol.mol_reader_for_file: not {.mol2|.sdf|.smi}: " ^ fn)
+  else if S.ends_with fn ".ph4" then Ph4.(read_one, get_name)
+  else failwith ("Get_mol.mol_reader_for_file: not {.mol2|.sdf|.smi|.ph4}: " ^ fn)
 
 let populate_db db input_fn =
   let read_one_mol, read_mol_name = mol_reader_for_file input_fn in
@@ -83,11 +84,13 @@ let db_open_or_create verbose force input_fn =
       ) db;
   db
 
+(* FBR: add option to select all confs of one molecule *)
+
 let main () =
   let argc, args = CLI.init () in
   if argc = 1 then
     (eprintf "usage:\n\
-              %s -i molecules.{sdf|mol2|smi} \
+              %s -i molecules.{sdf|mol2|smi|ph4} \
               {-names \"mol1,mol2,...\"|-f names_file} [-v]\n  \
               -i <filename>: molecules input file\n  \
               [-o <filename>]: molecules output file (default=stdout)\n  \
