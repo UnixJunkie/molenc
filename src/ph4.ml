@@ -1,47 +1,52 @@
-(* Copyright (C) 2020, Francois Berenger
+(* Copyright (C) 2022, Francois Berenger
 
-   Yamanishi laboratory,
-   Department of Bioscience and Bioinformatics,
-   Faculty of Computer Science and Systems Engineering,
-   Kyushu Institute of Technology,
-   680-4 Kawazu, Iizuka, Fukuoka, 820-8502, Japan. *)
+   Tsuda Laboratory, Graduate School of Frontier Sciences,
+   The University of Tokyo, Japan.
 
-(* pharmacophore features supported by rdkit *)
+   Support .ph4 files. *)
 
-open Printf
+(* A .ph4 files has format:
+---
+<num_feats:int>:<mol_name:string>
+ARO 1.47088 -0.706617 1.86095
+.
+.
+.
+--- *)
 
-type t = Acc (* HB acceptor *)
-       | Don (* HB donor *)
-       | Pos (* pos. ionizable *)
-       | Neg (* neg. ionizable *)
-       | Hyd (* hydrohpobe *)
-       | Lhy (* lumped hydrophobe *)
-       | Znb (* Zn binder *)
-       | Aro (* aromatic *)
-       | Non (* none *)
+module S = BatString
 
-let of_char = function
-  | 'D' -> Don
-  | 'A' -> Acc
-  | 'P' -> Pos
-  | 'N' -> Neg
-  | 'a' -> Aro
-  | 'H' -> Hyd
-  | 'h' -> Lhy
-  | 'Z' -> Znb
-  | '_' -> Non
-  | c -> failwith (sprintf "Ph4.of_char: unknown: %c" c)
+let parse_header_line line =
+  let num_feats, name = S.split ~by:":" line in
+  (int_of_string num_feats, name)
 
-let to_char = function
-  | Don -> 'D'
-  | Acc -> 'A'
-  | Pos -> 'P'
-  | Neg -> 'N'
-  | Aro -> 'a'
-  | Hyd -> 'H'
-  | Lhy -> 'h'
-  | Znb -> 'Z'
-  | Non -> '_'
+exception Read_one
 
-let to_string feat =
-  String.make 1 (to_char feat)
+(* read one molecule from a .ph4 file *)
+let read_one (input: in_channel): string =
+  let buff = Buffer.create 2048 in
+  try
+    while true do
+      let line = input_line input in
+      let num_feats, _name = parse_header_line line in
+      Buffer.add_string buff line;
+      Buffer.add_char buff '\n';
+      for i = 1 to num_feats do
+        let line = input_line input in
+        Buffer.add_string buff line;
+        Buffer.add_char buff '\n'
+      done;
+      raise Read_one
+    done;
+    assert(false)
+  with End_of_file | Read_one ->
+    let res = Buffer.contents buff in
+    if res = "" then
+      raise End_of_file
+    else
+      res
+
+let get_name ph4_lines =
+  let header, _rest = S.split ph4_lines ~by:"\n" in
+  let _num_feats, name = parse_header_line header in
+  name
