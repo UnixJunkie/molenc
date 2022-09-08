@@ -26,25 +26,21 @@ exception Read_one
 let read_one (input: in_channel): string =
   let buff = Buffer.create 2048 in
   try
-    while true do
+    let line = input_line input in
+    let num_feats, _name = parse_header_line line in
+    Buffer.add_string buff line;
+    Buffer.add_char buff '\n';
+    for _i = 1 to num_feats do
       let line = input_line input in
-      let num_feats, _name = parse_header_line line in
       Buffer.add_string buff line;
-      Buffer.add_char buff '\n';
-      for i = 1 to num_feats do
-        let line = input_line input in
-        Buffer.add_string buff line;
-        Buffer.add_char buff '\n'
-      done;
-      raise Read_one
+      Buffer.add_char buff '\n'
     done;
-    assert(false)
-  with End_of_file | Read_one ->
+    raise Read_one
+  with | End_of_file | Read_one ->
     let res = Buffer.contents buff in
     if res = "" then
       raise End_of_file
-    else
-      res
+    else res
 
 let get_name ph4_lines =
   let header, _rest = S.split ph4_lines ~by:"\n" in
