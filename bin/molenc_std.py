@@ -18,6 +18,8 @@ def parse_smiles_line(line):
     fst_white = -1
     if fst_space != -1 and fst_tab != -1:
         fst_white = min(fst_space, fst_tab)
+    else:
+        fst_white = max(fst_space, fst_tab)
     smi = ''
     name = ''
     if fst_white == -1:
@@ -59,7 +61,9 @@ if __name__ == '__main__':
                 if mol == None:
                     errors += 1
                 else:
-                    std = s.standardize(mol)
+                    # super_parent(mol): _NOT_ standardize(mol)
+                    # standardize doesn't even unsalt the molecule...
+                    std = standardizer.super_parent(mol)
                     smi_std = Chem.MolToSmiles(std)
                     out.write("%s\t%s\n" % (smi_std, name))
                 count += 1
