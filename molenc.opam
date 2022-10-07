@@ -24,6 +24,7 @@ install: [
   ["cp" "bin/molenc_deepsmi.py" "%{bin}%/molenc_deepsmi.py"]
   ["cp" "bin/molenc_lead.py" "%{bin}%/molenc_lead.py"]
   ["cp" "bin/molenc_smi2cansmi.py" "%{bin}%/molenc_smi2cansmi.py"]
+  ["cp" "bin/molenc_std.py" "%{bin}%/molenc_std.py"]
 ]
 depends: [
   "batteries" {>= "3.5.0"}
