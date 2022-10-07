@@ -6,20 +6,23 @@
 #
 # CLI wrapper for rdkit's standardizer
 
-import argparse, os, string, sys, time
+import argparse, os, re, string, sys, time
 from rdkit import Chem
 from rdkit.Chem.MolStandardize import Standardizer
 
 standardizer = Standardizer()
 
-def parse_smiles_line(line):
-    fst_space = line.find(' ')
-    fst_tab = line.find('\t')
-    fst_white = -1
-    if fst_space != -1 and fst_tab != -1:
-        fst_white = min(fst_space, fst_tab)
+regex = re.compile('\s')
+
+def find_whitespace(s):
+    m = re.search(regex, s)
+    if m == None:
+        return -1
     else:
-        fst_white = max(fst_space, fst_tab)
+        return m.start()
+
+def parse_smiles_line(line):
+    fst_white = find_whitespace(line)
     smi = ''
     name = ''
     if fst_white == -1:
@@ -30,7 +33,7 @@ def parse_smiles_line(line):
         name = line
     else:
         smi = line[0:fst_white]
-        name = line[fst_white+1:]
+        name = line[fst_white + 1:]
     mol = Chem.MolFromSmiles(smi)
     return (mol, name)
 
