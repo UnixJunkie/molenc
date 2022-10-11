@@ -1,87 +1,50 @@
 #!/usr/bin/env python3
-
-# Copyright (C) 2020, Francois Berenger
-# Yamanishi laboratory,
-# Department of Bioscience and Bioinformatics,
-# Faculty of Computer Science and Systems Engineering,
-# Kyushu Institute of Technology,
-# 680-4 Kawazu, Iizuka, Fukuoka, 820-8502, Japan.
 #
-# Simple molecular encoder using a handful of molecular descriptors.
-# type signature: molecule -> (MolW,cLogP,TPSA,RotB,HBA,HBD,FC)
-# Why is this script called molenc_lizard.py
-# First, because it is part of the molenc project.
-# Second, because if you have a little bit of imagination, a lizard
-# is just a very small dragon.
+# Copyright (C) 2022, Francois Berenger
+# Tsuda laboratory, Graduate School of Frontier Sciences,
+# The University of Tokyo, Japan.
 #
-# The --remove-aliens option was inspired by
-# Tran-Nguyen, V. K., Jacquemard, C., & Rognan, D. (2020).
-# "LIT-PCBA: An Unbiased Data Set for Machine Learning and Virtual Screening."
-# Journal of Chemical Information and Modeling.
-# https://doi.org/10.1021/acs.jcim.0c00155
+# Encode molecules using PaDEL molecular descriptors.
+#
+# Yap, C. W. (2011). PaDEL‐descriptor: An open source software to calculate molecular descriptors and fingerprints. Journal of computational chemistry, 32(7), 1466-1474.
 
-import argparse, rdkit, sys
-from rdkit import Chem
-from rdkit.Chem import AllChem, Descriptors, Lipinski
-from rdkit.Chem.AtomPairs import Pairs
+import argparse, padelpy, re, sys
 
-PeriodicTable = Chem.GetPeriodicTable()
+regex = re.compile('\s')
 
-def RobustSmilesMolSupplier(filename):
+def find_whitespace(s):
+    m = re.search(regex, s)
+    if m == None:
+        return -1
+    else:
+        return m.start()
+
+def parse_smiles_line(line):
+    fst_white = find_whitespace(line)
+    smi = ''
+    name = ''
+    if fst_white == -1:
+        # no whitespace separator: assume molecule has no name
+        # use the SMILES itself as the name, so this unnamed
+        # molecule will percolate instead of behing lost
+        smi = line
+        name = line
+    else:
+        smi = line[0:fst_white]
+        name = line[fst_white + 1:]
+    return (smi, name)
+
+def SmilesReader(filename):
     with open(filename) as f:
-        for i, line in enumerate(f):
-            words = line.split()
-            smile = words[0]
-            name = words[1]
-            yield (i, Chem.MolFromSmiles(smile), name)
-
-# detect strange molecules
-def is_alien(MolW, cLogP, TPSA, RotB, HBA, HBD, FC):
-    # Step 1: TODO?
-    #         Organic compound filter. Molecules bearing at
-    #         least one atom other than H, C, N, O, P, S, F, Cl, Br, and I
-    #         were removed.
-    # Step 2: ignored; too complex (using IC50 curve shape + other things).
-    # Step 3: Molecular property range filter. Remaining
-    #         actives and inactives were kept if:
-    # rdkit's MolW unit seems to be g/mol
-    # 1C -> 12Da = 12g/mol <=> 1Da = 1g/mol
-    return (MolW <= 150 or MolW >= 800 or # 150 < MolW < 800 Da
-            cLogP <= -3.0 or cLogP >= 5.0 or # −3.0 < AlogP < 5.0
-            RotB >= 15 or # RotB < 15
-            HBA >= 10 or # HBA < 10
-            HBD >= 10 or # HBD < 10
-            FC <= -2 or FC >= 2) # −2.0 < FC < 2.0
-
-# message string describing the alien
-def alien_diagnose(i, name, MolW, cLogP, TPSA, RotB, HBA, HBD, FC):
-    err_msg = "%d %s" % (i, name)
-    if MolW <= 150:
-        err_msg += "; (MolW=%g) <= 150" % MolW
-    if MolW >= 800:
-        err_msg += "; (MolW=%g) >= 800" % MolW
-    if cLogP <= -3.0:
-        err_msg += "; (cLogP=%g) <= -3" % cLogP
-    if cLogP >= 5.0:
-        err_msg += "; (cLogP=%g) >= 5" % cLogP
-    if RotB >= 15:
-        err_msg += "; (RotB=%d) >= 15" % RotB
-    if HBA >= 10:
-        err_msg += "; (HBA=%d) >= 10" % HBA
-    if HBD >= 10:
-        err_msg += "; (HBD=%d) >= 10" % HBD
-    if FC <= -2:
-        err_msg += "; (FC=%d) <= -2" % FC
-    if FC >= 2:
-        err_msg += "; (FC=%d) >= 2" % FC
-    return err_msg
+        for line in f.readlines():
+            stripped = line.strip()
+            yield parse_smiles_line(stripped)
 
 def main():
     # CLI options parsing
     parser = argparse.ArgumentParser(
-        description = "Project molecules read from a SMILES file into an 8D \
-        space whose dimensions are molecular descriptors: \
-        (MolW, HA, cLogP, MR, TPSA, RotB, HBA, HBD, FC)")
+        description = "Project molecules read from a SMILES file into the \
+        PaDEL descriptors space")
     parser.add_argument("-i", metavar = "input_smi", dest = "input_smi",
                         help = "input SMILES file")
     parser.add_argument("-o", metavar = "output_csv", dest = "output_csv",
@@ -89,10 +52,6 @@ def main():
     parser.add_argument('--no-header', dest='no_header',
                         action='store_true', default=False,
                         help = "no CSV header in output file")
-    # just warn about aliens by default
-    parser.add_argument('--remove-aliens', dest='rm_aliens',
-                        action='store_true', default=False,
-                        help = "don't allow aliens in output file")
     # parse CLI
     if len(sys.argv) == 1:
         # show help in case user has no clue of what to do
@@ -101,46 +60,25 @@ def main():
     args = parser.parse_args()
     input_smi = args.input_smi
     output_csv = args.output_csv
-    rm_aliens = args.rm_aliens
     no_header = args.no_header
-    out_count = 0
-    alien_count = 0
-    error_count = 0
+    count = 0
+    start = True
     with open(output_csv, 'w') as out_file:
-        if not no_header:
-            print("#name,MolW,HA,cLogP,AR,MR,TPSA,RotB,HBA,HBD,FC", file=out_file)
-        for i, mol, name in RobustSmilesMolSupplier(input_smi):
-            if mol is None:
-                error_count += 1
-            else:
-                MolW = Descriptors.MolWt(mol)
-                HA = Lipinski.HeavyAtomCount(mol)
-                cLogP = Descriptors.MolLogP(mol)
-                AR = Lipinski.NumAromaticRings(mol)
-                MR = Descriptors.MolMR(mol)
-                TPSA = Descriptors.TPSA(mol)
-                RotB = Descriptors.NumRotatableBonds(mol)
-                HBA = Descriptors.NumHAcceptors(mol)
-                HBD = Descriptors.NumHDonors(mol)
-                FC = Chem.rdmolops.GetFormalCharge(mol)
-                alien = is_alien(MolW, cLogP, TPSA, RotB, HBA, HBD, FC)
-                if alien:
-                    alien_str = alien_diagnose(i, name, MolW, cLogP, TPSA,
-                                               RotB, HBA, HBD, FC)
-                    print("WARN: %s" % alien_str, file=sys.stderr)
-                    alien_count += 1
-                if (not alien) or (not rm_aliens):
-                    csv_line = "%s,%g,%d,%g,%d,%g,%g,%d,%d,%d,%d" % \
-                               (name, MolW, HA, cLogP, AR, MR, TPSA, RotB,
-                                HBA, HBD, FC)
-                    print(csv_line, file=out_file)
-                    out_count += 1
-    total_count = out_count + error_count
-    if rm_aliens:
-        total_count += alien_count
-    print("encoded: %d aliens: %d errors: %d total: %d" % \
-          (out_count, alien_count, error_count, total_count),
-          file=sys.stderr)
+        for smi, name in SmilesReader(input_smi):
+            descriptors = padelpy.from_smiles(smi)
+            if (not no_header) and start:
+                print("\"name\"", end='', file=out_file)
+                for k in descriptors:
+                    print(",\"%s\"" % k, end='', file=out_file)
+                print("", file=out_file) # '\n'
+                start = False
+            # print all values; start line with molecule name (double quoted)
+            print("\"%s\"" % name, end='', file=out_file)
+            for _k, v in descriptors.items():
+                print(",%g" % float(v), end='', file=out_file)
+            print("", file=out_file) # '\n'
+            count += 1
+    print("encoded: %d" % count, file=sys.stderr)
 
 if __name__ == '__main__':
     main()
