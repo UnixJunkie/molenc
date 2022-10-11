@@ -75,7 +75,12 @@ def main():
             # print all values; start line with molecule name (double quoted)
             print("\"%s\"" % name, end='', file=out_file)
             for _k, v in descriptors.items():
-                print(",%g" % float(v), end='', file=out_file)
+                if v == '':
+                    # always a joy with molecular descriptors: some
+                    # of them cannot be computed for all molecules...
+                    print(",\"NA\"", end='', file=out_file)
+                else:
+                    print(",%g" % float(v), end='', file=out_file)
             print("", file=out_file) # '\n'
             count += 1
     print("encoded: %d" % count, file=sys.stderr)
