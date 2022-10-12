@@ -40,6 +40,9 @@ def SmilesReader(filename):
             stripped = line.strip()
             yield parse_smiles_line(stripped)
 
+# FBR: make robust to crashing PaDEL
+#      - acc in a string before printf
+
 def main():
     # CLI options parsing
     parser = argparse.ArgumentParser(
@@ -52,6 +55,9 @@ def main():
     parser.add_argument('--no-header', dest='no_header',
                         action='store_true', default=False,
                         help = "no CSV header in output file")
+    parser.add_argument('--NA', dest='use_NAs',
+                        action='store_true', default=False,
+                        help = "use \"NA\" instead of 0. for missing values")
     # parse CLI
     if len(sys.argv) == 1:
         # show help in case user has no clue of what to do
@@ -61,6 +67,11 @@ def main():
     input_smi = args.input_smi
     output_csv = args.output_csv
     no_header = args.no_header
+    use_NAs = args.use_NAs
+    default_value = "0."
+    if use_NAs:
+        default_value = "\"NA\""
+    # end CLI parsing ---------------------------------------------------------
     count = 0
     start = True
     with open(output_csv, 'w') as out_file:
@@ -78,7 +89,7 @@ def main():
                 if v == '':
                     # always a joy with molecular descriptors: some
                     # of them cannot be computed for all molecules...
-                    print(",\"NA\"", end='', file=out_file)
+                    print(",%s" % default_value, end='', file=out_file)
                 else:
                     print(",%g" % float(v), end='', file=out_file)
             print("", file=out_file) # '\n'
