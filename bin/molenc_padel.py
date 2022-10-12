@@ -40,8 +40,15 @@ def SmilesReader(filename):
             stripped = line.strip()
             yield parse_smiles_line(stripped)
 
-# FBR: make robust to crashing PaDEL
-#      - acc in a string before printf
+num_descriptors = 1875 # on 12/10/2022
+
+# line with only default values since PaDEL crashed
+def all_missing(mol_name, def_val):
+    res = mol_name
+    tok = ",%s" % def_val
+    for _i in range(1875):
+        res += tok
+    return res
 
 def main():
     # CLI options parsing
@@ -57,7 +64,7 @@ def main():
                         help = "no CSV header in output file")
     parser.add_argument('--NA', dest='use_NAs',
                         action='store_true', default=False,
-                        help = "use \"NA\" instead of 0. for missing values")
+                        help = "use \"NA\" instead of 0 for missing values")
     # parse CLI
     if len(sys.argv) == 1:
         # show help in case user has no clue of what to do
@@ -68,33 +75,50 @@ def main():
     output_csv = args.output_csv
     no_header = args.no_header
     use_NAs = args.use_NAs
-    default_value = "0."
+    default_value = "0"
     if use_NAs:
         default_value = "\"NA\""
     # end CLI parsing ---------------------------------------------------------
-    count = 0
+    total = 0
+    errors = 0
     start = True
+    # FBR: we don't handle the case where the 1st molecule would crash PaDEL
+    #      in that case we don't even know what the CSV header should be
     with open(output_csv, 'w') as out_file:
         for smi, name in SmilesReader(input_smi):
-            descriptors = padelpy.from_smiles(smi)
+            descriptors = {}
+            try:
+                descriptors = padelpy.from_smiles(smi)
+            except:
+                errors += 1
+                print("KO: %s" % smi, file=sys.stderr)
             if (not no_header) and start:
+                if errors == 1:
+                    print("molenc_padel.py: error on 1st molecule: %s" % smi,
+                          file=sys.stderr)
+                    sys.exit(1)
                 print("\"name\"", end='', file=out_file)
                 for k in descriptors:
                     print(",\"%s\"" % k, end='', file=out_file)
                 print("", file=out_file) # '\n'
                 start = False
             # print all values; start line with molecule name (double quoted)
-            print("\"%s\"" % name, end='', file=out_file)
+            to_print = "\"%s\"" % name
             for _k, v in descriptors.items():
                 if v == '':
                     # always a joy with molecular descriptors: some
                     # of them cannot be computed for all molecules...
-                    print(",%s" % default_value, end='', file=out_file)
+                    to_print += ",%s" % default_value
                 else:
-                    print(",%g" % float(v), end='', file=out_file)
-            print("", file=out_file) # '\n'
-            count += 1
-    print("encoded: %d" % count, file=sys.stderr)
+                    to_print += ",%g" % float(v)
+            if descriptors == {}:
+                # robust to PaDEL crashing on some molecules
+                to_print = all_missing(name, default_value)
+            else:
+                assert(len(descriptors) == num_descriptors)
+            print(to_print, file=out_file)
+            total += 1
+    print("encoded: %d errors: %d" % (total, errors), file=sys.stderr)
 
 if __name__ == '__main__':
     main()
