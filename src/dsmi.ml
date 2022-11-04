@@ -12,6 +12,7 @@ module Ht = BatHashtbl
 module L = BatList
 module LO = Line_oriented
 module Log = Dolog.Log
+module RNG = BatRandom.State
 module Rdkit = Molenc.Rdkit.Rdkit
 module S = BatString
 
@@ -23,25 +24,14 @@ type mol = Rdkit.t
 let mol_of_smiles (smi: string): mol =
   Rdkit.__init__ ~smi ()
 
-let read_one_line input () =
-  try input_line input
-  with End_of_file -> raise Parany.End_of_input
+let tok_0 = "PAD"
+let tok_1 = "START"
+let tok_2 = "UNK"
 
-let process_one line =
-  let smi, _name = S.split line ~by:"\t" in
-  let mol = mol_of_smiles smi in
-  failwith "not implemented yet"
-
-let write_one total in_AD out = function
-  | None -> incr total
-  | Some line ->
-    begin
-      incr total;
-      incr in_AD;
-      fprintf out "%s\n" line
-    end
+let large_int = 1073741823 (* (2^30) - 1 *)
 
 let main () =
+  let start = Unix.gettimeofday () in  
   Log.color_on ();
   Log.(set_log_level INFO);
   let argc, args = CLI.init () in
@@ -49,24 +39,38 @@ let main () =
     (eprintf "usage:\n  \
               %s\n  \
               [-i <filename>]: SMILES input file\n  \
+              [-s <int>]: RNG seed\n  \
+              [-n <int>]: DeepSMILES per input SMILES (default=1)\n  \
               -o <filename>: output file\n  \
               [-np <int>]: nprocs (default=1)\n  \
+              [--rand]: SMILES randomization (even if n=1)\n  \
               [-v]: verbose/debug mode\n" Sys.argv.(0);
      exit 1);
   let verbose = CLI.get_set_bool ["-v"] args in
   if verbose then Log.(set_log_level DEBUG);
   let input_fn = CLI.get_string_def ["-i"] args "/dev/stdin" in
+  let maybe_seed = CLI.get_int_opt ["-s"] args in
+  let n = CLI.get_int_def ["-n"] args 1 in
+  let randomize = (CLI.get_set_bool ["--rand"] args) || n > 1 in
   let output_fn = CLI.get_string ["-o"] args in
-  let nprocs = CLI.get_int_def ["-np"] args 1 in
+  let _nprocs = CLI.get_int_def ["-np"] args 1 in
   CLI.finalize (); (* ------------------------------------------------------ *)
+  let rng = match maybe_seed with
+    | Some s -> RNG.make [|s|] (* repeatable *)
+    | None -> RNG.make_self_init () in
   let nb_molecules = ref 0 in
-  let start = Unix.gettimeofday () in
-  let atom_pairs = ref [] in
-  LO.with_in_file input_fn (fun input ->
-      failwith "not implemented yet"
-      (* Parany.run nprocs ~demux:(read_one_line input) *)
-      (*   ~work:process_one *)
-      (*   ~mux:(record_one nb_molecules atom_pairs) *)
+  let dummy = mol_of_smiles "C" in
+  LO.with_infile_outfile input_fn output_fn (fun input output ->
+      try
+        while true do
+          let line = input_line input in
+          incr nb_molecules;
+          let smi, _name = S.split line ~by:"\t" in
+          let seed = RNG.int rng large_int in
+          let dsmiles = Rdkit.get_deep_smiles dummy ~seed ~n ~randomize ~smi () in
+          A.iter (Printf.fprintf output "%s\n") dsmiles
+        done
+      with End_of_file -> ()
     );
   let stop = Unix.gettimeofday () in
   let dt = stop -. start in
