@@ -133,6 +133,72 @@ let counts_of_dsmi dico dsmi =
   Buffer.add_char buff ']';
   Buffer.contents buff
 
+let rec count_transitions
+          (dico: (string, int) Ht.t)
+          (ht: ((int * int), int) Ht.t) = function
+  | [] -> ()
+  | [_] -> ()
+  | x :: y :: xs ->
+     let i = Ht.find_default dico x unknown_index in
+     let j = Ht.find_default dico y unknown_index in
+     let prev_count = Ht.find_default ht (i, j) 0 in
+     Ht.replace ht (i, j) (prev_count + 1);
+     count_transitions dico ht (y :: xs)
+
+let transitions (dico: (string, int) Ht.t) (toks: string list): (int * int) list =
+  let rec loop acc = function
+    | [] -> acc
+    | [_] -> acc
+    | x :: y :: xs ->
+       let i = Ht.find_default dico x unknown_index in
+       let j = Ht.find_default dico y unknown_index in
+       loop ((i, j) :: acc) (y :: xs)
+  in
+  loop [] toks
+
+let compute_word_transitions_dico
+      (dico: (string, int) Ht.t)
+      (all_dsmi: (string * string) list) =
+  let res = Ht.create 9973 in
+  L.iter (fun (_name, dsmi) ->
+      let toks = S.split_on_char ' ' dsmi in
+      count_transitions dico res toks
+    ) all_dsmi;
+  (* sort them by decr. freq. then create another dictionary *)
+  let kvs = Ht.bindings res in
+  let sorted = L.sort (fun (_ij, c1) (_kl, c2) -> BatInt.compare c2 c1) kvs in
+  let transition2idx = Ht.create (L.length sorted) in
+  L.iteri (fun i (jk, _count) ->
+      Ht.add transition2idx jk (i + 3) (* three reserved indexes *)
+    ) sorted;
+  transition2idx
+
+let sequence_encoder (word_dico: (string, int) Ht.t)
+      (transitions_dico: ((int * int), int) Ht.t)
+      (dsmi: string): string =
+  let n = 3 + (Ht.length transitions_dico) in
+  let toks = S.split_on_char ' ' dsmi in
+  let counts = A.make n 0 in
+  let trans = transitions word_dico toks in
+  L.iter (fun jk ->
+      let i = Ht.find_default transitions_dico jk unknown_index in
+      counts.(i) <- counts.(i) + 1
+    ) trans;
+  let buff = Buffer.create 1024 in
+  (* AP file format *)
+  Buffer.add_char buff '[';
+  let start = ref true in
+  A.iteri (fun i c ->
+      if c > 0 then
+        (if !start then
+           (start := false;
+            Printf.bprintf buff "%d:%d" i c)
+         else
+           Printf.bprintf buff ";%d:%d" i c)
+    ) counts;
+  Buffer.add_char buff ']';
+  Buffer.contents buff
+
 let main () =
   let start = Unix.gettimeofday () in
   Log.color_on ();
@@ -190,18 +256,23 @@ let main () =
   all_dsmi := L.rev !all_dsmi; (* put them in input order *)
   Log.info "creating dictionary...";
   let dico = dico_of_word2count word_count in
-  Log.info "seen %d words (3 are reserved)" (Ht.length dico);  
+  Log.info "seen %d words (3 are reserved)" (Ht.length dico);
   let dico_fn = input_fn ^ ".dix" in
   dico_to_file dico_fn dico;
   Log.info "encoding...";
   let code_out_fn = output_fn ^ ".code" in
   let encoder = match encoding_style with
-    | Bitstring -> bits_of_dsmi
-    | Count_vector -> counts_of_dsmi
-    | _ -> failwith "not implemented yet" in
+    | Bitstring -> bits_of_dsmi dico
+    | Count_vector -> counts_of_dsmi dico
+    | Sequence ->
+       let () = Log.info "transitions dictionary..." in
+       let transitions_dico = compute_word_transitions_dico dico !all_dsmi in
+       Log.info "seen %d transitions (3 are reserved)"
+         (Ht.length transitions_dico);
+       sequence_encoder dico transitions_dico in
   LO.with_out_file code_out_fn (fun out ->
       L.iter (fun (name, dsmi) ->
-          let feat_vals = encoder dico dsmi in
+          let feat_vals = encoder dsmi in
           fprintf out "%s,0.0,%s\n" name feat_vals
         ) !all_dsmi
   );
