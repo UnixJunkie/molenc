@@ -195,22 +195,15 @@ let main () =
   dico_to_file dico_fn dico;
   Log.info "encoding...";
   let code_out_fn = output_fn ^ ".code" in
-  (match encoding_style with
-   | Bitstring ->
-      LO.with_out_file code_out_fn (fun out ->
-          L.iter (fun (name, dsmi) ->
-              let bitstring = bits_of_dsmi dico dsmi in
-              fprintf out "%s,0.0,%s\n" name bitstring
-            ) !all_dsmi
-        )
-   | Count_vector ->
-      LO.with_out_file code_out_fn (fun out ->
-          L.iter (fun (name, dsmi) ->
-              let feat_counts = counts_of_dsmi dico dsmi in
-              fprintf out "%s,0.0,%s\n" name feat_counts
-            ) !all_dsmi
-        )
-   | _ -> failwith "not implemented yet"
+  let encoder = match encoding_style with
+    | Bitstring -> bits_of_dsmi
+    | Count_vector -> counts_of_dsmi
+    | _ -> failwith "not implemented yet" in
+  LO.with_out_file code_out_fn (fun out ->
+      L.iter (fun (name, dsmi) ->
+          let feat_vals = encoder dico dsmi in
+          fprintf out "%s,0.0,%s\n" name feat_vals
+        ) !all_dsmi
   );
   let stop = Unix.gettimeofday () in
   let dt = stop -. start in
