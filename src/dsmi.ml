@@ -27,6 +27,7 @@ let mol_of_smiles (smi: string): mol =
 let tok0 = "PAD"
 let tok1 = "START"
 let tok2 = "UNK"
+let unknown_index = 2
 
 let large_int = 1073741823 (* (2^30) - 1 *)
 
@@ -79,6 +80,22 @@ type encoding = Bitstring (* unfolded-uncounted fingerprint / bag of words *)
               | Count_vector (* unfolded-counted fingerprint *)
               | Sequence (* vector of word indexes *)
 
+let encoding_of_string = function
+  | "bits" -> Bitstring
+  | "count" -> Count_vector
+  | "seq" -> Sequence
+  | other -> failwith ("Dsmi.encoding_of_string: not supported: " ^ other)
+
+let bits_of_dsmi dico dsmi =
+  let n = Ht.length dico in
+  let toks = S.split_on_char ' ' dsmi in
+  let bits = Bytes.init n (fun _ -> '0') in
+  L.iter (fun tok ->
+      let i = Ht.find_default dico tok unknown_index in
+      Bytes.set bits i '1'
+    ) toks;
+  Bytes.unsafe_to_string bits
+
 let main () =
   let start = Unix.gettimeofday () in
   Log.color_on ();
@@ -92,6 +109,7 @@ let main () =
               [-n <int>]: DeepSMILES per input SMILES (default=1)\n  \
               -o <filename>: output file\n  \
               [-np <int>]: nprocs (default=1)\n  \
+              [-e <string>]: output encoding (bits|count|seq)\n  \
               [--rand]: SMILES randomization (even if n=1)\n  \
               [-v]: verbose/debug mode\n" Sys.argv.(0);
      exit 1);
@@ -103,7 +121,9 @@ let main () =
   let randomize = (CLI.get_set_bool ["--rand"] args) || n > 1 in
   let output_fn = CLI.get_string ["-o"] args in
   let _nprocs = CLI.get_int_def ["-np"] args 1 in
+  let encoding = CLI.get_string_def ["-e"] args "bits" in
   CLI.finalize (); (* ------------------------------------------------------ *)
+  let _encoding_style = encoding_of_string encoding in
   let rng = match maybe_seed with
     | Some s -> RNG.make [|s|] (* repeatable *)
     | None -> RNG.make_self_init () in
@@ -136,9 +156,14 @@ let main () =
   Log.info "seen %d words (3 are reserved)" (Ht.length dico);  
   let dico_fn = input_fn ^ ".dix" in
   dico_to_file dico_fn dico;
-  (* Log.info "encoding..."; *)
-  (* L.iter () *)
-  (*   !dsmiles; *)
+  Log.info "encoding...";
+  let code_out_fn = output_fn ^ ".code" in
+  LO.with_out_file code_out_fn (fun out ->
+      L.iter (fun (name, dsmi) ->
+          let bitstring = bits_of_dsmi dico dsmi in
+          fprintf out "%s\t%s\n" bitstring name
+        ) !all_dsmi
+    );
   let stop = Unix.gettimeofday () in
   let dt = stop -. start in
   Log.info "encoding: %.1f molecule/s" ((float !nb_molecules) /. dt)
