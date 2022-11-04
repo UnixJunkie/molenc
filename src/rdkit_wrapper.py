@@ -2,7 +2,7 @@
 import rdkit, deepsmiles, random, re, typing
 from rdkit import Chem
 
-def nb_heavy_atom_neighbors(a) -> int:
+def nb_heavy_atom_neighbors(a: rdkit.Chem.rdchem.Atom) -> int:
     res = 0
     for neighb in a.GetNeighbors():
         if neighb.GetAtomicNum() > 1:
@@ -10,7 +10,7 @@ def nb_heavy_atom_neighbors(a) -> int:
     return res
 
 # return (#HA, #H)
-def count_neighbors(a) -> tuple[int, int]:
+def count_neighbors(a: rdkit.Chem.rdchem.Atom) -> tuple[int, int]:
     nb_heavy = nb_heavy_atom_neighbors(a)
     nb_H = a.GetTotalNumHs()
     return (nb_heavy, nb_H)
@@ -55,7 +55,7 @@ def tokenize_one(smi: str) -> str:
     # print("pdsmi: '%s'" % pdsmi)
     return pdsmi
 
-def random_reorder_atoms(mol):
+def random_reorder_atoms(mol: rdkit.Chem.rdchem.Mol):
     rand_order = list(range(mol.GetNumAtoms()))
     random.shuffle(rand_order)
     rand_mol = Chem.RenumberAtoms(mol, newOrder=rand_order)
