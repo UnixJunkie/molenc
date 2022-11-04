@@ -37,16 +37,50 @@ let lookup_in_dico dico word =
     Ht.add dico word new_idx;
     new_idx
 
+let update_word_count word2count word =
+  let prev = Ht.find_default word2count word 0 in
+  Ht.replace word2count word (prev + 1)
+
 let insert_reserved_tokens dico =
   let idx0 = lookup_in_dico dico tok0 in
   assert(idx0 = 0);
   let idx1 = lookup_in_dico dico tok1 in
   assert(idx1 = 1);
   let idx2 = lookup_in_dico dico tok2 in
-  assert(idx2 = 3)
+  assert(idx2 = 2)
+
+(* most frequent words have lower indexes *)
+let dico_of_word2count word2count =
+  let len = Ht.length word2count in
+  let n = len + 3 in (* there are reserved tokens *)
+  let ht = Ht.create n in
+  insert_reserved_tokens ht;
+  let word_counts = Ht.bindings word2count in
+  let sorted =
+    (* decr. sort *)
+    L.sort (fun (_w1, c1) (_w2, c2) -> BatInt.compare c2 c1) word_counts in
+  L.iter (fun (word, _count) ->
+      let _i: int = lookup_in_dico ht word in
+      ()
+    ) sorted;
+  ht
+
+let dico_to_file fn dico =
+  Log.info "saving dico to %s" fn;
+  LO.with_out_file fn (fun out ->
+      let kvs = Ht.bindings dico in
+      let sorted = L.sort (fun (_w1, i) (_w2, j) -> BatInt.compare i j) kvs in
+      L.iter (fun (word, index) ->
+          fprintf out "%d %s\n" index word
+        ) sorted
+    )
+
+type encoding = Bitstring (* unfolded-uncounted fingerprint / bag of words *)
+              | Count_vector (* unfolded-counted fingerprint *)
+              | Sequence (* vector of word indexes *)
 
 let main () =
-  let start = Unix.gettimeofday () in  
+  let start = Unix.gettimeofday () in
   Log.color_on ();
   Log.(set_log_level INFO);
   let argc, args = CLI.init () in
@@ -75,20 +109,36 @@ let main () =
     | None -> RNG.make_self_init () in
   let nb_molecules = ref 0 in
   let dummy = mol_of_smiles "C" in
-  let dico = Ht.create 997 in (* enough to hold all DeepSMILES tokens *)
-  insert_reserved_tokens dico;
+  let word_count = Ht.create 997 in (* enough to hold all DeepSMILES tokens *)
+  let all_dsmi = ref [] in
+  Log.info "reading SMILES...";
   LO.with_infile_outfile input_fn output_fn (fun input output ->
       try
         while true do
           let line = input_line input in
           incr nb_molecules;
-          let smi, _name = S.split line ~by:"\t" in
+          let smi, name = S.split line ~by:"\t" in
           let seed = RNG.int rng large_int in
           let dsmiles = Rdkit.get_deep_smiles dummy ~seed ~n ~randomize ~smi () in
-          A.iter (Printf.fprintf output "%s\n") dsmiles
+          A.iter (Printf.fprintf output "%s\n") dsmiles;
+          (* update word count *)
+          A.iter (fun deep_smile ->
+              all_dsmi := (name, deep_smile) :: !all_dsmi;
+              let tokens = S.split_on_char ' ' deep_smile in
+              L.iter (update_word_count word_count) tokens
+            ) dsmiles
         done
       with End_of_file -> ()
     );
+  all_dsmi := L.rev !all_dsmi; (* put them in input order *)
+  Log.info "creating dictionary...";
+  let dico = dico_of_word2count word_count in
+  Log.info "seen %d words (3 are reserved)" (Ht.length dico);  
+  let dico_fn = input_fn ^ ".dix" in
+  dico_to_file dico_fn dico;
+  (* Log.info "encoding..."; *)
+  (* L.iter () *)
+  (*   !dsmiles; *)
   let stop = Unix.gettimeofday () in
   let dt = stop -. start in
   Log.info "encoding: %.1f molecule/s" ((float !nb_molecules) /. dt)
