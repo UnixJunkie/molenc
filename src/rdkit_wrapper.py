@@ -1,8 +1,8 @@
 
-import rdkit, deepsmiles, random, re
+import rdkit, deepsmiles, random, re, typing
 from rdkit import Chem
 
-def nb_heavy_atom_neighbors(a):
+def nb_heavy_atom_neighbors(a) -> int:
     res = 0
     for neighb in a.GetNeighbors():
         if neighb.GetAtomicNum() > 1:
@@ -10,7 +10,7 @@ def nb_heavy_atom_neighbors(a):
     return res
 
 # return (#HA, #H)
-def count_neighbors(a):
+def count_neighbors(a) -> tuple[int, int]:
     nb_heavy = nb_heavy_atom_neighbors(a)
     nb_H = a.GetTotalNumHs()
     return (nb_heavy, nb_H)
@@ -19,7 +19,7 @@ def count_neighbors(a):
 to_deep_smiles = deepsmiles.Converter(rings=True, branches=True)
 
 # space-separate all DeepSMILES tokens corresponding to given SMILES
-def tokenize_one(smi):
+def tokenize_one(smi: str) -> str:
     assert(smi.find('.') == -1) # enforce standardization/salt removal
     mol = Chem.MolFromSmiles(smi)
     # don't canonicalize: the input SMILES might have been randomized on purpose
@@ -62,7 +62,7 @@ def random_reorder_atoms(mol):
     return rand_mol
 
 # return n random versions of smi
-def smi_randomize(smi, n, seed):
+def smi_randomize(smi: str, n: int, seed: int) -> list[str]:
     res = []
     mol = Chem.MolFromSmiles(smi)
     random.seed(seed)
@@ -75,12 +75,12 @@ def smi_randomize(smi, n, seed):
 class Rdkit:
     # this is needed because the OCaml side want to know how
     # to get an object of type t
-    def __init__(self, smi):
+    def __init__(self, smi: str):
         self.mol = Chem.MolFromSmiles(smi)
         self.mat = Chem.GetDistanceMatrix(self.mol)
 
     # (atomic_num, #HA, #H, valence - #H, formal_charge)
-    def type_atom(self, i):
+    def type_atom(self, i: int) -> list[int]:
         a = self.mol.GetAtomWithIdx(i)
         anum = a.GetAtomicNum()
         # do this on the ocaml side, since we get anum
@@ -99,12 +99,27 @@ class Rdkit:
     #         res.append(type_atom(a))
     #     return res
 
-    def get_num_atoms(self):
+    def get_num_atoms(self) -> int:
         return self.mol.GetNumAtoms()
 
     # get the distance (in bonds) between a pair of atoms
-    def get_distance(self, i, j):
+    def get_distance(self, i: int, j: int) -> int:
         return int(self.mat[i][j])
+
+    # seed: random_seed
+    # n: number of randomized SMILES to use
+    # randomize: boolean
+    # smi: SMILES to work on
+    def get_deep_smiles(self, seed: int, n: int, randomize: bool, smi: str) -> list[str]:
+        if n > 1:
+            rand_smiles = smi_randomize(smi, n, seed)
+            res = list(map(tokenize_one, rand_smiles))
+            return res
+        else:
+            rand_smi = smi
+            if randomize:
+                rand_smi = smi_randomize(smi, 1, seed)[0]
+            return [tokenize_one(rand_smi)]
 
 # # tests
 # m = Chem.MolFromSmiles('c1ccccc1')
