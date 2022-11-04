@@ -110,16 +110,28 @@ let bits_of_dsmi dico dsmi =
   Buffer.add_char buff ']';
   Buffer.contents buff
 
-(* let counts_of_dsmi dico dsmi = *)
-(*   let n = Ht.length dico in *)
-(*   let toks = S.split_on_char ' ' dsmi in *)
-(*   let count = A.make n 0 in *)
-(*   L.iter (fun tok -> *)
-(*       let i = Ht.find_default dico tok unknown_index in *)
-(*       count.(i) <- count.(i) + 1 *)
-(*     ) toks; *)
-(*   let res = Bytes *)
-(*               Bytes.unsafe_to_string bits *)
+let counts_of_dsmi dico dsmi =
+  let n = Ht.length dico in
+  let toks = S.split_on_char ' ' dsmi in
+  let counts = A.make n 0 in
+  L.iter (fun tok ->
+      let i = Ht.find_default dico tok unknown_index in
+      counts.(i) <- counts.(i) + 1
+    ) toks;
+  let buff = Buffer.create 1024 in
+  (* AP file format *)
+  Buffer.add_char buff '[';
+  let start = ref true in
+  A.iteri (fun i c ->
+      if c > 0 then
+        (if !start then
+           (start := false;
+            Printf.bprintf buff "%d:%d" i c)
+         else
+           Printf.bprintf buff ";%d:%d" i c)
+    ) counts;
+  Buffer.add_char buff ']';
+  Buffer.contents buff
 
 let main () =
   let start = Unix.gettimeofday () in
@@ -148,7 +160,7 @@ let main () =
   let _nprocs = CLI.get_int_def ["-np"] args 1 in
   let encoding = CLI.get_string_def ["-e"] args "bits" in
   CLI.finalize (); (* ------------------------------------------------------ *)
-  let _encoding_style = encoding_of_string encoding in
+  let encoding_style = encoding_of_string encoding in
   let rng = match maybe_seed with
     | Some s -> RNG.make [|s|] (* repeatable *)
     | None -> RNG.make_self_init () in
@@ -183,12 +195,23 @@ let main () =
   dico_to_file dico_fn dico;
   Log.info "encoding...";
   let code_out_fn = output_fn ^ ".code" in
-  LO.with_out_file code_out_fn (fun out ->
-      L.iter (fun (name, dsmi) ->
-          let bitstring = bits_of_dsmi dico dsmi in
-          fprintf out "%s,0.0,%s\n" name bitstring
-        ) !all_dsmi
-    );
+  (match encoding_style with
+   | Bitstring ->
+      LO.with_out_file code_out_fn (fun out ->
+          L.iter (fun (name, dsmi) ->
+              let bitstring = bits_of_dsmi dico dsmi in
+              fprintf out "%s,0.0,%s\n" name bitstring
+            ) !all_dsmi
+        )
+   | Count_vector ->
+      LO.with_out_file code_out_fn (fun out ->
+          L.iter (fun (name, dsmi) ->
+              let feat_counts = counts_of_dsmi dico dsmi in
+              fprintf out "%s,0.0,%s\n" name feat_counts
+            ) !all_dsmi
+        )
+   | _ -> failwith "not implemented yet"
+  );
   let stop = Unix.gettimeofday () in
   let dt = stop -. start in
   Log.info "encoding: %.1f molecule/s" ((float !nb_molecules) /. dt)
