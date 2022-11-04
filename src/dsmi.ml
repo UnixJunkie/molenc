@@ -94,7 +94,32 @@ let bits_of_dsmi dico dsmi =
       let i = Ht.find_default dico tok unknown_index in
       Bytes.set bits i '1'
     ) toks;
-  Bytes.unsafe_to_string bits
+  let s = Bytes.unsafe_to_string bits in
+  let buff = Buffer.create 1024 in
+  (* AP file format *)
+  Buffer.add_char buff '[';
+  let start = ref true in
+  S.iteri (fun i c ->
+      if c = '1' then
+        (if !start then
+           (start := false;
+            Printf.bprintf buff "%d:1" i)
+         else
+           Printf.bprintf buff ";%d:1" i)
+    ) s;
+  Buffer.add_char buff ']';
+  Buffer.contents buff
+
+(* let counts_of_dsmi dico dsmi = *)
+(*   let n = Ht.length dico in *)
+(*   let toks = S.split_on_char ' ' dsmi in *)
+(*   let count = A.make n 0 in *)
+(*   L.iter (fun tok -> *)
+(*       let i = Ht.find_default dico tok unknown_index in *)
+(*       count.(i) <- count.(i) + 1 *)
+(*     ) toks; *)
+(*   let res = Bytes *)
+(*               Bytes.unsafe_to_string bits *)
 
 let main () =
   let start = Unix.gettimeofday () in
@@ -161,7 +186,7 @@ let main () =
   LO.with_out_file code_out_fn (fun out ->
       L.iter (fun (name, dsmi) ->
           let bitstring = bits_of_dsmi dico dsmi in
-          fprintf out "%s\t%s\n" bitstring name
+          fprintf out "%s,0.0,%s\n" name bitstring
         ) !all_dsmi
     );
   let stop = Unix.gettimeofday () in
