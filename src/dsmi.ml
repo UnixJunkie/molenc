@@ -24,11 +24,26 @@ type mol = Rdkit.t
 let mol_of_smiles (smi: string): mol =
   Rdkit.__init__ ~smi ()
 
-let tok_0 = "PAD"
-let tok_1 = "START"
-let tok_2 = "UNK"
+let tok0 = "PAD"
+let tok1 = "START"
+let tok2 = "UNK"
 
 let large_int = 1073741823 (* (2^30) - 1 *)
+
+let lookup_in_dico dico word =
+  try Ht.find dico word
+  with Not_found ->
+    let new_idx = Ht.length dico in
+    Ht.add dico word new_idx;
+    new_idx
+
+let insert_reserved_tokens dico =
+  let idx0 = lookup_in_dico dico tok0 in
+  assert(idx0 = 0);
+  let idx1 = lookup_in_dico dico tok1 in
+  assert(idx1 = 1);
+  let idx2 = lookup_in_dico dico tok2 in
+  assert(idx2 = 3)
 
 let main () =
   let start = Unix.gettimeofday () in  
@@ -60,6 +75,8 @@ let main () =
     | None -> RNG.make_self_init () in
   let nb_molecules = ref 0 in
   let dummy = mol_of_smiles "C" in
+  let dico = Ht.create 997 in (* enough to hold all DeepSMILES tokens *)
+  insert_reserved_tokens dico;
   LO.with_infile_outfile input_fn output_fn (fun input output ->
       try
         while true do
