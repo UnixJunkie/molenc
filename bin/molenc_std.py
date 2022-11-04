@@ -6,7 +6,7 @@
 #
 # CLI wrapper for rdkit's standardizer
 
-import argparse, os, re, string, sys, time
+import argparse, re, sys, time
 from rdkit import Chem
 from rdkit.Chem.MolStandardize import Standardizer
 
