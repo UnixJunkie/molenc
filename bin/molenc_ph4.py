@@ -263,6 +263,9 @@ if __name__ == '__main__':
     parser.add_argument('--no-group', dest='cluster_HYD',
                         action='store_false', default=True,
                         help = "turn OFF grouping of HYD features")
+    parser.add_argument('--permissive', dest='sanitize',
+                        action='store_false', default=True,
+                        help = "turn OFF rdkit valence check")
     # parse CLI ---------------------------------------------------------------
     if len(sys.argv) == 1:
         # user has no clue of what to do -> usage
@@ -273,7 +276,8 @@ if __name__ == '__main__':
     output_fn = args.output_fn
     mol_names = names_of_sdf_file(input_fn)
     input_dir = os.path.dirname(input_fn)
-    mol_supplier = Chem.SDMolSupplier(input_fn)
+    sanitize = args.sanitize
+    mol_supplier = Chem.SDMolSupplier(input_fn, sanitize=sanitize)
     output_bild = args.output_bild
     cluster_HYD = args.cluster_HYD
     # parse CLI end -----------------------------------------------------------
@@ -281,6 +285,12 @@ if __name__ == '__main__':
     errors = 0
     with open(output_fn, 'w') as out:
         for mol, name in zip(mol_supplier, mol_names):
+            if not sanitize:
+                mol.UpdatePropertyCache(strict=False)
+                Chem.SanitizeMol(mol,
+                                 Chem.SANITIZE_SYMMRINGS | \
+                                 Chem.SANITIZE_SETCONJUGATION | \
+                                 Chem.SANITIZE_SETHYBRIDIZATION)
             # print("%d atoms" % mol.GetNumHeavyAtoms(), file=sys.stderr)
             if mol == None:
                 errors += 1
