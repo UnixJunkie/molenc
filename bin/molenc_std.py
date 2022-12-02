@@ -37,6 +37,19 @@ def parse_smiles_line(line):
     mol = Chem.MolFromSmiles(smi)
     return (mol, name)
 
+def standardize(preserve_stereo, mol):
+    if preserve_stereo:
+        s_mol = standardizer.standardize(mol)
+        # We don't need to get fragment parent, because the charge parent is the largest fragment
+        s_mol = standardizer.charge_parent(s_mol,   skip_standardize=True)
+        s_mol = standardizer.isotope_parent(s_mol,  skip_standardize=True)
+        s_mol = standardizer.tautomer_parent(s_mol, skip_standardize=True)
+        return standardizer.standardize(s_mol)
+    else:
+        # standardizer.super_parent(mol): _NOT_ standardizer.standardize(mol)
+        # which doesn't even unsalt the molecule...
+        return standardizer.super_parent(mol)
+
 if __name__ == '__main__':
     before = time.time()
     # CLI options parsing
@@ -45,6 +58,9 @@ if __name__ == '__main__':
                         help = "molecules input file")
     parser.add_argument("-o", metavar = "output_std.smi", dest = "output_fn",
                         help = "molecules output file")
+    parser.add_argument('-p', dest='preserve_stereo',
+                        action='store_true', default=False,
+                        help = "preserve stereo chemistry")
     # parse CLI ---------------------------------------------------------------
     if len(sys.argv) == 1:
         # user has no clue of what to do -> usage
@@ -53,6 +69,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     input_fn = args.input_fn
     output_fn = args.output_fn
+    preserve_stereo = args.preserve_stereo
     # parse CLI end -----------------------------------------------------------
     count = 0
     errors = 0
@@ -64,9 +81,7 @@ if __name__ == '__main__':
                 if mol == None:
                     errors += 1
                 else:
-                    # super_parent(mol): _NOT_ standardize(mol)
-                    # standardize doesn't even unsalt the molecule...
-                    std = standardizer.super_parent(mol)
+                    std = standardize(preserve_stereo, mol)
                     smi_std = Chem.MolToSmiles(std)
                     out.write("%s\t%s\n" % (smi_std, name))
                 count += 1
