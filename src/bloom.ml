@@ -50,7 +50,7 @@ let init n k m =
 
 let encode (_n, k, m, mappings) fp =
   let kvs = Fp.key_value_pairs fp in (* sparse input vector *)
-  let res = A.create m 0 in (* dense output vector *)
+  let res = A.make m 0 in (* dense output vector *)
   L.iter (fun (key, value) ->
       let output_indexes = mappings.(key) in
       (* increment all corresponding output features *)

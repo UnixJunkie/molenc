@@ -70,7 +70,7 @@ let bounds (max_feat_id: int) (train: Fp.t array): int array =
    can draw a single rand but still know which feature id. it corresponds to *)
 let lookup_table (bounds: int array): int array =
   let total = A.sum bounds in
-  let res = A.create total 0 in
+  let res = A.make total 0 in
   let j = ref 0 in
   A.iteri (fun i bound ->
       for _ = 1 to bound do
@@ -82,7 +82,7 @@ let lookup_table (bounds: int array): int array =
 
 let acc_bounds_table (bounds: int array): int array =
   let n = A.length bounds in
-  let res = A.create n 0 in
+  let res = A.make n 0 in
   let acc = ref 0 in
   A.iteri (fun i bound ->
       res.(i) <- !acc;
