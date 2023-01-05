@@ -164,30 +164,31 @@ def prfx_print(prfx, out, positions_3d):
     for (x, y, z) in positions_3d:
         out.write("%s %g %g %g\n" % (prfx, x, y, z))
 
-def bild_print(out, color, trans, radius, feats):
+def bild_print(out, comment, color, trans, radius, feats):
     if len(feats) > 0:
+        out.write(".comment %s\n" % comment)
         out.write(".color %s\n" % color)
         out.write(".transparency %g\n" % trans)
         for (x, y, z) in feats:
             out.write(".sphere %g %g %g %g\n" % (x, y, z, radius))
 
 def bild_print_ARO(out, feats):
-    bild_print(out, "green", 0.75, 1.5, feats)
+    bild_print(out, "ARO", "green", 0.75, 1.5, feats)
 
 def bild_print_HYD(out, feats):
-    bild_print(out, "grey", 0.75, 1.5, feats)
+    bild_print(out, "HYD", "grey", 0.75, 1.5, feats)
 
 def bild_print_HBD(out, feats):
-    bild_print(out, "white", 0.75, 1.25, feats)
+    bild_print(out, "HBD", "white", 0.75, 1.25, feats)
 
 def bild_print_HBA(out, feats):
-    bild_print(out, "orange", 0.75, 1.25, feats)
+    bild_print(out, "HBA", "orange", 0.75, 1.25, feats)
 
 def bild_print_POS(out, feats):
-    bild_print(out, "blue", 0.75, 1.0, feats)
+    bild_print(out, "POS", "blue", 0.75, 1.0, feats)
 
 def bild_print_NEG(out, feats):
-    bild_print(out, "red", 0.75, 1.0, feats)
+    bild_print(out, "NEG", "red", 0.75, 1.0, feats)
 
 def print_ARO(out, aromatics):
     prfx_print("ARO", out, aromatics)
