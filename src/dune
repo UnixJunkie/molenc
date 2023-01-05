@@ -21,7 +21,7 @@
            sybyl syb_atom mol2 sdf smi ph4 rank ap_encoder prune merge MST gram
            palette gnuplot lig_box shannon fragmentable_mol indexer pareto
            finder AP_BBAD split sdf_read dsmi)
-  (libraries molenc bst batteries dolog minicli parany cpm dokeysto_camltc
+  (libraries molenc bst batteries dolog minicli parany cpm dokeysto
              ocamlgraph vector3 line_oriented pyml))
 
 ;; never installed executables
