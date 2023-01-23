@@ -5,6 +5,7 @@
 # 5-1-5 Kashiwa-no-ha, Kashiwa-shi, Chiba-ken, 277-8561, Japan.
 #
 # Compute QED for each input SMILES
+# scores about 300 molecule/s on a single core
 #
 # requires: installing qed from sources (pip3 package broken as of 23/01/2023)
 # cf. https://github.com/silicos-it/qed
