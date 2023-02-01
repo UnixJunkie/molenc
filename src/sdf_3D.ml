@@ -273,7 +273,7 @@ let read_one_molecule input =
          xyz
       ) in
   (* read all bonds *)
-  let bonds = A.create num_atoms [] in
+  let bonds = A.make num_atoms [] in
   for _i = 1 to num_bonds do
     let src, dst = read_bond_line input in
     bonds.(src) <- dst :: bonds.(src)
