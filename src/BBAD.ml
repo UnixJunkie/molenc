@@ -44,6 +44,13 @@ let ad_from_AP_file fn =
         ) acc1 feat_counts
     ) IMap.empty
 
+let string_from_AP_AD ad =
+  let buff = Buffer.create 1024 in
+  IMap.iter (fun k v ->
+      Printf.bprintf buff "%d:%d " k v
+    ) ad;
+  Buffer.contents buff
+
 let main () =
   let _start = Unix.gettimeofday () in
   Log.(set_prefix_builder short_prefix_builder);
@@ -70,7 +77,11 @@ let main () =
       | _, _ ->
         failwith "BBAD: only two .AP files or two .csv files allowed" in
   match file_type with
-  | AP_files -> failwith "not implemented yet"
+  | AP_files ->
+    begin
+      let ad = ad_from_AP_file train_fn in
+      Printf.printf "%s\n" (string_from_AP_AD ad)
+    end
   | CSV_files -> failwith "not implemented yet"
 
 let () = main ()
