@@ -22,6 +22,9 @@ let is_AP_file fn =
 let is_csv_file fn =
   S.ends_with fn ".csv"
 
+type mode = AP_files
+          | CSV_files
+
 let main () =
   let _start = Unix.gettimeofday () in
   Log.(set_prefix_builder short_prefix_builder);
@@ -37,8 +40,18 @@ let main () =
      exit 1);
   let verbose = CLI.get_set_bool ["-v"] args in
   if verbose then Log.(set_log_level DEBUG);
-  let _train_fn = CLI.get_string ["-tr";"--train"] args in
-  let _test_fn = CLI.get_string ["-te";"--test"] args in
-  failwith "not implemented yet"
+  let train_fn = CLI.get_string ["-tr";"--train"] args in
+  let test_fn = CLI.get_string ["-te";"--test"] args in
+  let file_type =
+    match (is_AP_file train_fn, is_AP_file test_fn) with
+    | true, true -> AP_files
+    | _, _ ->
+      match (is_csv_file train_fn, is_csv_file test_fn) with
+      | true, true -> CSV_files
+      | _, _ ->
+        failwith "BBAD: only two .AP files or two .csv files allowed" in
+  match file_type with
+  | AP_files -> failwith "not implemented yet"
+  | CSV_files -> failwith "not implemented yet"
 
 let () = main ()
