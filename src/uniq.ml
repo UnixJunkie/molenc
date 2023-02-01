@@ -4,7 +4,7 @@
 open Printf
 
 module CLI = Minicli.CLI
-module Db = Dokeysto_camltc.Db_camltc.RW
+module Db = Dokeysto.Db.RW
 module Ht = Hashtbl
 module Log = Dolog.Log
 module String = BatString
@@ -20,7 +20,7 @@ end
 
 module HtOnDisk: HT = struct
 
-  type t = Dokeysto_camltc.Db_camltc.RW.t
+  type t = Dokeysto.Db.RW.t
 
   let create input_fn =
     Db.create (input_fn ^ ".uniq.db")
