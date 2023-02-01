@@ -44,6 +44,19 @@ let ad_from_AP_file fn =
         ) acc1 feat_counts
     ) IMap.empty
 
+(* all feature counts are inside the bouding box *)
+let is_in_AP_AD ad feat_counts =
+  L.for_all (fun (feat, count) ->
+      let max_count = IMap.find_default 0 feat ad in
+      count <= max_count
+    ) feat_counts
+
+let apply_AP_AD_to_file ad fn =
+  LO.filter fn (fun line ->
+      let feat_counts = parse_AP_line line in
+      is_in_AP_AD ad feat_counts
+    )
+
 let string_from_AP_AD ad =
   let buff = Buffer.create 1024 in
   IMap.iter (fun k v ->
@@ -60,7 +73,9 @@ let main () =
   if argc = 1 then
     (eprintf "usage:\n  \
               %s\n  \
-              [-i <filename.ph4>]: input file\n  \
+              [-tr|--train <train.{AP|csv}]: training set\n  \
+              [-te|--test <test.{AP|csv}]: test set\n  \
+              [-o output_fn]: output file (passed AD)\n  \
               [-v]: verbose/debug mode\n"
        Sys.argv.(0);
      exit 1);
@@ -68,6 +83,7 @@ let main () =
   if verbose then Log.(set_log_level DEBUG);
   let train_fn = CLI.get_string ["-tr";"--train"] args in
   let test_fn = CLI.get_string ["-te";"--test"] args in
+  let output_fn = CLI.get_string ["-o"] args in
   let file_type =
     match (is_AP_file train_fn, is_AP_file test_fn) with
     | true, true -> AP_files
@@ -80,7 +96,13 @@ let main () =
   | AP_files ->
     begin
       let ad = ad_from_AP_file train_fn in
-      Printf.printf "%s\n" (string_from_AP_AD ad)
+      Log.debug "AD:";
+      Log.debug "%s" (string_from_AP_AD ad);
+      let before = LO.length test_fn in      
+      let in_AD = apply_AP_AD_to_file ad test_fn in
+      let after = L.length in_AD in
+      Log.info "before/after: %d/%d" before after;
+      LO.lines_to_file output_fn in_AD
     end
   | CSV_files -> failwith "not implemented yet"
 
