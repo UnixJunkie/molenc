@@ -11,6 +11,7 @@ open Printf
 
 module CLI = Minicli.CLI
 module Ht = BatHashtbl
+module IMap = BatMap.Int
 module L = BatList
 module LO = Line_oriented
 module Log = Dolog.Log
@@ -24,6 +25,24 @@ let is_csv_file fn =
 
 type mode = AP_files
           | CSV_files
+
+let parse_AP_line line =
+  Scanf.sscanf line "%s@[%s@]" (fun _name_ic50 feat_count_str ->
+      let feat_counts = S.split_on_char ';' feat_count_str in
+      L.rev_map (fun feat_count ->
+          let feat, count = S.split ~by:":" feat_count in
+          (int_of_string feat, int_of_string count)
+        ) feat_counts
+    )
+
+let ad_from_AP_file fn =
+  LO.fold fn (fun acc1 line ->
+      let feat_counts = parse_AP_line line in
+      L.fold_left (fun acc2 (feat, count) ->
+          let prev_max_count = IMap.find_default 0 feat acc2 in
+          IMap.add feat (max prev_max_count count) acc2
+        ) acc1 feat_counts
+    ) IMap.empty
 
 let main () =
   let _start = Unix.gettimeofday () in
