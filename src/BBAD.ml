@@ -9,6 +9,7 @@
 
 open Printf
 
+module A = BatArray
 module CLI = Minicli.CLI
 module Ht = BatHashtbl
 module IMap = BatMap.Int
@@ -35,6 +36,13 @@ let parse_AP_line line =
         ) feat_counts
     )
 
+(* array of molecular descriptors values *)
+let parse_CSV_line line =
+  (* the first feature is molecular name; let's skip this one *)
+  let feature_strings = L.tl (S.split_on_char ',' line) in
+  let strings = A.of_list feature_strings in
+  A.map float_of_string strings
+
 let ad_from_AP_file fn =
   LO.fold fn (fun acc1 line ->
       let feat_counts = parse_AP_line line in
@@ -43,6 +51,26 @@ let ad_from_AP_file fn =
           IMap.add feat (max prev_max_count count) acc2
         ) acc1 feat_counts
     ) IMap.empty
+
+let ad_from_CSV_file fn =
+  let nfields = ref 0 in
+  let min_maxs = ref (Array.make 1 (0.0,0.0)) in
+  LO.iteri fn (fun i line ->
+      if S.starts_with line "#" then (* header line *)
+        begin
+          assert(i = 0); (* comment lines not allowed *)
+          nfields := S.count_char line ','; (* ignore name (1st field) *)
+          min_maxs := Array.make !nfields (infinity, neg_infinity);
+        end
+      else
+        let features = parse_CSV_line line in
+        assert(A.length features = !nfields);
+        A.iteri (fun j x ->
+            let curr_min, curr_max = !min_maxs.(j) in
+            !min_maxs.(j) <- (min curr_min x, max curr_max x)
+          ) features
+    );
+  min_maxs
 
 (* all feature counts are inside the bouding box *)
 let is_in_AP_AD ad feat_counts =
@@ -98,7 +126,7 @@ let main () =
       let ad = ad_from_AP_file train_fn in
       Log.debug "AD:";
       Log.debug "%s" (string_from_AP_AD ad);
-      let before = LO.length test_fn in      
+      let before = LO.length test_fn in
       let in_AD = apply_AP_AD_to_file ad test_fn in
       let after = L.length in_AD in
       Log.info "before/after: %d/%d" before after;
