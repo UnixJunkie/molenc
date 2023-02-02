@@ -70,7 +70,7 @@ let ad_from_CSV_file fn =
             !min_maxs.(j) <- (min curr_min x, max curr_max x)
           ) features
     );
-  min_maxs
+  !min_maxs
 
 (* all feature counts are inside the bouding box *)
 let is_in_AP_AD ad feat_counts =
@@ -89,6 +89,13 @@ let string_from_AP_AD ad =
   let buff = Buffer.create 1024 in
   IMap.iter (fun k v ->
       Printf.bprintf buff "%d:%d " k v
+    ) ad;
+  Buffer.contents buff
+
+let string_from_CSV_AD ad =
+  let buff = Buffer.create 1024 in
+  A.iter (fun (mini, maxi) ->
+      Printf.bprintf buff "(%g,%g) " mini maxi
     ) ad;
   Buffer.contents buff
 
@@ -132,6 +139,11 @@ let main () =
       Log.info "before/after: %d/%d" before after;
       LO.lines_to_file output_fn in_AD
     end
-  | CSV_files -> failwith "not implemented yet"
+  | CSV_files ->
+    begin
+      let ad = ad_from_CSV_file train_fn in
+      Log.debug "AD:";
+      Log.debug "%s" (string_from_CSV_AD ad)
+    end
 
 let () = main ()
