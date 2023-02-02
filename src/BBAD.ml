@@ -85,6 +85,17 @@ let apply_AP_AD_to_file ad fn =
       is_in_AP_AD ad feat_counts
     )
 
+let apply_CSV_AD_to_file ad fn =
+  LO.filter fn (fun line ->
+      if S.starts_with line "#" then
+        true
+      else
+        let features = parse_CSV_line line in
+        A.for_all2 (fun x (mini, maxi) ->
+            x >= mini && x <= maxi
+          ) features ad
+    )
+
 let string_from_AP_AD ad =
   let buff = Buffer.create 1024 in
   IMap.iter (fun k v ->
@@ -143,7 +154,12 @@ let main () =
     begin
       let ad = ad_from_CSV_file train_fn in
       Log.debug "AD:";
-      Log.debug "%s" (string_from_CSV_AD ad)
+      Log.debug "%s" (string_from_CSV_AD ad);
+      let before = LO.length test_fn in
+      let in_AD = apply_CSV_AD_to_file ad test_fn in
+      let after = L.length in_AD in
+      Log.info "before/after: %d/%d" before after;
+      LO.lines_to_file output_fn in_AD
     end
 
 let () = main ()
