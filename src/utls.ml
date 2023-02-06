@@ -702,3 +702,8 @@ let spearman_a (a1:float array) (a2:float array) =
 
 let spearman_l l1 l2 =
   spearman_a (A.of_list l1) (A.of_list l2)
+
+(* like 'rm -f' *)
+let rm_file fn =
+  if Sys.file_exists fn then
+    Sys.remove fn
