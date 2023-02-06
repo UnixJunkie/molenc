@@ -67,12 +67,19 @@ let populate_ht names input_fn =
     );
   collected
 
+(* like 'rm -f' *)
+let rm_file fn =
+  if Sys.file_exists fn then
+    Sys.remove fn
+
 let db_open_or_create verbose force input_fn =
   let db_fn = db_name_of input_fn in
   (* is there a DB already? *)
   let db_exists, db =
     if force || not (Sys.file_exists db_fn) then
       (Log.info "creating %s" db_fn;
+       rm_file db_fn;
+       rm_file (db_fn ^ ".idx");
        (false, DB.create db_fn))
     else
       (Log.warn "reusing %s" db_fn;
