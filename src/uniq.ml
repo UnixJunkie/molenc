@@ -63,6 +63,7 @@ let main () =
                -i <filename>: input file\n  \
                -d <char>: field separator (default=\\t)\n  \
                -f <int>: field to filter on\n  \
+               [--force]: erase index files, if any\n  \
                [--sorted]: file already sorted on that field\n  \
                [--in-RAM]: Ht in RAM rather than on disk\n"
         Sys.argv.(0);
@@ -74,9 +75,13 @@ let main () =
     else (module HtOnDisk: HT) in
   let module DB = (val mod_db: HT) in
   let sorted = CLI.get_set_bool ["--sorted"] args in
+  let force = CLI.get_set_bool ["--force"] args in
   let input_fn = CLI.get_string ["-i"] args in
-  let db_fn = input_fn ^ ".uniq.db" in
-  let db = DB.create db_fn in
+  (if force then
+     (Utls.rm_file (input_fn ^ ".uniq.db");
+      Utls.rm_file (input_fn ^ ".uniq.db.idx"))
+  );
+  let db = DB.create input_fn in
   let prev_field = ref "" in
   let uniq_field_check, register_field =
     if sorted then
