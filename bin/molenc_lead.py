@@ -44,7 +44,6 @@ def RobustSmilesMolSupplier(filename):
             smile, name = line.strip().split("\t") # enforce TAB-separated
             try:
                 mol = Chem.MolFromSmiles(smile)
-                cano_smi = Chem.MolToSmiles(mol)
                 yield (mol, smile, name)
             except Exception:
                 print("ERROR: cannot parse: %s" % line,
