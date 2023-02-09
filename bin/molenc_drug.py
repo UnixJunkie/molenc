@@ -1,42 +1,39 @@
 #!/usr/bin/env python3
 #
-# Copyright (C) 2022, Francois Berenger
+# Copyright (C) 2023, Francois Berenger
 # Tsuda laboratory, The University of Tokyo,
 # 5-1-5 Kashiwa-no-ha, Kashiwa-shi, Chiba-ken, 277-8561, Japan.
 #
-# lead-like filter: only lead-like molecules will be printed on stdout
+# Drug-like filter: only drug-like molecules will be printed on stdout
 
 import sys
 
 from rdkit import Chem
 from rdkit.Chem import Descriptors
 
-# Oprea's lead-like filter                                                      
-# Hann, M. M., & Oprea, T. I. (2004).                                           
-# Pursuing the leadlikeness concept in pharmaceutical research.                 
-# Current opinion in chemical biology, 8(3), 255-263.                           
-def lead_like(mol):
-    # MolW <= 460                                                               
-    if Descriptors.MolWt(mol) > 460:
+# Tran-Nguyen, V. K., Jacquemard, C., & Rognan, D. (2020).
+# LIT-PCBA: An unbiased data set for machine learning and virtual screening.
+# Journal of chemical information and modeling, 60(9), 4263-4273.
+def drug_like_filter(mol):
+    MolW = Descriptors.MolWt(mol)
+    if MolW <= 150 or MolW >= 800: # 150 < MolW < 800 Da
         return False
-    # -4.0 <= LogP <= 4.2                                                       
-    LogP = Descriptors.MolLogP(mol)
-    if LogP < -4.0 or LogP > 4.2:
+    cLogP = Descriptors.MolLogP(mol)
+    if cLogP <= -3.0 or cLogP >= 5.0: # −3.0 < AlogP < 5.0
         return False
-    # # LogSw >= -5 # ignored                                                   
-    # rotB <= 10                                                                
-    if Descriptors.NumRotatableBonds(mol) > 10:
+    RotB = Descriptors.NumRotatableBonds(mol)
+    if RotB >= 15: # RotB < 15
         return False
-    # nRings <= 4 (number of SSSR rings, _not_ aromatic rings)                  
-    if len(Chem.GetSSSR(mol)) > 4:
+    HBA = Descriptors.NumHAcceptors(mol)
+    if HBA >= 10: # HBA < 10
         return False
-    # HBD <= 5                                                                  
-    if Descriptors.NumHDonors(mol) > 5:
+    HBD = Descriptors.NumHDonors(mol)
+    if HBD >= 10: # HBD < 10
         return False
-    # HBA <= 9                                                                  
-    if Descriptors.NumHAcceptors(mol) > 9:
+    FC = Chem.rdmolops.GetFormalCharge(mol)
+    if FC <= -2 or FC >= 2: # −2.0 < FC < 2.0
         return False
-    return True # lead-like then!                                               
+    return True # Still here? Drug-like then!
 
 def RobustSmilesMolSupplier(filename):
     with open(filename) as f:
@@ -44,7 +41,6 @@ def RobustSmilesMolSupplier(filename):
             smile, name = line.strip().split("\t") # enforce TAB-separated
             try:
                 mol = Chem.MolFromSmiles(smile)
-                cano_smi = Chem.MolToSmiles(mol)
                 yield (mol, smile, name)
             except Exception:
                 print("ERROR: cannot parse: %s" % line,
@@ -53,5 +49,5 @@ def RobustSmilesMolSupplier(filename):
 input_fn = sys.argv[1]
 
 for mol, smile, name in RobustSmilesMolSupplier(input_fn):
-    if lead_like(mol):
+    if drug_like_filter(mol):
         print('%s\t%s' % (smile, name))
