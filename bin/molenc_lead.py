@@ -28,7 +28,7 @@ def lead_like(mol):
     if Descriptors.NumRotatableBonds(mol) > 10:
         return False
     # nRings <= 4 (number of SSSR rings, _not_ aromatic rings)                  
-    if Chem.GetSSSR(mol) > 4:
+    if len(Chem.GetSSSR(mol)) > 4:
         return False
     # HBD <= 5                                                                  
     if Descriptors.NumHDonors(mol) > 5:
