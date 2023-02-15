@@ -3,7 +3,7 @@
   (name molenc)
   (public_name molenc)
   (modules ap_types atom_env fingerprint fpMol atom_pair mini_mol MSE_mol
-           myList node piEltHA scale utls WMH norm bloom index rdkit sdf_3D)
+           myList node piEltHA scale utls WMH norm bloom index rdkit sdf_3D gram)
   (libraries batteries dolog bst parany pyml vector3))
 
 ;; installed executables / public targets
@@ -18,7 +18,7 @@
                 molenc_pareto molenc_finder molenc_apbbad molenc_split
                 molenc_sdf_read molenc_dsmi molenc_bbad)
   (modules encoder decoder filter butina pubchem_decoder uniq to_dense get_mol
-           sybyl syb_atom mol2 sdf smi ph4 rank ap_encoder prune merge MST gram
+           sybyl syb_atom mol2 sdf smi ph4 rank ap_encoder prune merge MST
            palette gnuplot lig_box shannon fragmentable_mol indexer pareto
            finder AP_BBAD split sdf_read dsmi BBAD)
   (libraries molenc bst batteries dolog minicli parany cpm dokeysto

@@ -151,8 +151,8 @@ let main () =
   (* compute Gram matrix in // *)
   let matrix = A.init nb_mols (fun _ -> A.create_float nb_mols) in
   Log.info "Gram matrix initialization...";
-  Gram.initialize_matrix FpMol.dist nprocs csize all_mols matrix;
-  Gram.print_corners matrix;
+  Molenc.Gram.initialize_matrix FpMol.dist nprocs csize all_mols matrix;
+  Molenc.Gram.print_corners matrix;
   Log.info "Adding edges to graph...";
   (* add all edges to graph *)
   let disconnected = ref 0 in
