@@ -1,7 +1,6 @@
 open Printf
 
 module A = BatArray
-module FpMol = Molenc.FpMol
 module L = BatList
 
 (* Parallel Gram matrix initialization *)
@@ -12,11 +11,11 @@ let emit_one (i: int ref) (n: int) ((): unit): int =
     incr i;
     res
 
-let process_one (samples: FpMol.t array) (n: int) (i: int):
+let process_one (dist: 'a -> 'a -> float) (samples: 'a array) (n: int) (i: int):
   (int * float list) =
   let js = L.range i `To (n - 1) in
   let si = samples.(i) in
-  (i, L.map (fun j -> FpMol.dist si samples.(j)) js)
+  (i, L.map (fun j -> dist si samples.(j)) js)
 
 let gather_one (res: float array array) ((i, xs): (int * float list)): unit =
   L.iteri (fun j' x ->
@@ -25,7 +24,7 @@ let gather_one (res: float array array) ((i, xs): (int * float list)): unit =
       res.(j).(i) <- x (* symmetric matrix *)
     ) xs
 
-let initialize_matrix ncores csize samples res =
+let initialize_matrix dist ncores csize samples res =
   let n = A.length samples in
   assert(n > 0);
   assert(ncores >= 1);
@@ -34,7 +33,7 @@ let initialize_matrix ncores csize samples res =
       for i = 0 to n - 1 do
         (* WARNING: we initialize the diagonal while it is all 0s *)
         for j = i to n - 1 do
-          let x = FpMol.dist samples.(i) samples.(j) in
+          let x = dist samples.(i) samples.(j) in
           res.(i).(j) <- x;
           (* WARNING: we could remove the next one *)
           res.(j).(i) <- x (* symmetric matrix *)
@@ -46,7 +45,7 @@ let initialize_matrix ncores csize samples res =
   else (* parallel *)
     Parany.run ~csize ncores
       ~demux:(emit_one (ref 0) n)
-      ~work:(process_one samples n)
+      ~work:(process_one dist samples n)
       ~mux:(gather_one res)
 
 (* partial display *)
