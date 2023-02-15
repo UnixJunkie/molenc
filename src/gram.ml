@@ -12,13 +12,16 @@ let emit_one (i: int ref) (n: int) ((): unit): int =
     res
 
 let process_one (dist: 'a -> 'a -> float) (samples: 'a array) (n: int) (i: int):
-  (int * float list) =
-  let js = L.range i `To (n - 1) in
+  (int * float array) =
+  let res = A.create_float (n - i) in
   let si = samples.(i) in
-  (i, L.map (fun j -> dist si samples.(j)) js)
+  for j = i to n - 1 do
+    res.(j - i) <- dist si samples.(j)
+  done;
+  (i, res)
 
-let gather_one (res: float array array) ((i, xs): (int * float list)): unit =
-  L.iteri (fun j' x ->
+let gather_one (res: float array array) ((i, xs): (int * float array)): unit =
+  A.iteri (fun j' x ->
       let j = j' + i in
       res.(i).(j) <- x;
       res.(j).(i) <- x (* symmetric matrix *)
