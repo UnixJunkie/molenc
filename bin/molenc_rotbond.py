@@ -13,7 +13,7 @@
 # We list them separately, because users might not be interested in trying
 # to rotate all rotatable bonds.
 
-import argparse, math, sys
+import argparse, sys
 from rdkit import Chem
 
 def count_heavy_neighbors(a):
@@ -29,6 +29,15 @@ def is_hydrogenated_terminal(a):
             count_heavy_neighbors(a) == 1 and # terminal
             a.GetTotalNumHs() >= 1)           # hydrogenated
 
+def already_protonated(mol0):
+    before = mol0.GetNumAtoms()
+    mol1 = Chem.AddHs(mol0)
+    after = mol1.GetNumAtoms()
+    return (before == after)
+
+def is_HA(a):
+    return (a.GetAtomicNum() != 1)
+
 if __name__ == '__main__':
     # CLI options parsing
     parser = argparse.ArgumentParser(description = "list rotatable bonds")
@@ -42,26 +51,31 @@ if __name__ == '__main__':
     args = parser.parse_args()
     input_fn = args.input_fn
     # parse CLI end -----------------------------------------------------------
-    mol_supplier = Chem.SDMolSupplier(input_fn)
-    for mol in mol_supplier:
-        if mol == None:
+    mol_supplier = Chem.SDMolSupplier(input_fn, removeHs=False)
+    for mol0 in mol_supplier:
+        if mol0 == None:
             assert(False)
+        mol = Chem.AddHs(mol0)
+        name = mol.GetProp('_Name')
+        if not already_protonated(mol):
+            print("WARN: not protonated: %s" % name, file=sys.stderr)
         regular_bonds = []
         movingH_bonds = []
         for b in mol.GetBonds():
-            if (b.GetBondTypeAsDouble() == 1.0 and
-                not b.IsInRing()):
-                start_a = b.GetBeginAtom()
-                stop_a = b.GetEndAtom()
+            start_a = b.GetBeginAtom()
+            stop_a = b.GetEndAtom()
+            # we are only interested in bonds between heavy atoms
+            # w/ BO=1 and not in ring
+            if is_HA(start_a) and is_HA(stop_a) and \
+               b.GetBondTypeAsDouble() == 1.0 and not b.IsInRing():
                 i = start_a.GetIdx()
                 j = stop_a.GetIdx()
                 ij = (i, j)
-                if (is_hydrogenated_terminal(start_a) or
-                    is_hydrogenated_terminal(stop_a)):
+                if is_hydrogenated_terminal(start_a) or \
+                   is_hydrogenated_terminal(stop_a):
                     movingH_bonds.append(ij)
                 else:
                     regular_bonds.append(ij)
-        name = mol.GetProp('_Name')
         total = len(regular_bonds) + len(movingH_bonds)
         print('%d:%s' % (total, name))
         for i, j in regular_bonds:
