@@ -52,33 +52,33 @@ if __name__ == '__main__':
     input_fn = args.input_fn
     # parse CLI end -----------------------------------------------------------
     mol_supplier = Chem.SDMolSupplier(input_fn, removeHs=False)
-    for mol0 in mol_supplier:
-        if mol0 == None:
+    for mol in mol_supplier:
+        if mol == None:
             assert(False)
-        mol = Chem.AddHs(mol0)
         name = mol.GetProp('_Name')
         if not already_protonated(mol):
-            print("WARN: not protonated: %s" % name, file=sys.stderr)
-        regular_bonds = []
-        movingH_bonds = []
-        for b in mol.GetBonds():
-            start_a = b.GetBeginAtom()
-            stop_a = b.GetEndAtom()
-            # we are only interested in bonds between heavy atoms
-            # w/ BO=1 and not in ring
-            if is_HA(start_a) and is_HA(stop_a) and \
-               b.GetBondTypeAsDouble() == 1.0 and not b.IsInRing():
-                i = start_a.GetIdx()
-                j = stop_a.GetIdx()
-                ij = (i, j)
-                if is_hydrogenated_terminal(start_a) or \
-                   is_hydrogenated_terminal(stop_a):
-                    movingH_bonds.append(ij)
-                else:
-                    regular_bonds.append(ij)
-        total = len(regular_bonds) + len(movingH_bonds)
-        print('%d:%s' % (total, name))
-        for i, j in regular_bonds:
-            print("REG\t%d\t%d" % (i, j))
-        for i, j in movingH_bonds:
-            print("THA\t%d\t%d" % (i, j))
+            print("ERROR: not protonated: %s" % name, file=sys.stderr)
+        else:
+            regular_bonds = []
+            movingH_bonds = []
+            for b in mol.GetBonds():
+                start_a = b.GetBeginAtom()
+                stop_a = b.GetEndAtom()
+                # we are only interested in single bonds between heavy atoms
+                # and out of rings
+                if is_HA(start_a) and is_HA(stop_a) and \
+                   b.GetBondTypeAsDouble() == 1.0 and not b.IsInRing():
+                    i = start_a.GetIdx()
+                    j = stop_a.GetIdx()
+                    ij = (i, j)
+                    if is_hydrogenated_terminal(start_a) or \
+                       is_hydrogenated_terminal(stop_a):
+                        movingH_bonds.append(ij)
+                    else:
+                        regular_bonds.append(ij)
+            total = len(regular_bonds) + len(movingH_bonds)
+            print('%d:%s' % (total, name))
+            for i, j in regular_bonds:
+                print("REG\t%d\t%d" % (i, j))
+            for i, j in movingH_bonds:
+                print("THA\t%d\t%d" % (i, j))
