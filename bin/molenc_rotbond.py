@@ -1,44 +1,39 @@
 #!/usr/bin/env python3
 #
-# Copyright (C) 2022, Francois Berenger
+# Copyright (C) 2023, Francois Berenger
 # Tsuda laboratory, Tokyo University,
 # 5-1-5 Kashiwa-no-ha, Kashiwa-shi, Chiba-ken, 277-8561, Japan.
 #
-# Compute the diamater of a molecule's 3D conformer
-# i.e. largest interatomic distance
+# List rotatable bonds (RotBonds) found in a molecule's 3D conformer.
+# Molecules are read from a .sdf file, so they are expected to be in 3D.
+# There are two types of rotatable bonds:
+# - those that can significantly change the conformation of a molecule
+# - those that just make some hydrogens move
+#   (hydrogen(s) attached to a "terminal" heavy atom)
+# We list them separately, because users might not be interested in trying
+# to rotate all rotatable bonds.
 
 import argparse, math, sys
 from rdkit import Chem
 
-def euclid(xyz0, xyz1):
-    x0, y0, z0 = xyz0
-    x1, y1, z1 = xyz1
-    dx = x0 - x1
-    dy = y0 - y1
-    dz = z0 - z1
-    return math.sqrt(dx*dx + dy*dy + dz*dz)
+def count_heavy_atom_neighbors(a):
+    res = 0
+    for neighb in a.GetNeighbors():
+        if neighb.GetAtomicNum() != 1:
+            res += 1
+    return res
 
-# WARNING: O(n^2)
-def diameter(mol):
-    num_atoms = mol.GetNumAtoms()
-    conf = mol.GetConformer(0)
-    diam = 0.0
-    for i in range(num_atoms - 1):
-        xyz_i = conf.GetAtomPosition(i)
-        for j in range(i + 1, num_atoms):
-            xyz_j = conf.GetAtomPosition(j)
-            dist = euclid(xyz_i, xyz_j)
-            if dist > diam:
-                diam = dist
-    return diam
+# terminal heavy atom with attached H
+def is_hydrogenated_terminal(a):
+    return (a.GetAtomicNum() != 1 and           # not H
+            nb_heavy_atom_neighbors(a) == 1 and # terminal
+            a.GetTotalNumHs() >= 1)             # hydrogenated
 
 if __name__ == '__main__':
     # CLI options parsing
-    parser = argparse.ArgumentParser(description =
-                                     "compute molecular diameter")
+    parser = argparse.ArgumentParser(description = "list rotatable bonds")
     parser.add_argument("-i", metavar = "input.sdf", dest = "input_fn",
-                        help = "3D conformer input file \
-                        (single molecule AND conformer)")
+                        help = "3D conformer input file ")
     # parse CLI ---------------------------------------------------------------
     if len(sys.argv) == 1:
         # user has no clue of what to do -> usage
@@ -47,11 +42,29 @@ if __name__ == '__main__':
     args = parser.parse_args()
     input_fn = args.input_fn
     # parse CLI end -----------------------------------------------------------
-    count = 0
     mol_supplier = Chem.SDMolSupplier(input_fn)
     for mol in mol_supplier:
-        if (mol == None) or (count > 1):
+        if mol == None:
             assert(False)
-        count += 1
-        diam = diameter(mol)
-        print("%f" % diam)
+        regular_bonds = []
+        movingH_bonds = []
+        for b in mol.GetBonds():
+            if (b.GetBondOrderAsDouble() == 1.0 and
+                not b.IsInRing()):
+                start_a = b.GetBeginAtom()
+                stop_a = b.GetEndAtom()
+                i = start_a.GetIdx()
+                j = stop_a.GetIdx()
+                ij = (i, j)
+                if (is_hydrogenated_terminal(start_a) or
+                    is_hydrogenated_terminal(stop_a)):
+                    movingH_bonds.append(ij)
+                else:
+                    regular_bonds.append(ij)
+        name = mol.GetProp('_Name')
+        total = len(regular_bonds) + len(movingH_bonds)
+        print('%d:%s' % (total_rot_bonds, name))
+        for i, j in regular_bonds:
+            print("REG\t%d\t%d" % (i, j))
+        for i, j in movingH_bonds:
+            print("THA\t%d\t%d" % (i, j))
