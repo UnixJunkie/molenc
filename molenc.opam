@@ -28,6 +28,7 @@ install: [
   ["cp" "bin/molenc_smi2cansmi.py" "%{bin}%/molenc_smi2cansmi.py"]
   ["cp" "bin/molenc_std.py" "%{bin}%/molenc_std.py"]
   ["cp" "bin/molenc_padel.py" "%{bin}%/molenc_padel.py"]
+  ["cp" "bin/molenc_rotbond.py" "%{bin}%/molenc_rotbond.py"]
 ]
 depends: [
   "batteries" {>= "3.5.0"}
