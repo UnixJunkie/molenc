@@ -16,7 +16,7 @@
 import argparse, math, sys
 from rdkit import Chem
 
-def count_heavy_atom_neighbors(a):
+def count_heavy_neighbors(a):
     res = 0
     for neighb in a.GetNeighbors():
         if neighb.GetAtomicNum() != 1:
@@ -25,9 +25,9 @@ def count_heavy_atom_neighbors(a):
 
 # terminal heavy atom with attached H
 def is_hydrogenated_terminal(a):
-    return (a.GetAtomicNum() != 1 and           # not H
-            nb_heavy_atom_neighbors(a) == 1 and # terminal
-            a.GetTotalNumHs() >= 1)             # hydrogenated
+    return (a.GetAtomicNum() != 1 and         # not H
+            count_heavy_neighbors(a) == 1 and # terminal
+            a.GetTotalNumHs() >= 1)           # hydrogenated
 
 if __name__ == '__main__':
     # CLI options parsing
@@ -49,7 +49,7 @@ if __name__ == '__main__':
         regular_bonds = []
         movingH_bonds = []
         for b in mol.GetBonds():
-            if (b.GetBondOrderAsDouble() == 1.0 and
+            if (b.GetBondTypeAsDouble() == 1.0 and
                 not b.IsInRing()):
                 start_a = b.GetBeginAtom()
                 stop_a = b.GetEndAtom()
@@ -63,7 +63,7 @@ if __name__ == '__main__':
                     regular_bonds.append(ij)
         name = mol.GetProp('_Name')
         total = len(regular_bonds) + len(movingH_bonds)
-        print('%d:%s' % (total_rot_bonds, name))
+        print('%d:%s' % (total, name))
         for i, j in regular_bonds:
             print("REG\t%d\t%d" % (i, j))
         for i, j in movingH_bonds:
