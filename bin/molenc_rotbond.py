@@ -12,6 +12,14 @@
 #   (hydrogen(s) attached to a "terminal" heavy atom)
 # We list them separately, because users might not be interested in trying
 # to rotate all rotatable bonds.
+# Output format is:
+#---
+# ^TOTAL_ROT_BONDS:TER_ROT_BONDS:MOL_NAME$
+# ^REG	i	j$ # bond_type start_i stop_j
+# ...
+# ^TER	k	l$
+# ...
+#---
 
 import argparse, sys
 from rdkit import Chem
