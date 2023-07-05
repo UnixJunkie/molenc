@@ -41,10 +41,11 @@ def count_heavy_neighbors(a):
     return res
 
 # a terminal heavy atom with at least one hydrogen attached
+# a.GetTotalNumHs(includeNeighbors=True) avoids an rdkit bug
 def is_hydrogenated_terminal(a):
     return (is_HA(a) and \
             count_heavy_neighbors(a) == 1 and \
-            a.GetTotalNumHs() >= 1)
+            a.GetTotalNumHs(includeNeighbors=True) >= 1)
 
 if __name__ == '__main__':
     # CLI options parsing
@@ -62,7 +63,7 @@ if __name__ == '__main__':
     # BUG IF removeHs=False; hydrogens are not properfly counted attached
     # to heavy atoms in this case !!!!!!!!!!!!!!!!
     # REPORTED on ML
-    for mol in Chem.SDMolSupplier(input_fn, removeHs=True):
+    for mol in Chem.SDMolSupplier(input_fn, removeHs=False):
         if mol == None:
             assert(False)
         # debug_mol(mol)
@@ -70,7 +71,7 @@ if __name__ == '__main__':
         if not already_protonated(mol):
             # a conformer for docking should have explicit hydrogens
             print("ERROR: not protonated: %s" % name, file=sys.stderr)
-            # sys.exit(1)
+            sys.exit(1)
         reg_bonds = []
         ter_bonds = []
         # examine each bond
@@ -83,7 +84,8 @@ if __name__ == '__main__':
             if is_HA(a_i) and is_HA(a_j) and \
                b.GetBondTypeAsDouble() == 1.0 and \
                not b.IsInRing():
-                if is_hydrogenated_terminal(a_i) or is_hydrogenated_terminal(a_j):
+                if is_hydrogenated_terminal(a_i) or \
+                   is_hydrogenated_terminal(a_j):
                     ter_bonds.append(ij)
                 else:
                     reg_bonds.append(ij)
