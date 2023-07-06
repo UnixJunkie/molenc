@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
 # create an HTML table to view all molecules in a web browser
+# .smi, .sdf and .mol2 files are supported
 
-import mols2grid, rdkit, sys
+import mols2grid, os, rdkit, sys
 from rdkit import Chem
 
 input_fn  = sys.argv[1]
@@ -32,8 +33,12 @@ if input_fn.endswith(".sdf"):
     mols = sdf_read_mols(input_fn)
 # ----- MOL2 -----
 elif input_fn.endswith(".mol2"):
-    print("MOL2 not supported by rdkit!", file=sys.stderr)
-    exit(1)
+    print("MOL2: not supported by rdkit; converting to sdf via obabel...", file=sys.stderr)
+    input_sdf = input_fn + ".sdf"
+    cmd = "obabel %s -O %s" % (input_fn, input_sdf)
+    print("trying: %s" % cmd, file=sys.stderr)
+    os.system(cmd)
+    mols = sdf_read_mols(input_sdf)
 # ----- SMILES -----
 elif input_fn.endswith(".smi"):
     mols = smi_read_mols(input_fn)
@@ -41,4 +46,10 @@ else:
     print("unsupported file type: %s" % input_fn, file=sys.stderr)
     exit(1)
 
+# create HTML document
 mols2grid.save(mols, output=output_fn, template="table", prerender=True)
+
+# view in browser
+cmd = "firefox %s" % output_fn
+print("trying: %s" % cmd, file=sys.stderr)
+os.system(cmd)
