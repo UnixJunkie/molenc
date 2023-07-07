@@ -40,6 +40,17 @@ def count_heavy_neighbors(a):
             res += 1
     return res
 
+# N with valence 4 becomes N+
+def correct_N_formal_charge(mol):
+    for a in mol.GetAtoms():
+        if a.GetAtomicNum() == 7 and \
+           a.GetTotalValence() == 4 and \
+           a.GetFormalCharge() != +1:
+            a.SetFormalCharge(1)
+    mol.UpdatePropertyCache()
+    Chem.SanitizeMol(mol)
+    return mol
+
 # a terminal heavy atom with at least one hydrogen attached
 # a.GetTotalNumHs(includeNeighbors=True) avoids an rdkit bug
 def is_hydrogenated_terminal(a):
@@ -63,15 +74,16 @@ if __name__ == '__main__':
     # BUG IF removeHs=False; hydrogens are not properfly counted attached
     # to heavy atoms in this case !!!!!!!!!!!!!!!!
     # REPORTED on ML
-    for mol in Chem.SDMolSupplier(input_fn, removeHs=False):
-        if mol == None:
+    for mol0 in Chem.SDMolSupplier(input_fn, removeHs=False, sanitize=False):
+        if mol0 == None:
             assert(False)
-        # debug_mol(mol)
+        # make rdkit robust to some stupid molecular errors            
+        mol = correct_N_formal_charge(mol0)
         name = mol.GetProp('_Name')
         if not already_protonated(mol):
             # a conformer for docking should have explicit hydrogens
             print("ERROR: not protonated: %s" % name, file=sys.stderr)
-            sys.exit(1)
+            # sys.exit(1)
         reg_bonds = []
         ter_bonds = []
         # examine each bond
