@@ -31,6 +31,7 @@ install: [
   ["cp" "bin/molenc_rotbond.py" "%{bin}%/molenc_rotbond.py"]
   ["cp" "bin/molenc_mview.py" "%{bin}%/molenc_mview.py"]
   ["cp" "bin/molenc_HA.py" "%{bin}%/molenc_HA.py"]
+  ["cp" "bin/molenc_sdf2smi.py" "%{bin}%/molenc_sdf2smi.py"]
 ]
 depends: [
   "batteries" {>= "3.5.0"}
