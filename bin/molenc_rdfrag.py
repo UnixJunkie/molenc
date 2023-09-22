@@ -3,38 +3,50 @@
 # Copyright (C) 2023, Francois Berenger
 # BRICS or RECAP molecular fragmentation using rdkit (CLI tool)
 
-import argparse, rdkit, sys, sympy, time
+import argparse, rdkit, re, sys, sympy, time
 
 from molenc_common import RobustSmilesMolSupplier
 from rdkit import Chem
-from rdkit.Chem import Recap
+from rdkit.Chem import BRICS, Recap
+
+# FBR: RECAP: is there really a synthesis tree output? With layers?
+
 
 #TODO
-# - output with more discrete atom numbers (atomMapNum are rendered uggly)
+# - BRICS
 
 # REMARKS
-# FBR: RECAP: is there really a synthesis tree output? With layers?
 # FBR: BRICS: how many times a given fragment is matched?
-
-def numerate_atoms(mol):
-    i = 1 # atom map nums start at 1
-    for a in mol.GetAtoms():
-        a.SetAtomMapNum(i)
-        i += 1
-
-def clear_atom_map_nums(mol):
-    for a in mol.GetAtoms():
-        a.SetAtomMapNum(0)
 
 # support up to 100 fragments
 frag_identifiers = list(sympy.primerange(2, 541))
 num_identifiers = len(frag_identifiers)
 
-def fragment_RECAP(out, mol, name):
-    hierarch = Recap.RecapDecompose(mol)
-    frags = hierarch.GetLeaves().keys()
+digits_star = re.compile('[0-9]+\*')
+
+def remove_BRICS_tags(smi):
+    return re.sub(digits_star, '*', smi)
+
+def fragment(recap, mol):
+    if recap:
+        hierarch = Recap.RecapDecompose(mol)
+        return hierarch.GetLeaves().keys()
+    else:
+        frags = BRICS.BRICSDecompose(mol)
+        res = []
+        for f in frags:
+            res.append(remove_BRICS_tags(f))
+        return res
+
+def fragment_RECAP_or_BRICS(recap, out, mol, name):
+    frags = fragment(recap, mol)
     num_frags = len(frags)
-    print("%d RECAP fragments in %s" % (num_frags, name))
+    scheme = ""
+    if recap:
+        scheme = "RECAP"
+    else:
+        scheme = "BRICS"
+    print("%d %s fragments in %s" % (num_frags, scheme, name))
     assert(num_frags < num_identifiers)
     if num_frags <= 1:
         print("could not fragment: %s" % Chem.MolToSmiles(mol),
@@ -73,7 +85,7 @@ def fragment_RECAP(out, mol, name):
                 # but we want each fragment to have a different index
                 frag_idx += 1
     res = Chem.MolToSmiles(mol)
-    print('%s\t%s_RECAP_fragments' % (res, name), file=out)
+    print('%s\t%s_%s_fragments' % (res, name, scheme), file=out)
 
 if __name__ == '__main__':
     before = time.time()
@@ -103,10 +115,7 @@ if __name__ == '__main__':
       mol_supplier = RobustSmilesMolSupplier(input_fn)
       for name, mol in mol_supplier:
           print("#atoms:%d %s" % (mol.GetNumAtoms(), name))
-          if recap:
-              fragment_RECAP(output, mol, name)
-          else:
-              fragment_BRICS(output, mol, name)
+          fragment_RECAP_or_BRICS(recap, output, mol, name)
           count += 1
     after = time.time()
     dt = after - before
