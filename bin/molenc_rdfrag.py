@@ -3,16 +3,14 @@
 # Copyright (C) 2023, Francois Berenger
 # BRICS or RECAP molecular fragmentation using rdkit (CLI tool)
 
-import argparse, rdkit, sys, time
+import argparse, rdkit, sys, sympy, time
 
 from molenc_common import RobustSmilesMolSupplier
 from rdkit import Chem
 from rdkit.Chem import Recap
 
 #TODO
-# - find cut bonds; remove them
-#   - for each fragment; check it is found only once
-# - output fragments as a SMILES mixture
+# - output with more discrete atom numbers (atomMapNum are rendered uggly)
 
 # REMARKS
 # FBR: RECAP: is there really a synthesis tree output? With layers?
@@ -24,42 +22,50 @@ def numerate_atoms(mol):
         a.SetAtomMapNum(i)
         i += 1
 
-# # substructure search
-# m.HasSubstructMatch(patt)
-# True
-# m.GetSubstructMatch(patt)
-# (0, 5, 6)
-# m.GetSubstructMatches(patt)
-# ((0, 5, 6), (4, 5, 6))        
+# support up to 100 fragments
+frag_identifiers = list(sympy.primerange(2, 541))
+num_identifiers = len(frag_identifiers)
 
 def fragment_RECAP(out, mol, name):
     hierarch = Recap.RecapDecompose(mol)
     frags = hierarch.GetLeaves().keys()
     num_frags = len(frags)
-    print("fragments: %d" % num_frags)
+    print("%d RECAP fragments in %s" % (num_frags, name))
+    assert(num_frags < num_identifiers)
     if num_frags <= 1:
         print("could not fragment: %s" % Chem.MolToSmiles(mol),
               file=sys.stderr)
     else:
-        numerate_atoms(mol)
-        in_mol_smi = Chem.MolToSmiles(mol)
-        print("%s\t%s" % (in_mol_smi, name), file=out)
-        frag_idx = 1
+        # numerate_atoms(mol)
+        # in_mol_smi = Chem.MolToSmiles(mol)
+        # print("%s\t%s" % (in_mol_smi, name), file=out)
+        frag_idx = 0
         for smi in frags:
-            assert(type(smi) == str)
+            #assert(type(smi) == str)
+            # print(smi)
+            # interpreting a SMILES as a SMARTS: is that _really_ safe ?!
             patt = Chem.MolFromSmarts(smi)
+            patt_atoms = patt.GetAtoms()
             matches = mol.GetSubstructMatches(patt)
-            num_matches = len(matches)
-            if num_matches == 0:
-                print("fragment not found: %s" % smi,
-                      file=sys.stderr)
-            if num_matches > 1:
-                print("fragment found several times: %s" % smi,
-                      file=sys.stderr)
+            if len(matches) == 0:
+                print("fragment not found: %s" % smi, file=sys.stderr)
             for match in matches:
-                for i in match:
-                    a = mol.GetAtomWithIdx(i)
-                    a.SetAtomMapNum(frag_idx)
+                frag_id = frag_identifiers[frag_idx]
+                for i, a_idx in enumerate(match):
+                    patt_a = patt_atoms[i]
+                    # the dummy/* atom is not part of the fragment
+                    if patt_a.GetAtomicNum() > 0:
+                        a = mol.GetAtomWithIdx(a_idx)
+                        curr_id = a.GetAtomMapNum()
+                        # don't overwrite already annotated fragments
+                        if curr_id == 0:
+                            a.SetAtomMapNum(frag_id)
+                        else:
+                            # atom is part of several fragments
+                            # (RECAP is a hierarchical fragmentation scheme)
+                            a.SetAtomMapNum(curr_id * frag_id)
+                # a fragment can be matched several times
+                # but we want each fragment to have a different index
                 frag_idx += 1
     res = Chem.MolToSmiles(mol)
     print('%s\t%s_RECAP_fragments' % (res, name), file=out)
