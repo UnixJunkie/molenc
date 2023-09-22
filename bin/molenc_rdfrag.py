@@ -2,16 +2,40 @@
 #
 # Copyright (C) 2023, Francois Berenger
 # BRICS or RECAP molecular fragmentation using rdkit
-# (end-user command-line tool)
+# a end-user command-line tool
 
-import argparse
-import molenc_common as common
-import rdkit
-import sys
-import time
+import argparse, rdkit, sys, time
 
 from molenc_common import RobustSmilesMolSupplier
 from rdkit import Chem
+from rdkit.Chem import Recap
+
+#TODO
+# - find cut bonds; remove them
+# - output fragments as a SMILES mixture; keep showing atomMapNums
+
+# REMARKS
+# FBR: RECAP: is there really a synthesis tree output? With layers?
+# FBR: BRICS: how many times a given fragment is matched?
+
+def numerate_atoms(mol):
+    i = 1 # atom map nums start at 1
+    for a in mol.GetAtoms():
+        a.SetAtomMapNum(i)
+        i += 1
+
+def fragment_RECAP(out, mol, name):
+    hierarch = Recap.RecapDecompose(mol)
+    frags = hierarch.GetLeaves()
+    if len(frags) == 1:
+        print("could not fragment: %s" % Chem.MolToSmiles(mol),
+              file=sys.stderr)
+    else:
+        numerate_atoms(mol        )
+        in_mol_smi = Chem.MolToSmiles(mol)
+        print("%s\t%s" % (in_mol_smi, name), file=out)
+        # for smi in frags:
+        #     print(smi, file=out)
 
 if __name__ == '__main__':
     before = time.time()
@@ -37,13 +61,14 @@ if __name__ == '__main__':
     input_fn = args.input_fn
     output_fn = args.output_fn
     count = 0
-    # fragmenting ---------------------------------------------------------
+    # fragmentation ---------------------------------------------------------
     with open(output_fn, 'w') as output:
       mol_supplier = RobustSmilesMolSupplier(input_fn)
       for name, mol in mol_supplier:
-          print("#atoms:%d %s" % (mol.GetNumAtoms(), name), file=output)
+          print("#atoms:%d %s" % (mol.GetNumAtoms(), name))
+          fragment_RECAP(output, mol, name)
           count += 1
-      after = time.time()
-      dt = after - before
-      print("fragmented %d molecules at %.2f mol/s" % (count, count / dt),
-            file=sys.stderr)
+    after = time.time()
+    dt = after - before
+    print("fragmented %d molecules at %.2f mol/s" % (count, count / dt),
+          file=sys.stderr)
