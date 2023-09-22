@@ -9,14 +9,10 @@ from molenc_common import RobustSmilesMolSupplier
 from rdkit import Chem
 from rdkit.Chem import BRICS, Recap
 
-# FBR: RECAP: is there really a synthesis tree output? With layers?
-
-
 #TODO
-# - BRICS
-
-# REMARKS
-# FBR: BRICS: how many times a given fragment is matched?
+# - remove primes product hack; use a hash table of strings for each
+#   atom index instead of atomMapNum; later, those string can be converted
+#   back to small numbers
 
 # support up to 100 fragments
 frag_identifiers = list(sympy.primerange(2, 541))
@@ -27,12 +23,13 @@ digits_star = re.compile('[0-9]+\*')
 def remove_BRICS_tags(smi):
     return re.sub(digits_star, '*', smi)
 
+# FBR: return fragments from largest to smallest, to avoid interger overflow
 def fragment(recap, mol):
     if recap:
         hierarch = Recap.RecapDecompose(mol)
         return hierarch.GetLeaves().keys()
     else:
-        frags = BRICS.BRICSDecompose(mol)
+        frags = reversed(sorted(BRICS.BRICSDecompose(mol)))
         res = []
         for f in frags:
             res.append(remove_BRICS_tags(f))
@@ -79,7 +76,9 @@ def fragment_RECAP_or_BRICS(recap, out, mol, name):
                         else:
                             # atom is part of several fragments
                             # (RECAP is a hierarchical fragmentation scheme)
-                            a.SetAtomMapNum(curr_id * frag_id)
+                            new_id = curr_id * frag_id
+                            print(new_id)
+                            a.SetAtomMapNum(new_id)
                             a.SetProp("atomNote", str(curr_id * frag_id))
                 # a fragment can be matched several times
                 # but we want each fragment to have a different index
