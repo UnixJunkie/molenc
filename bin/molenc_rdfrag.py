@@ -22,6 +22,10 @@ def numerate_atoms(mol):
         a.SetAtomMapNum(i)
         i += 1
 
+def clear_atom_map_nums(mol):
+    for a in mol.GetAtoms():
+        a.SetAtomMapNum(0)
+
 # support up to 100 fragments
 frag_identifiers = list(sympy.primerange(2, 541))
 num_identifiers = len(frag_identifiers)
@@ -64,6 +68,7 @@ def fragment_RECAP(out, mol, name):
                             # atom is part of several fragments
                             # (RECAP is a hierarchical fragmentation scheme)
                             a.SetAtomMapNum(curr_id * frag_id)
+                            a.SetProp("atomNote", str(curr_id * frag_id))
                 # a fragment can be matched several times
                 # but we want each fragment to have a different index
                 frag_idx += 1
