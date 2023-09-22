@@ -84,12 +84,10 @@ if __name__ == '__main__':
                         help = "molecules input file")
     parser.add_argument("-o", metavar = "output.smi", dest = "output_fn",
                         help = "output file")
-    parser.add_argument("--brics", dest = "brics", action ='store_true',
-                        default = False,
-                        help = "use BRICS")
     parser.add_argument("--recap", dest = "recap", action ='store_true',
-                        default = True,
-                        help = "use RECAP (default)")
+                        default = True, help = "use RECAP (default)")
+    parser.add_argument("--brics", dest = "recap", action ='store_false',
+                        help = "use BRICS")
     # parse CLI
     if len(sys.argv) == 1:
         # user has no clue of what to do -> usage
@@ -98,13 +96,17 @@ if __name__ == '__main__':
     args = parser.parse_args()
     input_fn = args.input_fn
     output_fn = args.output_fn
+    recap = args.recap
     count = 0
     # fragmentation ---------------------------------------------------------
     with open(output_fn, 'w') as output:
       mol_supplier = RobustSmilesMolSupplier(input_fn)
       for name, mol in mol_supplier:
           print("#atoms:%d %s" % (mol.GetNumAtoms(), name))
-          fragment_RECAP(output, mol, name)
+          if recap:
+              fragment_RECAP(output, mol, name)
+          else:
+              fragment_BRICS(output, mol, name)
           count += 1
     after = time.time()
     dt = after - before
