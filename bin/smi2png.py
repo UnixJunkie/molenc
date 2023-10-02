@@ -42,5 +42,6 @@ if __name__ == '__main__':
         d.DrawMolecule(mol, legend = caption)
         d.FinishDrawing()
         out_fn = 'pix/%s.png' % name
+        print("creating %s" % out_fn)
         with open(out_fn, 'wb') as out:
             out.write(d.GetDrawingText())

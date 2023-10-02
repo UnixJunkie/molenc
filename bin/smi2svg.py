@@ -39,5 +39,6 @@ if __name__ == '__main__':
         d.DrawMolecule(mol, legend = caption)
         d.FinishDrawing()
         out_fn = '%d.svg' % i
+        print('creating %s' % out_fn)
         with open(out_fn, 'w') as out:
             out.write(d.GetDrawingText())
