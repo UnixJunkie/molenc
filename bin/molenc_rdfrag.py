@@ -7,7 +7,7 @@ import argparse, rdkit, re, sys, sympy, time
 
 from molenc_common import RobustSmilesMolSupplier
 from rdkit import Chem
-from rdkit.Chem import BRICS, Recap
+from rdkit.Chem import BRICS, Draw, Recap
 
 #TODO
 # - remove primes product hack; use a hash table of strings for each
@@ -17,6 +17,17 @@ from rdkit.Chem import BRICS, Recap
 # support up to 100 fragments
 frag_identifiers = list(sympy.primerange(2, 541))
 num_identifiers = len(frag_identifiers)
+
+def png_dump_mol(fn, mol):
+    mol_to_draw = Chem.Mol(mol) # copy mol
+    for a in mol_to_draw.GetAtoms():
+        curr_id = a.GetAtomMapNum()
+        if curr_id != 0:
+            # clear AtomMapNum: they look uggly in molecular drawings
+            a.SetAtomMapNum(0)
+            a.SetProp("atomNote", str(curr_id))
+    print('creating %s' % fn, file=sys.stderr)
+    Draw.MolToFile(mol_to_draw, fn, size=(1500,1500))
 
 digits_star = re.compile('[0-9]+\*')
 
@@ -83,6 +94,8 @@ def fragment_RECAP_or_BRICS(recap, out, mol, name):
                 # a fragment can be matched several times
                 # but we want each fragment to have a different index
                 frag_idx += 1
+    png_fn = '%s.png' % name
+    png_dump_mol(png_fn, mol)
     res = Chem.MolToSmiles(mol)
     print('%s\t%s_%s_fragments' % (res, name, scheme), file=out)
 
@@ -118,5 +131,5 @@ if __name__ == '__main__':
           count += 1
     after = time.time()
     dt = after - before
-    print("fragmented %d molecules at %.2f mol/s" % (count, count / dt),
+    print("fragmented %d molecule(s) at %.2f Hz" % (count, count / dt),
           file=sys.stderr)
