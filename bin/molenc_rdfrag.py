@@ -9,11 +9,6 @@ from molenc_common import RobustSmilesMolSupplier
 from rdkit import Chem
 from rdkit.Chem import BRICS, Draw, Recap
 
-#TODO
-# - remove primes product hack; use a hash table of strings for each
-#   atom index instead of atomMapNum; later, those string can be converted
-#   back to small numbers
-
 # set of atom map nums
 def atom_map_nums(mol):
     s = set()
@@ -45,6 +40,7 @@ def png_dump_mol(fn, mol):
         if curr_id != 0:
             # clear AtomMapNum: they look uggly in molecular drawings
             a.SetAtomMapNum(0)
+            # use atomNote instead
             a.SetProp("atomNote", str(curr_id))
     print('creating %s' % fn, file=sys.stderr)
     Draw.MolToFile(mol_to_draw, fn, size=(1500,1500))
@@ -92,10 +88,12 @@ def frag_ids_to_atom_map_nums(mol):
             if curr_id != "":
                 val = dict_value_or_none(ht, curr_id)
                 if val == None:
+                    # new id for this set of fragments
                     ht[curr_id] = count
                     a.SetAtomMapNum(count)
                     count += 1
                 else:
+                    # already seen set of fragments
                     a.SetAtomMapNum(val)
 
 def fragment_RECAP_or_BRICS(recap, out, mol, name):
@@ -120,7 +118,6 @@ def fragment_RECAP_or_BRICS(recap, out, mol, name):
             if len(matches) == 0:
                 print("fragment not found: %s" % smi, file=sys.stderr)
             for match in matches:
-                #frag_id = frag_identifiers[frag_idx]
                 for i, a_idx in enumerate(match):
                     patt_a = patt_atoms[i]
                     # the dummy atom is not part of the fragment
@@ -136,7 +133,7 @@ def fragment_RECAP_or_BRICS(recap, out, mol, name):
                             new_id = "%s,%s" % (curr_id, str(frag_idx))
                             a.SetProp("frag_ids", new_id)
                 # a fragment can be matched several times
-                # but we want each molecular fragment to have a different id
+                # but we want each final molecular fragment to have a different id
                 frag_idx += 1
     png_fn = '%s.png' % name
     frag_ids_to_atom_map_nums(mol)
