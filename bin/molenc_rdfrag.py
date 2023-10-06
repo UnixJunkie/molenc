@@ -18,8 +18,27 @@ from rdkit.Chem import BRICS, Draw, Recap
 frag_identifiers = list(sympy.primerange(2, 541))
 num_identifiers = len(frag_identifiers)
 
+# map elements of an arbitrary integer set w/ cardinality N from 1 to N
+def renumber_atom_map_nums(mol):
+    s = set()
+    # get the set of atom map nums
+    for a in mol.GetAtoms():
+        curr_id = a.GetAtomMapNum()
+        if curr_id != 0:
+            s.add(curr_id)
+    # compute the mapping            
+    ht = {}
+    for i, x in enumerate(s):
+        ht[x] = i + 1 # AtomMapNums start at 1
+    # apply mapping
+    for a in mol.GetAtoms():
+        curr_id = a.GetAtomMapNum()
+        if curr_id != 0:
+            a.SetAtomMapNum(ht[curr_id])
+
 def png_dump_mol(fn, mol):
     mol_to_draw = Chem.Mol(mol) # copy mol
+    renumber_atom_map_nums(mol_to_draw)
     for a in mol_to_draw.GetAtoms():
         curr_id = a.GetAtomMapNum()
         if curr_id != 0:
