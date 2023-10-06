@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 #
 # Copyright (C) 2023, Francois Berenger
-# BRICS or RECAP molecular fragmentation using rdkit (CLI tool)
+# BRICS or RECAP molecular fragmentation using rdkit (command-line tool)
 
 import argparse, rdkit, re, sys, sympy, time
 
@@ -14,28 +14,29 @@ from rdkit.Chem import BRICS, Draw, Recap
 #   atom index instead of atomMapNum; later, those string can be converted
 #   back to small numbers
 
-# support up to 100 fragments
-frag_identifiers = list(sympy.primerange(2, 541))
-num_identifiers = len(frag_identifiers)
-
-# map elements of an arbitrary integer set w/ cardinality N from 1 to N
-def renumber_atom_map_nums(mol):
+# set of atom map nums
+def atom_map_nums(mol):
     s = set()
-    # get the set of atom map nums
     for a in mol.GetAtoms():
         curr_id = a.GetAtomMapNum()
         if curr_id != 0:
             s.add(curr_id)
-    # compute the mapping            
+    return s
+
+# remap elements of an arbitrary integer set w/ cardinality N from 1 to N
+def renumber_atom_map_nums(mol):
+    s = atom_map_nums(mol)
+    # compute the mapping
     ht = {}
     for i, x in enumerate(s):
         ht[x] = i + 1 # AtomMapNums start at 1
-    # apply mapping
+    # apply it
     for a in mol.GetAtoms():
         curr_id = a.GetAtomMapNum()
         if curr_id != 0:
             a.SetAtomMapNum(ht[curr_id])
 
+# dump molecule in 2D to a .png file
 def png_dump_mol(fn, mol):
     mol_to_draw = Chem.Mol(mol) # copy mol
     renumber_atom_map_nums(mol_to_draw)
@@ -50,20 +51,52 @@ def png_dump_mol(fn, mol):
 
 digits_star = re.compile('[0-9]+\*')
 
+# ignore BRICS "bond tags" for the moment
 def remove_BRICS_tags(smi):
     return re.sub(digits_star, '*', smi)
 
-# FBR: return fragments from largest to smallest, to avoid interger overflow
 def fragment(recap, mol):
     if recap:
         hierarch = Recap.RecapDecompose(mol)
         return hierarch.GetLeaves().keys()
     else:
-        frags = reversed(sorted(BRICS.BRICSDecompose(mol)))
+        frags = BRICS.BRICSDecompose(mol)
         res = []
         for f in frags:
             res.append(remove_BRICS_tags(f))
         return res
+
+# robust a.GetProp(str_key)
+def get_atom_prop(a, key):
+    try:
+        return a.GetProp(key)
+    except KeyError:
+        return ""
+
+def dict_value_or_none(d, k):
+    try:
+        return d[k]
+    except KeyError:
+        return None
+
+def frag_ids_to_atom_map_nums(mol):
+    s = atom_map_nums(mol)
+    count = 1
+    ht = {}
+    # only one of the two fragmenting schemes has already assigned AtomMapNums
+    # the other scheme assigns atom properties under the key "frag_ids"
+    if len(s) == 0:
+        # map atom props to atom map nums
+        for a in mol.GetAtoms():
+            curr_id = get_atom_prop(a, "frag_ids")
+            if curr_id != "":
+                val = dict_value_or_none(ht, curr_id)
+                if val == None:
+                    ht[curr_id] = count
+                    a.SetAtomMapNum(count)
+                    count += 1
+                else:
+                    a.SetAtomMapNum(val)
 
 def fragment_RECAP_or_BRICS(recap, out, mol, name):
     frags = fragment(recap, mol)
@@ -74,46 +107,39 @@ def fragment_RECAP_or_BRICS(recap, out, mol, name):
     else:
         scheme = "BRICS"
     print("%d %s fragments in %s" % (num_frags, scheme, name))
-    assert(num_frags < num_identifiers)
     if num_frags <= 1:
         print("could not fragment: %s" % Chem.MolToSmiles(mol),
               file=sys.stderr)
     else:
-        # numerate_atoms(mol)
-        # in_mol_smi = Chem.MolToSmiles(mol)
-        # print("%s\t%s" % (in_mol_smi, name), file=out)
         frag_idx = 0
         for smi in frags:
-            #assert(type(smi) == str)
-            # print(smi)
-            # interpreting a SMILES as a SMARTS: is that _really_ safe ?!
+            # /!\ interpreting a SMILES as a SMARTS: is that _really_ safe? /!\
             patt = Chem.MolFromSmarts(smi)
             patt_atoms = patt.GetAtoms()
             matches = mol.GetSubstructMatches(patt)
             if len(matches) == 0:
                 print("fragment not found: %s" % smi, file=sys.stderr)
             for match in matches:
-                frag_id = frag_identifiers[frag_idx]
+                #frag_id = frag_identifiers[frag_idx]
                 for i, a_idx in enumerate(match):
                     patt_a = patt_atoms[i]
-                    # the dummy/* atom is not part of the fragment
+                    # the dummy atom is not part of the fragment
                     if patt_a.GetAtomicNum() > 0:
                         a = mol.GetAtomWithIdx(a_idx)
-                        curr_id = a.GetAtomMapNum()
+                        curr_id = get_atom_prop(a, "frag_ids")
                         # don't overwrite already annotated fragments
-                        if curr_id == 0:
-                            a.SetAtomMapNum(frag_id)
+                        if curr_id == "":
+                            a.SetProp("frag_ids", str(frag_idx))
                         else:
                             # atom is part of several fragments
                             # (RECAP is a hierarchical fragmentation scheme)
-                            new_id = curr_id * frag_id
-                            print(new_id)
-                            a.SetAtomMapNum(new_id)
-                            a.SetProp("atomNote", str(curr_id * frag_id))
+                            new_id = "%s,%s" % (curr_id, str(frag_idx))
+                            a.SetProp("frag_ids", new_id)
                 # a fragment can be matched several times
-                # but we want each fragment to have a different index
+                # but we want each molecular fragment to have a different id
                 frag_idx += 1
     png_fn = '%s.png' % name
+    frag_ids_to_atom_map_nums(mol)
     png_dump_mol(png_fn, mol)
     res = Chem.MolToSmiles(mol)
     print('%s\t%s_%s_fragments' % (res, name, scheme), file=out)
