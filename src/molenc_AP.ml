@@ -46,6 +46,12 @@ let read_some chunk_size input =
     );
   tmp_smi_fn
 
+let standardize_some tmp_smi_fn =
+  let tmp_std_smi_fn = Filename.temp_file "" (* no_prefix *) "_std.smi" in
+  standardize_molecules tmp_smi_fn tmp_std_smi_fn;
+  Sys.remove tmp_smi_fn;
+  tmp_std_smi_fn
+
 let main () =
   Log.(set_log_level INFO);
   Log.color_on ();
