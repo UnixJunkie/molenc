@@ -13,6 +13,8 @@ module Log = Dolog.Log
 type mode = Input_dict of string
           | Output_dict of string
 
+let verbose = ref false
+
 let molenc_std_py =
   let exit_code, path = BatUnix.run_and_read "which molenc_std.py" in
   let res = BatString.strip path in
@@ -21,6 +23,15 @@ let molenc_std_py =
     failwith "molenc_AP: no molenc_std.py in PATH"
   else
     res
+
+let standardize_molecules in_fn out_fn =
+  let cmd = sprintf "%s -i %s -o %s" molenc_std_py in_fn out_fn in
+  (if !verbose then
+     Log.debug "running: %s" cmd
+  );
+  let exit_code = Unix.system cmd in
+  if exit_code <> BatUnix.WEXITED 0 then
+    Log.warn "Molenc_AP.standardize_molecules: error while running: %s" cmd
 
 let main () =
   Log.(set_log_level INFO);
@@ -34,7 +45,8 @@ let main () =
                -d <dico.dix>: use existing feature dictionary\n  \
                [-m <int>]: maximum atom pairs distance (in bonds; default=OFF)\n  \
                [-np <int>]: parallelize on NCORES (default=1)\n  \
-               [-cs <int>]: chunk size (default=50)\n"
+               [-cs <int>]: chunk size (default=50)\n  \
+               [-v]: verbose/debug mode\n"
         Sys.argv.(0);
       exit 1)
   );
