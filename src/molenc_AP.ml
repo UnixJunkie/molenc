@@ -26,31 +26,44 @@ let molenc_std_py =
 
 let standardize_molecules in_fn out_fn =
   let cmd = sprintf "%s -i %s -o %s" molenc_std_py in_fn out_fn in
-  (if !verbose then
-     Log.debug "running: %s" cmd
-  );
+  (if !verbose then Log.debug "running: %s" cmd);
   let exit_code = Unix.system cmd in
   if exit_code <> BatUnix.WEXITED 0 then
     Log.warn "Molenc_AP.standardize_molecules: error while running: %s" cmd
 
 (* read [chunk_size] molecules and store them in a temp_file *)
 let read_some chunk_size input =
+  let count = ref 0 in
   let tmp_smi_fn = Filename.temp_file "" (* no_prefix *) ".smi" in
   LO.with_out_file tmp_smi_fn (fun output ->
       try
         for _i = 1 to chunk_size do
           let line = input_line input in
-          fprintf output "%s\n" line
+          fprintf output "%s\n" line;
+          incr count
         done
       with End_of_file -> ()
     );
-  tmp_smi_fn
+  if !count = 0 then
+    (Sys.remove tmp_smi_fn;
+     raise Parany.End_of_input)
+  else
+    tmp_smi_fn
 
 let standardize_some tmp_smi_fn =
   let tmp_std_smi_fn = Filename.temp_file "" (* no_prefix *) "_std.smi" in
   standardize_molecules tmp_smi_fn tmp_std_smi_fn;
   Sys.remove tmp_smi_fn;
   tmp_std_smi_fn
+
+let catenate_some dst_fn tmp_src_fn =
+  let cmd = sprintf "cat %s >> %s" tmp_src_fn dst_fn in
+  (if !verbose then Log.debug "running: %s" cmd);
+  let exit_code = Unix.system cmd in
+  (if exit_code <> BatUnix.WEXITED 0 then
+     Log.warn "Molenc_AP.catenate_some: error while running: %s" cmd
+  );
+  Sys.remove tmp_src_fn
 
 let main () =
   Log.(set_log_level INFO);
@@ -72,17 +85,17 @@ let main () =
   let input_fn = CLI.get_string ["-i"] args in
   let output_fn = CLI.get_string ["-o"] args in
   let nprocs = CLI.get_int_def ["-np"] args 1 in
-  let _csize = CLI.get_int_def ["-cs"] args 50 in
+  let csize = CLI.get_int_def ["-cs"] args 50 in
   let _max_dist_opt = CLI.get_int_opt ["-m"] args in
   let _dict_mode = match CLI.get_string_opt ["-d"] args with
     | None -> Output_dict (input_fn ^ ".dix")
     | Some fn -> Input_dict fn in
-  CLI.finalize (); (* --------------------------------------------------- *)
-  LO.with_infile_outfile input_fn output_fn (fun _input _output ->
+  CLI.finalize (); (* ------------------------------------------------------ *)
+  LO.with_in_file input_fn (fun input ->
       Parany.run ~preserve:true nprocs
-        ~demux:(fun _ -> failwith "not implemented yet")
-        ~work:(fun _ -> failwith "not implemented yet")
-        ~mux:(fun _ -> failwith "not implemented yet")
+        ~demux:(fun () -> read_some csize input)
+        ~work:standardize_some
+        ~mux:(catenate_some output_fn)
     )
 
 let () = main ()
