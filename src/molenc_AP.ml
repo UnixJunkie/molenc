@@ -34,8 +34,7 @@ let main () =
   let nprocs = CLI.get_int_def ["-np"] args 1 in
   let _csize = CLI.get_int_def ["-cs"] args 50 in
   let _max_dist_opt = CLI.get_int_opt ["-m"] args in
-  let _dico_mode =
-    match CLI.get_string_opt ["-d"] args with
+  let _dict_mode = match CLI.get_string_opt ["-d"] args with
     | None -> Output_dict (input_fn ^ ".dix")
     | Some fn -> Input_dict fn in
   CLI.finalize (); (* --------------------------------------------------- *)
