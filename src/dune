@@ -10,17 +10,17 @@
 (executables
   (names encoder decoder filter butina pubchem_decoder uniq to_dense get_mol
          rank ap_encoder prune merge MST lig_box shannon fragmentable_mol
-         indexer pareto finder AP_BBAD split sdf_read dsmi BBAD)
+         indexer pareto finder AP_BBAD split sdf_read dsmi BBAD molenc_AP)
   (public_names molenc_e molenc_d molenc_filter molenc_cluster
                 molenc_pubchem_decoder molenc_uniq molenc_dense molenc_get
                 molenc_rank molenc_ap molenc_prune molenc_merge molenc_mst
                 molenc_ligbox molenc_shannon molenc_frag molenc_indexer
                 molenc_pareto molenc_finder molenc_apbbad molenc_split
-                molenc_sdf_read molenc_dsmi molenc_bbad)
+                molenc_sdf_read molenc_dsmi molenc_bbad molenc_AP)
   (modules encoder decoder filter butina pubchem_decoder uniq to_dense get_mol
            sybyl syb_atom mol2 sdf smi ph4 rank ap_encoder prune merge MST
            palette gnuplot lig_box shannon fragmentable_mol indexer pareto
-           finder AP_BBAD split sdf_read dsmi BBAD)
+           finder AP_BBAD split sdf_read dsmi BBAD EltFCaroNeighbs molenc_AP)
   (libraries molenc bst batteries dolog minicli parany cpm dokeysto
              ocamlgraph vector3 line_oriented pyml))
 
