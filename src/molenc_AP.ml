@@ -33,6 +33,19 @@ let standardize_molecules in_fn out_fn =
   if exit_code <> BatUnix.WEXITED 0 then
     Log.warn "Molenc_AP.standardize_molecules: error while running: %s" cmd
 
+(* read [chunk_size] molecules and store them in a temp_file *)
+let read_some chunk_size input =
+  let tmp_smi_fn = Filename.temp_file "" (* no_prefix *) ".smi" in
+  LO.with_out_file tmp_smi_fn (fun output ->
+      try
+        for _i = 1 to chunk_size do
+          let line = input_line input in
+          fprintf output "%s\n" line
+        done
+      with End_of_file -> ()
+    );
+  tmp_smi_fn
+
 let main () =
   Log.(set_log_level INFO);
   Log.color_on ();
