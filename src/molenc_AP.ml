@@ -13,6 +13,15 @@ module Log = Dolog.Log
 type mode = Input_dict of string
           | Output_dict of string
 
+let molenc_std_py =
+  let exit_code, path = BatUnix.run_and_read "which molenc_std.py" in
+  let res = BatString.strip path in
+  Log.info "found molenc_std.py at %s" res;
+  if exit_code <> BatUnix.WEXITED 0 then
+    failwith "molenc_AP: no molenc_std.py in PATH"
+  else
+    res
+
 let main () =
   Log.(set_log_level INFO);
   Log.color_on ();
