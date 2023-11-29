@@ -18,6 +18,7 @@ module Atom_env = Molenc.Atom_env
 module CLI = Minicli.CLI
 module L = BatList
 module Log = Dolog.Log
+module LO = Line_oriented
 module Mini_mol = Molenc.Mini_mol
 module Ht = BatHashtbl
 module Scale = Molenc.Scale
@@ -92,7 +93,7 @@ let main () =
         let dico_fn = CLI.get_string ["-d"] args in
         Scale.of_dictionary_header dico_fn in
   let radii = Scale.to_list scale in
-  Utls.with_infile_outfile input_fn output_fn (fun input output ->
+  LO.with_infile_outfile input_fn output_fn (fun input output ->
       (* format header *)
       fprintf output "#radius=%s\n%!" (Scale.to_string scale);
       Parany.run ~preserve:true ~csize:1 nprocs
