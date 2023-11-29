@@ -5,6 +5,7 @@ module Rdkit : sig
   val to_pyobject : t -> Pytypes.pyobject
   val __init__ : smi:string -> unit -> t
   val type_atom : t -> i:int -> unit -> int array
+  val type_EltFCaroNeighbs : t -> i:int -> unit -> int array
   val get_num_atoms : t -> unit -> int
   val get_distance : t -> i:int -> j:int -> unit -> int
 
@@ -115,6 +116,50 @@ class Rdkit:
         formal_charge = a.GetFormalCharge()
         return [anum, nb_HA, nb_H, HA_used_val, formal_charge]
 
+    # new (2023) atom typing scheme
+    def type_EltFCaroNeighbs(self, i: int) -> list[int]:
+        a = self.mol.GetAtomWithIdx(i)
+        anum = a.GetAtomicNum()
+        fc = a.GetFormalCharge()
+        aro = int(a.GetIsAromatic())
+        # count direct neighbors
+        nb_other = 0 # unsupported atoms
+        nb_C  = 0
+        nb_H  = a.GetTotalNumHs()
+        nb_N  = 0
+        nb_O  = 0
+        nb_P  = 0
+        nb_S  = 0
+        nb_F  = 0
+        nb_Cl = 0
+        nb_Br = 0
+        nb_I  = 0
+        for neighb in a.GetNeighbors():
+            x = neighb.GetAtomicNum()
+            if x > 1: # Hs already counted before (including implicits)
+                if x == 6:
+                    nb_C += 1
+                if x == 7:
+                    nb_N += 1
+                if x == 8:
+                    nb_O += 1
+                if x == 15:
+                    nb_P += 1
+                if x == 16:
+                    nb_S += 1
+                if x == 9:
+                    nb_F += 1
+                if x == 17:
+                    nb_Cl += 1
+                if x == 35:
+                    nb_Br += 1
+                if x == 53:
+                    nb_I += 1
+                else:
+                    nb_other += 1
+        # synchronized w/ EltFCaroNeighbs.index_of_anum function
+        return [anum, fc, aro, nb_other, nb_C, nb_H, nb_N, nb_O, nb_P, nb_S, nb_F, nb_Cl, nb_Br, nb_I]
+
     # # pyml_bindgen doesn't support list of tuples or even tuples...
     # # type each atom of the molecule
     # def type_atoms(self):
@@ -192,6 +237,12 @@ class Rdkit:
 
   let type_atom t ~i () =
     let callable = Py.Object.find_attr_string t "type_atom" in
+    let kwargs = filter_opt [ Some ("i", Py.Int.of_int i) ] in
+    Py.List.to_array_map Py.Int.to_int
+    @@ Py.Callable.to_function_with_keywords callable [||] kwargs
+
+  let type_EltFCaroNeighbs t ~i () =
+    let callable = Py.Object.find_attr_string t "type_EltFCaroNeighbs" in
     let kwargs = filter_opt [ Some ("i", Py.Int.of_int i) ] in
     Py.List.to_array_map Py.Int.to_int
     @@ Py.Callable.to_function_with_keywords callable [||] kwargs
