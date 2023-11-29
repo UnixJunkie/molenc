@@ -35,7 +35,7 @@ let main () =
   CLI.finalize();
   let all_scores = ref [] in
   (* read all scores *)
-  Utls.iter_on_lines_of_file input_fn (fun line ->
+  LO.iter input_fn (fun line ->
       let score_field = String.cut_on_char sep field line in
       let score =
         try Scanf.sscanf score_field "%f" (fun x -> x)
@@ -61,7 +61,7 @@ let main () =
     ) uniq_scores;
   (* output all lines, allong with their rank *)
   LO.with_out_file output_fn (fun output ->
-      Utls.iter_on_lines_of_file input_fn (fun line ->
+      LO.iter input_fn (fun line ->
           let score_field = String.cut_on_char sep field line in
           let score =
             try Scanf.sscanf score_field "%f" (fun x -> x)
