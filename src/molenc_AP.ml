@@ -14,6 +14,7 @@ module L = BatList
 module LO = Line_oriented
 module Log = Dolog.Log
 module Rdkit = Molenc.Rdkit.Rdkit
+module Utls = Molenc.Utls
 
 (* because the Rdkit module uses Pyml *)
 let () = Py.initialize ~version:3 ()
@@ -37,6 +38,12 @@ module Atom_pair = struct
       { left = t1; dist; right = t2 }
     else
       { left = t2; dist; right = t1 }
+
+  let fprintf out x =
+    fprintf out "%s,%d,%s"
+      (Utls.string_of_array string_of_int x.left)
+      x.dist
+      (Utls.string_of_array string_of_int x.right)
 
 end
 
@@ -170,9 +177,15 @@ let dico_from_file fn =
       failwith "not implemented yet"
     )
 
-let dico_to_file _dict fn =
-  LO.with_out_file fn (fun _output ->
-      failwith "not implemented yet"
+let dico_to_file dict fn =
+  let kvs = Ht.to_list dict in
+  (* sort by incr. feat index *)
+  let kvs = L.sort (fun (_f1, i) (_f2, j) -> BatInt.compare i j) kvs in
+  LO.with_out_file fn (fun output ->
+      L.iter (fun (feat, idx) ->
+          Atom_pair.fprintf output feat;
+          fprintf output "\t%d\n" idx
+        ) kvs
     )
 
 let main () =
@@ -218,7 +231,12 @@ let main () =
         ~demux:(fun () -> read_some csize input)
         ~work:(fun tmp_dir -> encode_some (standardize_some no_std tmp_dir))
         ~mux:(L.iter (fp_string_output dict_mode output dict))
-    )
-(* FBR: in dict Output mode: store it to file *)
+    );
+  match dict_mode with
+  | Output ->
+    let dict_fn = input_fn ^ ".dix" in
+    Log.info "creating %s" dict_fn;
+    dico_to_file dict dict_fn
+  | _ -> ()
 
 let () = main ()
