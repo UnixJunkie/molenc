@@ -96,7 +96,7 @@ class Rdkit:
         a = self.mol.GetAtomWithIdx(i)
         anum = a.GetAtomicNum()
         fc = a.GetFormalCharge()
-        aro = a.GetIsAromatic()
+        aro = int(a.GetIsAromatic())
         # count direct neighbors
         nb_other = 0 # unsupported atoms
         nb_C  = 0
