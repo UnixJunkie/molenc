@@ -3,6 +3,8 @@ val __init__: smi:string -> unit -> t
 
 val type_atom: t -> i:int -> unit -> int array
 
+val type_EltFCaroNeighbs: t -> i:int -> unit -> int array
+
 val get_num_atoms: t -> unit -> int
 
 val get_distance: t -> i:int -> j:int -> unit -> int
