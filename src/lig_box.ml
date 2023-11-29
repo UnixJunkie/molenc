@@ -98,7 +98,7 @@ let main () =
   let input_fn = CLI.get_string ["-i"] args in
   let _margin = CLI.get_float_def ["-m"] args 0.0 in
   CLI.finalize ();
-  let all_lines = Utls.lines_of_file input_fn in
+  let all_lines = LO.lines_of_file input_fn in
   (* cout #molecules; enforce only 1 *)
   Utls.enforce (1 = count "@<TRIPOS>MOLECULE" all_lines)
     ("Lig_box: more than one molecule in " ^ input_fn);
