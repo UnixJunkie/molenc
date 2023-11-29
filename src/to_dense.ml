@@ -7,6 +7,7 @@ module A = BatArray
 module Bloom = Molenc.Bloom
 module CLI = Minicli.CLI
 module Log = Dolog.Log
+module LO = Line_oriented
 module Fp = Molenc.Fingerprint
 module Utls = Molenc.Utls
 
@@ -59,7 +60,6 @@ let main () =
   done;
   printf "\n";
   (* dense data lines, with optional counted Bloom filter encoding *)
-  Utls.iter_on_lines_of_file input_fn
-    (expand_line input_features maybe_bloom)
+  LO.iter input_fn (expand_line input_features maybe_bloom)
 
 let () = main ()
