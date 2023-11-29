@@ -18,8 +18,8 @@ module Rdkit = Molenc.Rdkit.Rdkit
 (* because the Rdkit module uses Pyml *)
 let () = Py.initialize ~version:3 ()
 
-type mode = Input_dict of string
-          | Output_dict of string
+type mode = Input
+          | Output
 
 type atom = int array
 
@@ -48,7 +48,7 @@ type unfold_count_fp = { name: string;
 let fp_string_output mode out dict fp =
   fprintf out "%s,0.0,[" fp.name;
   let feat_counts = match mode with
-    | Output_dict _ -> (* writable dict *)
+    | Output -> (* writable dict *)
       (* feature index 0 is a reserved value for later users of the same dict:
          unkown feature *)
       let feat_i = ref (1 + Ht.length dict) in
@@ -61,7 +61,7 @@ let fp_string_output mode out dict fp =
                !feat_i - 1) in
           IMap.add feat' count acc
         ) fp.feat_counts IMap.empty
-    | Input_dict _ -> (* read-only dict *)
+    | Input -> (* read-only dict *)
       APM.fold (fun feat count acc ->
           try IMap.add (Ht.find dict feat) count acc
           with Not_found ->
@@ -155,8 +155,8 @@ let encode_some tmp_dir =
   let smi_fn = sprintf "%s/in_std.smi" tmp_dir in
   LO.map smi_fn encode_smiles_line
 
+(* was used to // standardization only *)
 let catenate_some dst_fn tmp_dir =
-  (* FBR: CHANGE HERE ONCE ENCODER READY *)
   let cmd = sprintf "cat %s/in_std.smi >> %s" tmp_dir dst_fn in
   (if !verbose then Log.debug "running: %s" cmd);
   let exit_code = Unix.system cmd in
@@ -165,8 +165,15 @@ let catenate_some dst_fn tmp_dir =
   );
   assert(0 = Sys.command (sprintf "rm -rf %s" tmp_dir))
 
-let dico_from_file _fn =
-  failwith "not implemented yet"
+let dico_from_file fn =
+  LO.with_in_file fn (fun _input ->
+      failwith "not implemented yet"
+    )
+
+let dico_to_file _dict fn =
+  LO.with_out_file fn (fun _output ->
+      failwith "not implemented yet"
+    )
 
 let main () =
   Log.(set_log_level INFO);
@@ -182,7 +189,7 @@ let main () =
                [--no-std]: do not standardize molecules\n  \
                [-m <int>]: maximum atom pairs distance (in bonds; default=OFF)\n  \
                [-np <int>]: parallelize on NCORES (default=1)\n  \
-               [-c <int>]: chunk size (default=50)\n  \
+               [-c <int>]: chunk size (default=200)\n  \
                [-v]: verbose/debug mode\n"
         Sys.argv.(0);
       exit 1)
@@ -190,13 +197,13 @@ let main () =
   let input_fn = CLI.get_string ["-i"] args in
   let output_fn = CLI.get_string ["-o"] args in
   let nprocs = CLI.get_int_def ["-np"] args 1 in
-  let csize = CLI.get_int_def ["-c"] args 50 in
+  let csize = CLI.get_int_def ["-c"] args 200 in
   let no_std = CLI.get_set_bool ["--no-std"] args in
   let force = CLI.get_set_bool ["-f"] args in
   let _max_dist_opt = CLI.get_int_opt ["-m"] args in
   let dict_mode, dict = match CLI.get_string_opt ["-d"] args with
-    | None -> (Output_dict (input_fn ^ ".dix"), Ht.create 30_000)
-    | Some fn -> (Input_dict fn, dico_from_file fn) in
+    | None -> (Output, Ht.create 20_011)
+    | Some fn -> (Input, dico_from_file fn) in
   CLI.finalize (); (* ------------------------------------------------------ *)
   (if Sys.file_exists output_fn then
      let () = Log.warn "Molenc_AP.main: output file exists: %s" output_fn in
