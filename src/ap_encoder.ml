@@ -15,6 +15,7 @@ module Atom_pair = Molenc.Atom_pair
 module CLI = Minicli.CLI
 module Ht = BatHashtbl
 module L = BatList
+module LO = Line_oriented
 module Log = Dolog.Log
 module Mini_mol = Molenc.Mini_mol
 module Utls = Molenc.Utls
@@ -102,7 +103,7 @@ let dico_to_file molecules_fn maybe_max_dist dico_fn =
     Utls.list_rev_sort compare count_feats in
   let n = L.length sorted in
   let dico = Ht.create n in
-  Utls.with_out_file dico_fn (fun output ->
+  LO.with_out_file dico_fn (fun output ->
       fprintf output "#atom_pairs\n";
       L.iteri (fun id (count, feat_str) ->
           (* we also print the total count, to allow verification
