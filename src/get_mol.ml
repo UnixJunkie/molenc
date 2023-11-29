@@ -7,6 +7,7 @@ module CLI = Minicli.CLI
 module DB = Dokeysto.Db.RW
 module Ht = BatHashtbl
 module L = BatList
+module LO = Line_oriented
 module Log = Dolog.Log
 module S = BatString
 module StringSet = BatSet.String
@@ -28,7 +29,7 @@ let mol_reader_for_file fn =
 let populate_db db input_fn =
   let read_one_mol, read_mol_name = mol_reader_for_file input_fn in
   let count = ref 0 in
-  Utls.with_in_file input_fn (fun input ->
+  LO.with_in_file input_fn (fun input ->
       try
         while true do
           let m = read_one_mol input in
@@ -50,7 +51,7 @@ let populate_ht names input_fn =
   let collected = Ht.create nb_names in
   let read_one_mol, read_mol_name = mol_reader_for_file input_fn in
   let count = ref 0 in
-  Utls.with_in_file input_fn (fun input ->
+  LO.with_in_file input_fn (fun input ->
       try
         while true do
           let m = read_one_mol input in
@@ -122,7 +123,7 @@ let main () =
   CLI.finalize ();
   let names = match names_provider with
     | On_cli names -> S.split_on_string names ~by:","
-    | From_file fn -> Utls.lines_of_file fn in
+    | From_file fn -> LO.lines_of_file fn in
   let nb_names = L.length names in
   let out = match maybe_output_fn with
     | None -> stdout
