@@ -90,12 +90,14 @@ let of_lines lines =
     | [] -> L.rev acc
     | _ ->
       let name_l, rest =
-        L.fold_while (fun l -> String.starts_with l "#")
+        L.fold_while
+          (fun _acc l -> String.starts_with l "#")
           (fun acc x -> x :: acc) [] ls in
       (match name_l with
        | [name] ->
          (let feat_counts, remaining_mols =
-            L.fold_while (fun l -> not (String.starts_with l "#"))
+            L.fold_while
+              (fun _acc l -> not (String.starts_with l "#"))
               (fun acc x -> x :: acc) [] rest in
           let mol = read_one (name :: feat_counts) in
           loop (mol :: acc) remaining_mols)
