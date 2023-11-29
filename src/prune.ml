@@ -22,7 +22,7 @@ let prune_dico features_to_drop in_dico_fn out_dico_fn =
   Log.info "pruning %d features" (Ht.length to_drop);
   LO.with_out_file out_dico_fn (fun out ->
       let new_feat_id = ref 0 in
-      Utls.iter_on_lines_of_file in_dico_fn (fun line ->
+      LO.iter in_dico_fn (fun line ->
           if S.starts_with line "#" then
             (* preserve comments *)
             fprintf out "%s\n" line
@@ -60,7 +60,7 @@ let main () =
     let output_fn = CLI.get_string ["-o"] args in
     let features_fn = CLI.get_string ["-f"] args in
     CLI.finalize();
-    let features = Utls.map_on_lines_of_file features_fn int_of_string in
+    let features = LO.map features_fn int_of_string in
     prune_dico features input_fn output_fn
 
 let () = main ()
