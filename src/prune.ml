@@ -6,6 +6,7 @@ module CLI = Minicli.CLI
 module Ht = Hashtbl
 module L = BatList
 module Log = Dolog.Log
+module LO = Line_oriented
 module S = BatString
 module Utls = Molenc.Utls
 
@@ -19,7 +20,7 @@ let prune_dico features_to_drop in_dico_fn out_dico_fn =
       Ht.add to_drop i ()
     ) features_to_drop;
   Log.info "pruning %d features" (Ht.length to_drop);
-  Utls.with_out_file out_dico_fn (fun out ->
+  LO.with_out_file out_dico_fn (fun out ->
       let new_feat_id = ref 0 in
       Utls.iter_on_lines_of_file in_dico_fn (fun line ->
           if S.starts_with line "#" then
