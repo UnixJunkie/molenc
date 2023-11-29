@@ -20,6 +20,7 @@ module FpMol = Molenc.FpMol
 module Ht = Hashtbl
 module L = BatList
 module Log = Dolog.Log
+module LO = Line_oriented
 module TopKeeper = Cpm.TopKeeper
 module Utls = Molenc.Utls
 
@@ -127,7 +128,7 @@ let main () =
               let name = FpMol.get_name mol in
               Ht.add ok_names name ()
             ) ok_mols;
-      Utls.with_out_file output_fn (fun out ->
+      LO.with_out_file output_fn (fun out ->
           Utls.iteri_on_lines_of_file input_fn (fun i line ->
               let mol = FpMol.parse_one i line in
               let name = FpMol.get_name mol in
@@ -142,8 +143,8 @@ let main () =
     begin
       let mols_to_exclude = FpMol.molecules_of_file train_fn in
       let exclude_set = Bstree.of_list mols_to_exclude in
-      Utls.with_out_file output_fn (fun out ->
-          Utls.with_out_file filtered_out_fn (fun err_out ->
+      LO.with_out_file output_fn (fun out ->
+          LO.with_out_file filtered_out_fn (fun err_out ->
               Utls.iteri_on_lines_of_file input_fn (fun i line ->
                   let mol = FpMol.parse_one i line in
                   let nearest_train_mol, nearest_d =
@@ -175,8 +176,8 @@ let main () =
         let mols = FpMol.molecules_of_file train_fn in
         Bstree.of_list mols in
       Log.info "done";
-      Utls.with_out_file output_fn (fun out ->
-          Utls.iteri_on_lines_of_file input_fn (fun i line ->
+      LO.with_out_file output_fn (fun out ->
+          LO.iteri input_fn (fun i line ->
               let mol = FpMol.parse_one i line in
               let curr_name = FpMol.get_name mol in
               let nearest_train_mol, nearest_d =
@@ -201,8 +202,8 @@ let main () =
           | [] -> failwith "Filter: no molecule in query file"
       in
       let top_k = TopKeeper.create k in
-      Utls.with_out_file output_fn (fun out ->
-          Utls.iteri_on_lines_of_file input_fn (fun i line ->
+      LO.with_out_file output_fn (fun out ->
+          LO.iteri input_fn (fun i line ->
               let mol = FpMol.parse_one i line in
               let score = FpMol.tani query_mol mol in
               TopKeeper.add top_k score mol;
