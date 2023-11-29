@@ -6,12 +6,61 @@
 
 open Printf
 
+module A = BatArray
 module CLI = Minicli.CLI
 module LO = Line_oriented
 module Log = Dolog.Log
+module Rdkit = Molenc.Rdkit.Rdkit
+
+(* because the Rdkit module uses Pyml *)
+let () = Py.initialize ~version:3 ()
 
 type mode = Input_dict of string
           | Output_dict of string
+
+type atom = int array
+
+module Atom_pair = struct
+
+  type t = { left: atom ;
+             dist: int ; (* topological distance in bonds *)
+             right: atom }
+
+  let compare = compare
+
+  let create t1 dist t2 =
+    (* canonicalization here *)
+    if t1 <= t2 then
+      { left = t1; dist; right = t2 }
+    else
+      { left = t2; dist; right = t1 }
+
+end
+
+module APM = Map.Make (Atom_pair)
+
+type unfold_count_fp = { name: string;
+                         feat_counts: int APM.t }
+
+(* unfolded counted atom pairs fingerprint encoding *)
+let encode_smiles_line line =
+  let smi, name = BatString.split ~by:"\t" line in
+  let mol = Rdkit.__init__ ~smi () in
+  let n = Rdkit.get_num_atoms mol () in
+  let atom_types = A.init n (fun i -> Rdkit.type_EltFCaroNeighbs mol ~i ()) in
+  let fp = ref APM.empty in
+  (* autocorrelation *)
+  for i = 0 to n - 2 do
+    for j = i + 1 to n - 1 do
+      let feat =
+        Atom_pair.create
+          atom_types.(i) (Rdkit.get_distance mol ~i ~j ()) atom_types.(j) in
+      fp :=
+        try APM.add feat (1 + APM.find feat !fp) !fp
+        with Not_found -> APM.add feat 1 !fp
+    done
+  done;
+  { name; feat_counts = !fp }
 
 let verbose = ref false
 
