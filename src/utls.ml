@@ -11,6 +11,7 @@ open Printf
 module A = BatArray
 module Ht = BatHashtbl
 module L = BatList
+module LO = Line_oriented
 module Log = Dolog.Log
 module S = BatString
 
@@ -21,11 +22,6 @@ let tap f x =
   x
 
 let fst3 (a, _, _) = a
-
-let create_tmp_filename () =
-  let res = Filename.temp_file "" (* no_prefix *) "" (* no_suffix *) in
-  (* tap (Log.info "create_tmp_filename: %s") res; *)
-  res
 
 let mkfifo (fn: filename): unit =
   Unix.mkfifo fn 0o600
@@ -39,67 +35,6 @@ let enforce_f (condition: bool) (msg_constr: unit -> string): unit =
   if not condition then
     failwith (msg_constr ())
 
-let with_out_file (fn: filename) (f: out_channel -> 'a): 'a =
-  let output = open_out_bin fn in
-  let res = f output in
-  close_out output;
-  res
-
-let with_temp_out_file (f: filename -> 'a): 'a =
-  let temp_file = Filename.temp_file "" (* no_prefix *) "" (* no_suffix *) in
-  let res = f temp_file in
-  Sys.remove temp_file;
-  res
-
-let with_in_file (fn: filename) (f: in_channel -> 'a): 'a =
-  let input = open_in_bin fn in
-  let res = f input in
-  close_in input;
-  res
-
-let with_in_file2 fn1 fn2 f =
-  let in1 = open_in_bin fn1 in
-  let in2 = open_in_bin fn2 in
-  let res = f in1 in2 in
-  close_in in1;
-  close_in in2;
-  res
-
-let with_in_file3 fn1 fn2 fn3 f =
-  let in1 = open_in_bin fn1 in
-  let in2 = open_in_bin fn2 in
-  let in3 = open_in_bin fn3 in
-  let res = f in1 in2 in3 in
-  close_in in1;
-  close_in in2;
-  close_in in3;
-  res
-
-let with_infile_outfile (in_fn: filename) (out_fn: filename)
-    (f: in_channel -> out_channel -> 'a): 'a =
-  let input = open_in_bin in_fn in
-  let output = open_out_bin out_fn in
-  let res = f input output in
-  close_in input;
-  close_out output;
-  res
-
-let lines_of_file (fn: filename): string list =
-  with_in_file fn (fun input ->
-      let res, exn = L.unfold_exc (fun () -> input_line input) in
-      if exn <> End_of_file then
-        raise exn
-      else res
-    )
-
-let lines_to_file fn l =
-  with_out_file fn (fun out ->
-      L.iter (fprintf out "%s\n") l
-    )
-
-(* alias *)
-let string_list_to_file = lines_to_file
-
 (* read 'nlines' from 'input' in_channel *)
 let read_n_lines nlines input =
   assert(nlines >= 0);
@@ -111,7 +46,7 @@ let read_n_lines nlines input =
 (* if the first line is a comment (starts with '#'); then we extract
    it separately from other lines; else we treat it as any other line *)
 let maybe_extract_comment_header (fn: filename): string option * string list =
-  let all_lines = lines_of_file fn in
+  let all_lines = LO.lines_of_file fn in
   match all_lines with
   | [] -> (None, [])
   | fst :: others ->
@@ -120,62 +55,15 @@ let maybe_extract_comment_header (fn: filename): string option * string list =
     else
       (None, all_lines)
 
-(* call f on lines of file *)
-let iter_on_lines_of_file fn f =
-  let input = open_in_bin fn in
-  try
-    while true do
-      f (input_line input)
-    done
-  with End_of_file -> close_in input
-
-let iteri_on_lines_of_file fn f =
-  let i = ref 0 in
-  let input = open_in_bin fn in
-  try
-    while true do
-      f !i (input_line input);
-      incr i
-    done
-  with End_of_file -> close_in input
-
-let map_on_file (fn: filename) (f: in_channel -> 'a): 'a list =
-  with_in_file fn (fun input ->
-      let res, exn = L.unfold_exc (fun () -> f input) in
-      if exn = End_of_file then res
-      else raise exn
-    )
-
-(* map f on lines of file *)
-let map_on_lines_of_file (fn: filename) (f: string -> 'a): 'a list =
-  with_in_file fn (fun input ->
-      let res, exn = L.unfold_exc (fun () -> f (input_line input)) in
-      if exn = End_of_file then res
-      else raise exn
-    )
-
 (* Murphy's law: very big files always have problematic lines... *)
 let maybe_map_on_lines_of_file (fn: filename) (f: string -> 'a option): 'a list =
   let res = ref [] in
-  iter_on_lines_of_file fn (fun line ->
+  LO.iter fn (fun line ->
       match f line with
       | Some x -> res := x :: !res
       | None -> Log.warn "line: '%s'" line
     );
   L.rev !res
-
-let mapi_on_lines_of_file (fn: filename) (f: int -> string -> 'a): 'a list =
-  with_in_file fn (fun input ->
-      let i = ref 0 in
-      let res, exn =
-        L.unfold_exc (fun () ->
-            let curr = f !i (input_line input) in
-            incr i;
-            curr
-          ) in
-      if exn = End_of_file then res
-      else raise exn
-    )
 
 (* skip 'nb' blocks from file being read *)
 let skip_blocks nb read_one input =
@@ -185,19 +73,6 @@ let skip_blocks nb read_one input =
     for _ = 1 to nb do
       ignore(read_one input)
     done
-
-let read_lines = lines_of_file
-
-let write_lines (lines: string list) (output_fn: filename): unit =
-  with_out_file output_fn (fun out ->
-      List.iter (fprintf out "%s\n") lines
-    )
-
-let output_lines = write_lines
-
-(* keep only lines that satisfy p *)
-let filter_lines_of_file fn p =
-  L.filter p (lines_of_file fn)
 
 (* get the first line (stripped) output by given command *)
 let get_command_output (cmd: string): string =
@@ -284,32 +159,6 @@ let may_apply_opt f = function
   | Some x -> Some (f x)
   | None -> None
 
-let may_apply f = function
-  | Some x -> f x
-  | None -> ()
-
-(* returns true if we could create the file; false else (already there) *)
-let lock_file_for_writing (fn: filename): bool =
-  try
-    let fd = Unix.(openfile fn [O_CREAT; O_EXCL; O_WRONLY] 0o600) in
-    Unix.close fd;
-    true
-  with Unix.Unix_error _ -> false
-
-(* compute all distinct pairs ((a,b) = (b,a)) of elements in 'l' *)
-let all_pairs (l: 'a list): ('a * 'a) list =
-  let pair x ys =
-    L.map (fun y ->
-        (x, y)
-      ) ys
-  in
-  let rec loop acc = function
-    | [] -> acc
-    | x :: xs ->
-      loop (L.rev_append (pair x xs) acc) xs
-  in
-  loop [] l
-
 exception Enough_times
 
 (* accumulate the result of calling 'f' 'n' times *)
@@ -322,9 +171,6 @@ let n_times n f =
         incr i;
         res
     )
-
-let push (x: 'a) (l: 'a list ref): unit =
-  l := x :: !l
 
 (* the identity function *)
 let id x = x
@@ -344,9 +190,6 @@ let enforce_file_extension allowed_exts fn =
 
 (* Pi math constant *)
 let m_pi = 4.0 *. atan 1.0
-
-let prepend x xs =
-  xs := x :: !xs
 
 (* test (lb <= x <= hb) *)
 let in_bounds lb x hb =
@@ -376,12 +219,6 @@ let string_of_array ?pre:(pre = "[|") ?sep:(sep = ";") ?suf:(suf = "|]")
   Buffer.add_string buff suf;
   Buffer.contents buff
 
-(* marshal x to file *)
-let save fn x =
-  with_out_file fn (fun out ->
-      Marshal.to_channel out x [Marshal.No_sharing]
-    )
-
 (* unmarshal x from file; the file might be gzip, bzip2 or xz compressed *)
 let restore fn =
   if S.ends_with fn ".gz" then
@@ -394,9 +231,7 @@ let restore fn =
     let in_chan = Unix.open_process_in ("unxz -ck " ^ fn) in
     Marshal.from_channel in_chan
   else (* assume file is not compressed *)
-    with_in_file fn (fun input ->
-        Marshal.from_channel input
-      )
+    LO.restore fn
 
 let is_odd i =
   i mod 2 = 1
@@ -405,7 +240,7 @@ let is_even i =
   i mod 2 = 0
 
 let get_first_line fn =
-  with_in_file fn input_line
+  LO.with_in_file fn input_line
 
 (* like the cut unix command *)
 let cut d f line =
@@ -437,11 +272,6 @@ let is_nan x =
   | _ -> false
 
 (* some statistics *)
-
-let faverage =
-  BatList.favg
-
-let fmean = faverage
 
 (* population standard deviation *)
 let stddev (l: float list): float =
@@ -565,18 +395,8 @@ let time_it f =
 let ceili (x: float): int =
   int_of_float (ceil x)
 
-let count_lines_of_file (fn: string): int =
-  let count = ref 0 in
-  iter_on_lines_of_file fn (fun _line -> incr count);
-  !count
-
 let list_rev_sort cmp l =
   List.sort (fun x y -> cmp y x) l
-
-let list_really_take n l =
-  let took = L.take n l in
-  assert(L.length took = n);
-  took
 
 let array_rand_elt rng a =
   let n = A.length a in
