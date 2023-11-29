@@ -6,7 +6,7 @@ open Printf
 
 module CLI = Minicli.CLI
 module Ht = BatHashtbl
-module L = BatList
+module L = Molenc.MyList
 module LO = Line_oriented
 module Log = Dolog.Log
 module String = BatString
@@ -49,7 +49,7 @@ let normalize_scores spec =
       ) in
   let raw_scores = L.map snd name_raw_scores in
   let mini, maxi = L.min_max raw_scores in
-  let avg = Utls.faverage raw_scores in
+  let avg = L.favg raw_scores in
   let std = Utls.stddev raw_scores in
   Log.info "fn: %s%s min:avg+/-std:max: %g:%g+/-%g:%g"
     spec.fn (if spec.increasing then "(incr)" else "")
@@ -143,7 +143,7 @@ let main () =
       let rescored = merge_hts policy hts in
       let to_write = match maybe_top with
         | None -> rescored
-        | Some n -> Utls.list_really_take n rescored in
+        | Some n -> L.really_take n rescored in
       L.iter (fun (name, score) ->
           Printf.fprintf out "%s\t%f\n" name score
         ) to_write
