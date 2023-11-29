@@ -175,7 +175,7 @@ let main () =
   printf "\n%!";
   (if !disconnected > 0 then
      Log.info "disconnected molecules: %d" !disconnected);
-  Utls.may_apply (fun fn -> graph_to_dot fn g) maybe_full_graph_fn;
+  BatOption.may (fun fn -> graph_to_dot fn g) maybe_full_graph_fn;
   (* MST *)
   Log.info "MST...";
   let mst = minimum_spanning_tree g in
