@@ -4,6 +4,7 @@ module CLI = Minicli.CLI
 module Ht = BatHashtbl
 module IS = BatSet.Int
 module L = BatList
+module LO = Line_oriented
 module Log = Dolog.Log
 module RNG = BatRandom.State
 module S = BatString
@@ -671,7 +672,7 @@ let main () =
         ) in
     (* fragment them *)
     (* parallelizable if needed; but already super fast; 6567 molecule/s *)
-    Utls.with_out_file output_fn (fun out ->
+    LO.with_out_file output_fn (fun out ->
         L.iter (fun mol ->
             let index = ref 0 in
             for _i = 1 to nb_frag_passes do
@@ -695,7 +696,7 @@ let main () =
     let dt1, frags_ht =
       Utls.time_it (fun () -> organize_fragments all_fragments) in
     Log.info "compiled fragments in %1.2fs" dt1;
-    Utls.with_out_file output_fn (fun out ->
+    LO.with_out_file output_fn (fun out ->
         let dt2, () =
           Utls.time_it (fun () ->
               for i = 1 to nb_mols do
