@@ -129,7 +129,7 @@ let main () =
               Ht.add ok_names name ()
             ) ok_mols;
       LO.with_out_file output_fn (fun out ->
-          Utls.iteri_on_lines_of_file input_fn (fun i line ->
+          LO.iteri input_fn (fun i line ->
               let mol = FpMol.parse_one i line in
               let name = FpMol.get_name mol in
               if Ht.mem ok_names name then
@@ -145,7 +145,7 @@ let main () =
       let exclude_set = Bstree.of_list mols_to_exclude in
       LO.with_out_file output_fn (fun out ->
           LO.with_out_file filtered_out_fn (fun err_out ->
-              Utls.iteri_on_lines_of_file input_fn (fun i line ->
+              LO.iteri input_fn (fun i line ->
                   let mol = FpMol.parse_one i line in
                   let nearest_train_mol, nearest_d =
                     Bstree.nearest_neighbor mol exclude_set in
