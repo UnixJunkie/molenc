@@ -17,6 +17,7 @@ module FpMol = Molenc.FpMol
 module Ht = BatHashtbl
 module IntMap = BatMap.Int
 module L = BatList
+module LO = Line_oriented
 module Log = Dolog.Log
 module MSE_mol = Molenc.MSE_mol
 module Norm = Molenc.Norm
@@ -187,7 +188,7 @@ let main () =
   (match dico with
    | Read_from _ -> () (* read-only dico *)
    | Write_to dico_fn ->
-     Utls.with_out_file dico_fn (fun out ->
+     LO.with_out_file dico_fn (fun out ->
          fprintf out "%s\n#featId maxCount featStr\n" db_rad;
          L.iter (fun (feature, id) ->
              let max_count = Ht.find feat_id_to_max_count id in
