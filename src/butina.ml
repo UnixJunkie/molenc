@@ -21,6 +21,7 @@ module FpMol = Molenc.FpMol
 module BST = Bst.Bisec_tree.Make (FpMol)
 module Ht = Hashtbl
 module L = Molenc.MyList
+module LO = Line_oriented
 module Log = Dolog.Log
 module StringSet = BatSet.String
 module Utls = Molenc.Utls
@@ -135,7 +136,7 @@ let main () =
   let single_count = L.filter_count (fun (_c, _m, s) -> s = 1) clusters in
   Log.info "clusters: %d" (L.length clusters);
   Log.info "singletons: %d" single_count;
-  Utls.with_out_file output_fn (fun out ->
+  LO.with_out_file output_fn (fun out ->
       let clustered =
         L.fold_lefti (fun count cid (center, members, size) ->
             fprintf out "cid: %d size: %d center: %s members:"
