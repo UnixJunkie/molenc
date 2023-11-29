@@ -6,6 +6,7 @@ open Printf
 
 module CLI = Minicli.CLI
 module L = BatList
+module LO = Line_oriented
 module Log = Dolog.Log
 module Utls = Molenc.Utls
 module V3 = Vector3
@@ -125,7 +126,7 @@ let main () =
   Log.info "englobing volume: %.2f A^3" (dx *. dy *. dz);
   let output_fn = input_fn ^ ".bild" in
   (* output in chimera BILD format *)
-  Utls.with_out_file output_fn (fun out ->
+  LO.with_out_file output_fn (fun out ->
       (* center *)
       fprintf out ".color red\n";
       fprintf out ".marker %f %f %f\n" c_x c_y c_z;
