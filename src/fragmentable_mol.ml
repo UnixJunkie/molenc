@@ -665,7 +665,7 @@ let main () =
   | Fragment (input_fn, output_fn) ->
     (* read in molecules with fragment hints *)
     let all_molecules =
-      Utls.with_in_file input_fn (fun input ->
+      LO.with_in_file input_fn (fun input ->
           let res, exn = L.unfold_exn (fun () -> read_one_molecule input) in
           (if exn <> End_of_file then raise exn);
           res
@@ -685,7 +685,7 @@ let main () =
     (* read in fragments *)
     let dt0, all_fragments =
       Utls.time_it (fun () ->
-          Utls.with_in_file input_fn (fun input ->
+          LO.with_in_file input_fn (fun input ->
               let res, exn = L.unfold_exn (fun () -> read_one_fragment input) in
               (if exn <> End_of_file then raise exn);
               A.of_list res
