@@ -15,6 +15,7 @@ module Fp = Molenc.Fingerprint
 module FpMol = Molenc.FpMol
 module Ht = BatHashtbl
 module L = BatList
+module LO = Line_oriented
 module Log = Dolog.Log
 module Utls = Molenc.Utls
 
@@ -86,7 +87,7 @@ let main () =
         BatFloat.compare ej ei
       ) !feat_ent in
   let cumulated = ref 0.0 in
-  Utls.with_out_file output_fn (fun out ->
+  LO.with_out_file output_fn (fun out ->
       L.iter (fun (feat, ent) ->
           fprintf out "%d %f %f\n" feat ent !cumulated;
           cumulated := !cumulated +. ent
