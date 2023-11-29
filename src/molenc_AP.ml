@@ -46,31 +46,38 @@ type unfold_count_fp = { name: string;
 
 let fp_string_output mode out dict fp =
   fprintf out "%s,0.0,[" fp.name;
-  (match mode with
-   | Output_dict _ ->
-     (* feature index 0 is a reserved value for later
-        users of the same dict *)
-     let feat_i = ref (1 + Ht.length dict) in
-     let feat_counts =
-       APM.fold (fun feat count acc ->
-           let feat' =
-             try Ht.find dict feat
-             with Not_found ->
-               (Ht.add dict feat !feat_i;
-                incr feat_i;
-                !feat_i - 1) in
-           IMap.add feat' count acc
-         ) fp.feat_counts IMap.empty in
-     let started = ref false in
-     IMap.iter (fun feat count ->
-         if !started then
-           fprintf out ";%d:%d" feat count
-         else
-           (started := true;
-            fprintf out "%d:%d" feat count)
-       ) feat_counts
-   | Input_dict _ -> failwith "not implemented yet"
-  );
+  let feat_counts = match mode with
+    | Output_dict _ -> (* writable dict *)
+      (* feature index 0 is a reserved value for later users of the same dict:
+         unkown feature *)
+      let feat_i = ref (1 + Ht.length dict) in
+      APM.fold (fun feat count acc ->
+          let feat' =
+            try Ht.find dict feat
+            with Not_found ->
+              (Ht.add dict feat !feat_i;
+               incr feat_i;
+               !feat_i - 1) in
+          IMap.add feat' count acc
+        ) fp.feat_counts IMap.empty
+    | Input_dict _ -> (* read-only dict *)
+      APM.fold (fun feat count acc ->
+          try IMap.add (Ht.find dict feat) count acc
+          with Not_found ->
+            let () = Log.warn "unknown feat" in
+            let prev_count =
+              try IMap.find 0 acc
+              with Not_found -> 0 in
+            IMap.add 0 (1 + prev_count) acc
+        ) fp.feat_counts IMap.empty in
+  let started = ref false in
+  IMap.iter (fun feat count ->
+      if !started then
+        fprintf out ";%d:%d" feat count
+      else
+        (started := true;
+         fprintf out "%d:%d" feat count)
+    ) feat_counts;
   fprintf out "]\n"
 
 (* unfolded counted atom pairs fingerprint encoding *)
