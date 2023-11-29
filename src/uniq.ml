@@ -7,6 +7,7 @@ module CLI = Minicli.CLI
 module Db = Dokeysto.Db.RW
 module Ht = Hashtbl
 module Log = Dolog.Log
+module LO = Line_oriented
 module String = BatString
 module Utls = Molenc.Utls
 
@@ -40,7 +41,7 @@ module HtInRAM: HT = struct
   type t = (string, unit) Ht.t
 
   let create input_fn =
-    Ht.create (Utls.count_lines_of_file input_fn)
+    Ht.create (LO.count input_fn)
 
   let mem db field =
     Ht.mem db field
@@ -94,7 +95,7 @@ let main () =
   let sep = CLI.get_char_def ["-d"] args '\t' in
   let field_num = (CLI.get_int ["-f"] args) - 1 in
   let count = ref 0 in
-  Utls.with_in_file input_fn (fun input ->
+  LO.with_in_file input_fn (fun input ->
       try
         while true do
           let line = input_line input in
