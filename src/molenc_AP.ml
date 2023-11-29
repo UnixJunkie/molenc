@@ -8,6 +8,8 @@ open Printf
 
 module A = BatArray
 module CLI = Minicli.CLI
+module Ht = BatHashtbl
+module IMap = BatMap.Int
 module LO = Line_oriented
 module Log = Dolog.Log
 module Rdkit = Molenc.Rdkit.Rdkit
@@ -41,6 +43,35 @@ module APM = Map.Make (Atom_pair)
 
 type unfold_count_fp = { name: string;
                          feat_counts: int APM.t }
+
+let fp_string_output mode out dict fp =
+  fprintf out "%s,0.0,[" fp.name;
+  (match mode with
+   | Output_dict _ ->
+     (* feature index 0 is a reserved value for later
+        users of the same dict *)
+     let feat_i = ref (1 + Ht.length dict) in
+     let feat_counts =
+       APM.fold (fun feat count acc ->
+           let feat' =
+             try Ht.find dict feat
+             with Not_found ->
+               (Ht.add dict feat !feat_i;
+                incr feat_i;
+                !feat_i - 1) in
+           IMap.add feat' count acc
+         ) fp.feat_counts IMap.empty in
+     let started = ref false in
+     IMap.iter (fun feat count ->
+         if !started then
+           fprintf out ";%d:%d" feat count
+         else
+           (started := true;
+            fprintf out "%d:%d" feat count)
+       ) feat_counts
+   | Input_dict _ -> failwith "not implemented yet"
+  );
+  fprintf out "]\n"
 
 (* unfolded counted atom pairs fingerprint encoding *)
 let encode_smiles_line line =
@@ -110,6 +141,12 @@ let standardize_some do_not tmp_dir =
      standardize_molecules smi_fn std_smi_fn
   );
   tmp_dir
+
+(* molecular encoding, but feature dictionary does not exist yet *)
+let encode_some tmp_dir =
+  let smi_fn = sprintf "%s/in_std.smi" tmp_dir in
+  let apb_fn = sprintf "%s/in_std.apb" tmp_dir in
+  LO.save apb_fn (LO.map smi_fn encode_smiles_line)
 
 let catenate_some dst_fn tmp_dir =
   (* FBR: CHANGE HERE ONCE ENCODER READY *)
