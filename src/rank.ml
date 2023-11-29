@@ -7,6 +7,7 @@ module CLI = Minicli.CLI
 module Ht = Hashtbl
 module L = BatList
 module Log = Dolog.Log
+module LO = Line_oriented
 module String = BatString
 module Utls = Molenc.Utls
 
@@ -59,7 +60,7 @@ let main () =
       Ht.add score2rank score i
     ) uniq_scores;
   (* output all lines, allong with their rank *)
-  Utls.with_out_file output_fn (fun output ->
+  LO.with_out_file output_fn (fun output ->
       Utls.iter_on_lines_of_file input_fn (fun line ->
           let score_field = String.cut_on_char sep field line in
           let score =
