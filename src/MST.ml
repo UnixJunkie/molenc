@@ -22,6 +22,7 @@ module CLI = Minicli.CLI
 module FpMol = Molenc.FpMol
 module Ht = Hashtbl
 module L = BatList
+module LO = Line_oriented
 module Log = Dolog.Log
 module Utls = Molenc.Utls
 
@@ -63,7 +64,7 @@ module Kruskal = Graph.Kruskal.Make(G)(W)
 
 (* write graph to file in graphviz dot format *)
 let graph_to_dot fn g =
-  Utls.with_out_file fn (fun out ->
+  LO.with_out_file fn (fun out ->
       fprintf out "graph all_to_all {\n";
       G.iter_edges_e (fun e ->
           fprintf out "%d -- %d [label=\"%.2f\"]\n"
@@ -89,7 +90,7 @@ let mst_edges_to_dot fn all_mols edges =
   let min_pIC50, max_pIC50 = A.min_max pIC50s in
   let delta_pIC50 = max_pIC50 -. min_pIC50 in
   Log.info "pIC50: (min,max,delta): %g %g %g" min_pIC50 max_pIC50 delta_pIC50;
-  Utls.with_out_file fn (fun out ->
+  LO.with_out_file fn (fun out ->
       fprintf out "graph min_span_tree {\n";
       let nb_nodes = A.length pIC50s in
       for i = 0 to nb_nodes - 1 do
