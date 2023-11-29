@@ -7,6 +7,7 @@ open Printf
 module CLI = Minicli.CLI
 module Ht = BatHashtbl
 module L = BatList
+module LO = Line_oriented
 module Log = Dolog.Log
 module String = BatString
 module StringSet = BatSet.String
@@ -137,7 +138,7 @@ let main () =
   | _ -> failwith "incompatible options: --min, --avg, --max" in
   CLI.finalize();
   let specs = parse_ifs sep input_spec in
-  Utls.with_out_file output_fn (fun out ->
+  LO.with_out_file output_fn (fun out ->
       let hts = L.map populate_ht specs in
       let rescored = merge_hts policy hts in
       let to_write = match maybe_top with
