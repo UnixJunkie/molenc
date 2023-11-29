@@ -10,6 +10,7 @@ module A = BatArray
 module CLI = Minicli.CLI
 module Ht = BatHashtbl
 module IMap = BatMap.Int
+module L = BatList
 module LO = Line_oriented
 module Log = Dolog.Log
 module Rdkit = Molenc.Rdkit.Rdkit
@@ -152,8 +153,7 @@ let standardize_some do_not tmp_dir =
 (* molecular encoding, but feature dictionary does not exist yet *)
 let encode_some tmp_dir =
   let smi_fn = sprintf "%s/in_std.smi" tmp_dir in
-  let apb_fn = sprintf "%s/in_std.apb" tmp_dir in
-  LO.save apb_fn (LO.map smi_fn encode_smiles_line)
+  LO.map smi_fn encode_smiles_line
 
 let catenate_some dst_fn tmp_dir =
   (* FBR: CHANGE HERE ONCE ENCODER READY *)
@@ -164,6 +164,9 @@ let catenate_some dst_fn tmp_dir =
      Log.warn "Molenc_AP.catenate_some: error while running: %s" cmd
   );
   assert(0 = Sys.command (sprintf "rm -rf %s" tmp_dir))
+
+let dico_from_file _fn =
+  failwith "not implemented yet"
 
 let main () =
   Log.(set_log_level INFO);
@@ -191,9 +194,9 @@ let main () =
   let no_std = CLI.get_set_bool ["--no-std"] args in
   let force = CLI.get_set_bool ["-f"] args in
   let _max_dist_opt = CLI.get_int_opt ["-m"] args in
-  let _dict_mode = match CLI.get_string_opt ["-d"] args with
-    | None -> Output_dict (input_fn ^ ".dix")
-    | Some fn -> Input_dict fn in
+  let dict_mode, dict = match CLI.get_string_opt ["-d"] args with
+    | None -> (Output_dict (input_fn ^ ".dix"), Ht.create 30_000)
+    | Some fn -> (Input_dict fn, dico_from_file fn) in
   CLI.finalize (); (* ------------------------------------------------------ *)
   (if Sys.file_exists output_fn then
      let () = Log.warn "Molenc_AP.main: output file exists: %s" output_fn in
@@ -202,11 +205,13 @@ let main () =
      else
        Sys.remove output_fn
   );
-  LO.with_in_file input_fn (fun input ->
-      Parany.run ~preserve:true nprocs
+  LO.with_infile_outfile input_fn output_fn (fun input output ->
+      (* !!! KEEP ~csize:1 below !!! *)
+      Parany.run ~csize:1 ~preserve:true nprocs
         ~demux:(fun () -> read_some csize input)
-        ~work:(standardize_some no_std)
-        ~mux:(catenate_some output_fn)
+        ~work:(fun tmp_dir -> encode_some (standardize_some no_std tmp_dir))
+        ~mux:(L.iter (fp_string_output dict_mode output dict))
     )
+(* FBR: in dict Output mode: store it to file *)
 
 let () = main ()
