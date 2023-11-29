@@ -219,6 +219,13 @@ let string_of_array ?pre:(pre = "[|") ?sep:(sep = ";") ?suf:(suf = "|]")
   Buffer.add_string buff suf;
   Buffer.contents buff
 
+let array_of_string ?pre:(pre = "[|") ?sep:(sep = ";") ?suf:(suf = "|]")
+    from_str s =
+  let s' = BatString.chop ~l:(String.length pre) ~r:(String.length suf) s in
+  let strings = BatString.split_on_string ~by:sep s' in
+  let l = L.map from_str strings in
+  A.of_list l
+
 (* unmarshal x from file; the file might be gzip, bzip2 or xz compressed *)
 let restore fn =
   if S.ends_with fn ".gz" then
