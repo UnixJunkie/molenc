@@ -45,6 +45,13 @@ module Atom_pair = struct
       x.dist
       (Utls.string_of_array string_of_int x.right)
 
+  let of_string s =
+    Scanf.sscanf s "%s,%d,%s" (fun l_a dist r_a ->
+        { left = Utls.array_of_string int_of_string l_a;
+          dist;
+          right = Utls.array_of_string int_of_string r_a }
+      )
+
 end
 
 module APM = Map.Make (Atom_pair)
@@ -173,9 +180,16 @@ let catenate_some dst_fn tmp_dir =
   assert(0 = Sys.command (sprintf "rm -rf %s" tmp_dir))
 
 let dico_from_file fn =
-  LO.with_in_file fn (fun _input ->
-      failwith "not implemented yet"
-    )
+  Log.info "reading %s" fn;
+  let dict = Ht.create 20_011 in
+  LO.iter fn (fun line ->
+      Scanf.sscanf line "%s@\t%d" (fun feat idx ->
+          let k = Atom_pair.of_string feat in
+          Ht.add dict k idx
+        )
+    );
+  Log.info "%d features" (Ht.length dict);
+  dict
 
 let dico_to_file dict fn =
   let kvs = Ht.to_list dict in
