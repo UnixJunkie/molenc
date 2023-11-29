@@ -6,8 +6,6 @@
    Kyushu Institute of Technology,
    680-4 Kawazu, Iizuka, Fukuoka, 820-8502, Japan. *)
 
-open Printf
-
 include BatList
 
 let to_string to_str l =
@@ -31,22 +29,6 @@ let of_string of_str s =
         failwith ("MyList.of_string: sub lists inside: " ^ s);
       map of_str (BatString.split_on_string s' ~by:";")
     end
-
-(* count elements satisfying 'p' *)
-let filter_count p l =
-  fold_left (fun acc x ->
-      if p x then acc + 1
-      else acc
-    ) 0 l
-
-let filter_counts p l =
-  let ok_count = ref 0 in
-  let ko_count = ref 0 in
-  iter (fun x ->
-      if p x then incr ok_count
-      else incr ko_count
-    ) l;
-  (!ok_count, !ko_count)
 
 (* only map 'f' on elements satisfying 'p' *)
 let filter_map p f l =
@@ -85,12 +67,6 @@ let cv_folds n l =
       loop acc' prev' xs in
   loop [] [] test_sets
 
-(* dump list to file *)
-let to_file (fn: string) (to_string: 'a -> string) (l: 'a list): unit =
-  Utls.with_out_file fn (fun out ->
-      iter (fun x -> fprintf out "%s\n" (to_string x)) l
-    )
-
 (* List.combine for 4 lists *)
 let combine4 l1 l2 l3 l4 =
   let rec loop acc = function
@@ -100,9 +76,6 @@ let combine4 l1 l2 l3 l4 =
     | _ -> raise (Invalid_argument "MyList.combine4: list lengths differ")
   in
   loop [] (l1, l2, l3, l4)
-
-(* alias *)
-let fold = fold_left
 
 let really_take n l =
   let res = take n l in
@@ -130,12 +103,3 @@ let filter_mask m l =
     | (p, x) :: rest -> loop (if p then x :: acc else acc) rest
   in
   loop [] (rev_combine m l)
-
-(* should be in batteries soon *)
-let fold_while p f init li =
-  let rec loop acc = function
-    | [] -> (acc, [])
-    | (x :: xs) as l ->
-      if p x then loop (f acc x) xs
-      else (acc, l) in
-  loop init li
