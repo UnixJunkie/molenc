@@ -49,8 +49,7 @@ let main () =
   let output_fn = CLI.get_string ["-o"] args in
   CLI.finalize ();
   Log.info "reading molecules...";
-  let all_molecules =
-    Utls.map_on_lines_of_file input_fn (FpMol.parse_one 0) in
+  let all_molecules = LO.map input_fn (FpMol.parse_one 0) in
   Log.info "read: %d" (L.length all_molecules);
   Log.info "computing entropy...";
   let ht = Ht.create nb_features in
