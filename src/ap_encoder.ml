@@ -38,13 +38,13 @@ let dico_from_file maybe_max_dist fn =
   let dist_sat = match maybe_max_dist with
     | None -> (fun _ -> true)
     | Some d -> (fun x -> (dist_from_feat x) <= d) in
-  let n = Utls.count_lines_of_file fn in
+  let n = LO.count fn in
   assert(n > 1);
   let feat2id = Ht.create (n - 1) in
   let header = Utls.get_first_line fn in
   Utls.enforce (header = "#atom_pairs")
     ("Ap_encoder.dico_from_file: not an atom pairs dict: " ^ fn);
-  Utls.iter_on_lines_of_file fn (fun line ->
+  LO.iter fn (fun line ->
       if not (BatString.starts_with line "#") then
         Scanf.sscanf line "%d %s %d" (fun id feat _count ->
             (* the binding defined in the dictionary should be unique;
@@ -79,7 +79,7 @@ let dico_to_file molecules_fn maybe_max_dist dico_fn =
   let dist_sat = match maybe_max_dist with
     | None -> (fun _ -> true)
     | Some d -> (fun x -> (Atom_pair.dist x) <= d) in
-  Utls.with_in_file molecules_fn (fun input ->
+  LO.with_in_file molecules_fn (fun input ->
       try
         let mol_counter = ref 0 in
         while true do
@@ -181,7 +181,7 @@ let main () =
   let dico = match dico_mode with
     | Input_dictionary id_fn -> dico_from_file maybe_max_dist id_fn
     | Output_dictionary od_fn -> dico_to_file input_fn maybe_max_dist od_fn in
-  Utls.with_infile_outfile input_fn output_fn (fun input output ->
+  LO.with_infile_outfile input_fn output_fn (fun input output ->
       Parany.run ~preserve:true ~csize nprocs
         ~demux:(read_one (ref 0) input)
         ~work:(process_one dico)
