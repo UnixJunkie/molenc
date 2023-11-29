@@ -12,6 +12,7 @@ module A = Array
 module Fp = Fingerprint
 module Ht = Hashtbl
 module L = MyList
+module LO = Line_oriented
 
 open Printf
 
@@ -48,7 +49,7 @@ let to_out out m =
   fprintf out "%s\n" (to_string m)
 
 let molecules_of_file fn =
-  Utls.mapi_on_lines_of_file fn parse_one
+  LO.mapi fn parse_one
 
 let dist m1 m2 =
   Fp.distance m1.fp m2.fp
