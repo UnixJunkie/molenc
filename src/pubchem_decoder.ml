@@ -17,6 +17,7 @@ open Printf
 
 module CLI = Minicli.CLI
 module Log = Dolog.Log
+module LO = Line_oriented
 module String = BatString
 module Utls = Molenc.Utls
 
@@ -50,7 +51,7 @@ let main () =
   let output_fn = CLI.get_string ["-o"] args in
   CLI.finalize ();
   let line_counter = ref 0 in
-  Utls.with_infile_outfile input_fn output_fn (fun input output ->
+  LO.with_infile_outfile input_fn output_fn (fun input output ->
       try
         while true do
           let in_line = input_line input in
