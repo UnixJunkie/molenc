@@ -8,6 +8,8 @@
 
    An atom pair *)
 
+(* FBR: TO DROP *)
+
 type t = { src: PiEltHA.t; (* source atom *)
            dst: PiEltHA.t; (* destination atom *)
            dist: int } (* distance between them in bonds *)
