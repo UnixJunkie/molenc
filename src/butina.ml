@@ -133,7 +133,7 @@ let main () =
   Log.info "read %d from %s" total input_fn;
   Log.info "BST: done";
   let clusters = butina nprocs dist_t all_mols in
-  let single_count = L.filter_count (fun (_c, _m, s) -> s = 1) clusters in
+  let single_count = L.count_matching (fun (_c, _m, s) -> s = 1) clusters in
   Log.info "clusters: %d" (L.length clusters);
   Log.info "singletons: %d" single_count;
   LO.with_out_file output_fn (fun out ->
