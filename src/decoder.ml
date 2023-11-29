@@ -54,9 +54,9 @@ let iwn_line_of_int_map style map =
 
 (* reconstruct map/dico feat->featId from given file *)
 let dictionary_from_file fn =
-  let n = Utls.count_lines_of_file fn in
+  let n = LO.count fn in
   let feat_to_id = Ht.create n in
-  Utls.iter_on_lines_of_file fn (fun line ->
+  LO.iter fn (fun line ->
       if not (BatString.starts_with line "#") then
         Scanf.sscanf line "%d %d %s" (fun id _max_count feat ->
             (* the binding defined in the dictionary should be unique *)
@@ -170,7 +170,7 @@ let main () =
         Ht.create nb_mols
       end in
   let feat_id_to_max_count = Ht.create nb_mols in
-  Utls.with_infile_outfile db_fn output_fn (fun input output ->
+  LO.with_infile_outfile db_fn output_fn (fun input output ->
       (* skip header comment line *)
       let header = input_line input in
       assert(BatString.starts_with header "#");
