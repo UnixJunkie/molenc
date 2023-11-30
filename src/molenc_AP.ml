@@ -45,6 +45,12 @@ module Atom_pair = struct
       x.dist
       (Utls.string_of_array string_of_int x.right)
 
+  let to_string x =
+    sprintf "%s,%d,%s"
+      (Utls.string_of_array string_of_int x.left)
+      x.dist
+      (Utls.string_of_array string_of_int x.right)
+
   let of_string s =
     Scanf.sscanf s "%s@,%d,%s" (fun l_a dist r_a ->
         { left = Utls.array_of_string int_of_string l_a;
@@ -79,7 +85,7 @@ let fp_string_output mode out dict fp =
       APM.fold (fun feat count acc ->
           try IMap.add (Ht.find dict feat) count acc
           with Not_found ->
-            let () = Log.warn "unknown feat" in
+            let () = Log.warn "unknown feat: %s" (Atom_pair.to_string feat) in
             let prev_count =
               try IMap.find 0 acc
               with Not_found -> 0 in
