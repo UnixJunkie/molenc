@@ -1,5 +1,5 @@
 
-import rdkit, deepsmiles, random, re, typing
+import rdkit, deepsmiles, random, re, sys, typing
 from rdkit import Chem
 
 def nb_heavy_atom_neighbors(a: rdkit.Chem.rdchem.Atom) -> int:
