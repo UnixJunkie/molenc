@@ -131,8 +131,8 @@ class Rdkit:
                 if x == 53:
                     nb_I += 1
                 else:
+                    print("WARN: unsupported anum: %d" % x, file=sys.stderr)
                     nb_other += 1
-        # synchronized w/ EltFCaroNeighbs.index_of_anum function
         return [anum, fc, aro, nb_other, nb_C, nb_H, nb_N, nb_O, nb_P, nb_S, nb_F, nb_Cl, nb_Br, nb_I]
 
     # # pyml_bindgen doesn't support list of tuples or even tuples...
