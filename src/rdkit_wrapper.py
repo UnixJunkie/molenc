@@ -114,21 +114,21 @@ class Rdkit:
             if x > 1: # Hs already counted before (including implicits)
                 if x == 6:
                     nb_C += 1
-                if x == 7:
+                elif x == 7:
                     nb_N += 1
-                if x == 8:
+                elif x == 8:
                     nb_O += 1
-                if x == 15:
+                elif x == 15:
                     nb_P += 1
-                if x == 16:
+                elif x == 16:
                     nb_S += 1
-                if x == 9:
+                elif x == 9:
                     nb_F += 1
-                if x == 17:
+                elif x == 17:
                     nb_Cl += 1
-                if x == 35:
+                elif x == 35:
                     nb_Br += 1
-                if x == 53:
+                elif x == 53:
                     nb_I += 1
                 else:
                     print("WARN: unsupported anum: %d" % x, file=sys.stderr)
