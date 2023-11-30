@@ -65,7 +65,7 @@ module APM = Map.Make (Atom_pair)
 type unfold_count_fp = { name: string;
                          feat_counts: int APM.t }
 
-let fp_string_output mode out dict fp =
+let fp_string_output writes mode out dict fp =
   fprintf out "%s,0.0,[" fp.name;
   let feat_counts = match mode with
     | Output -> (* writable dict *)
@@ -99,7 +99,8 @@ let fp_string_output mode out dict fp =
         (started := true;
          fprintf out "%d:%d" feat count)
     ) feat_counts;
-  fprintf out "]\n"
+  fprintf out "]\n";
+  incr writes
 
 (* unfolded counted atom pairs fingerprint encoding *)
 let encode_smiles_line line =
@@ -140,10 +141,8 @@ let standardize_molecules in_fn out_fn =
   if exit_code <> BatUnix.WEXITED 0 then
     Log.warn "Molenc_AP.standardize_molecules: error while running: %s" cmd
 
-let total_count = ref 0
-
 (* read [chunk_size] molecules and store them in a temp_file *)
-let read_some chunk_size input =
+let read_some reads chunk_size input =
   let count = ref 0 in
   let tmp_dir = Filename.temp_dir "molenc_" "" (* no suffix *) in
   let tmp_smi_fn = sprintf "%s/in.smi" tmp_dir in
@@ -157,11 +156,11 @@ let read_some chunk_size input =
       with End_of_file -> ()
     );
   if !count = 0 then
-    let () = Log.info "read %#d molecules" !total_count in
+    let () = Log.info "read %#d molecules" !reads in
     assert(0 = Sys.command (sprintf "rm -rf %s" tmp_dir));
     raise Parany.End_of_input
   else
-    (total_count := !total_count + !count;
+    (reads := !reads + !count;
      tmp_dir)
 
 let standardize_some do_not tmp_dir =
@@ -214,6 +213,7 @@ let dico_to_file dict fn =
     )
 
 let main () =
+  let start = Unix.gettimeofday () in
   Log.(set_log_level INFO);
   Log.color_on ();
   Log.(set_prefix_builder short_prefix_builder);
@@ -251,15 +251,19 @@ let main () =
      else
        Sys.remove output_fn
   );
+  let reads = ref 0 in
+  let writes = ref 0 in
   LO.with_infile_outfile input_fn output_fn (fun input output ->
       (* !!! KEEP ~csize:1 below !!! *)
       Parany.run ~csize:1 ~preserve:true nprocs
-        ~demux:(fun () -> read_some csize input)
+        ~demux:(fun () -> read_some reads csize input)
         ~work:(fun tmp_dir -> encode_some (standardize_some no_std tmp_dir))
-        ~mux:(L.iter (fp_string_output dict_mode output dict))
+        ~mux:(L.iter (fp_string_output writes dict_mode output dict))
     );
-  match dict_mode with
-  | Output -> dico_to_file dict (input_fn ^ ".dix")
-  | _ -> ()
+  (match dict_mode with
+   | Output -> dico_to_file dict (input_fn ^ ".dix")
+   | _ -> ());
+  let dt = Unix.gettimeofday() -. start in
+  Log.info "wrote %#d molecules (%.2f Hz)" !writes ((float !writes) /. dt)
 
 let () = main ()
