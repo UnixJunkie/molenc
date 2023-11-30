@@ -46,7 +46,7 @@ module Atom_pair = struct
       (Utls.string_of_array string_of_int x.right)
 
   let of_string s =
-    Scanf.sscanf s "%s,%d,%s" (fun l_a dist r_a ->
+    Scanf.sscanf s "%s@,%d,%s" (fun l_a dist r_a ->
         { left = Utls.array_of_string int_of_string l_a;
           dist;
           right = Utls.array_of_string int_of_string r_a }
