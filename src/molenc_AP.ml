@@ -140,6 +140,8 @@ let standardize_molecules in_fn out_fn =
   if exit_code <> BatUnix.WEXITED 0 then
     Log.warn "Molenc_AP.standardize_molecules: error while running: %s" cmd
 
+let total_count = ref 0
+
 (* read [chunk_size] molecules and store them in a temp_file *)
 let read_some chunk_size input =
   let count = ref 0 in
@@ -155,10 +157,12 @@ let read_some chunk_size input =
       with End_of_file -> ()
     );
   if !count = 0 then
-    (assert(0 = Sys.command (sprintf "rm -rf %s" tmp_dir));
-     raise Parany.End_of_input)
+    let () = Log.info "read %#d molecules" !total_count in
+    assert(0 = Sys.command (sprintf "rm -rf %s" tmp_dir));
+    raise Parany.End_of_input
   else
-    tmp_dir
+    (total_count := !total_count + !count;
+     tmp_dir)
 
 let standardize_some do_not tmp_dir =
   let smi_fn     = sprintf "%s/in.smi"     tmp_dir in
@@ -212,6 +216,7 @@ let dico_to_file dict fn =
 let main () =
   Log.(set_log_level INFO);
   Log.color_on ();
+  Log.(set_prefix_builder short_prefix_builder);
   let argc, args = CLI.init () in
   (if argc = 1 then
      (eprintf "usage:\n  \
