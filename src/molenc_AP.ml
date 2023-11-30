@@ -198,6 +198,7 @@ let dico_from_file fn =
   dict
 
 let dico_to_file dict fn =
+  Log.info "creating %s (%#d features)" fn (Ht.length dict);
   let kvs = Ht.to_list dict in
   (* sort by incr. feat index *)
   let kvs = L.sort (fun (_f1, i) (_f2, j) -> BatInt.compare i j) kvs in
@@ -253,10 +254,7 @@ let main () =
         ~mux:(L.iter (fp_string_output dict_mode output dict))
     );
   match dict_mode with
-  | Output ->
-    let dict_fn = input_fn ^ ".dix" in
-    Log.info "creating %s" dict_fn;
-    dico_to_file dict dict_fn
+  | Output -> dico_to_file dict (input_fn ^ ".dix")
   | _ -> ()
 
 let () = main ()
