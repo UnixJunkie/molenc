@@ -187,7 +187,7 @@ let catenate_some dst_fn tmp_dir =
 
 let dico_from_file fn =
   Log.info "reading %s" fn;
-  let dict = Ht.create 20_011 in
+  let dict = Ht.create (LO.count fn) in
   LO.iter fn (fun line ->
       Scanf.sscanf line "%s@\t%d" (fun feat idx ->
           let k = Atom_pair.of_string feat in
