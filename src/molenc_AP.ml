@@ -24,11 +24,15 @@ type mode = Input
 
 type atom = int array
 
-(* an integer for each atom type;
-   - must not have collisions (will be checked at runtime) *)
+(* an integer for each atom type *)
 let hash_atom a: int =
+  (* enforce expected length and minimal formal charge *)
   assert(A.length a = 14 && a.(1) >= -3);
   a.(1) <- a.(1) + 3; (* only FC can be negative *)
+  (* ensure there are no collisions *)
+  for i = 1 to 13 do
+    assert(a.(i) >= 0 && a.(i) < 10)
+  done;
   (A.unsafe_get a 0) + (* anum *)
   1000 * (A.unsafe_get a 1) +
   10000 * (A.unsafe_get a 2) +
