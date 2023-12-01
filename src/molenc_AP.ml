@@ -24,13 +24,51 @@ type mode = Input
 
 type atom = int array
 
+(* an integer for each atom type;
+   - must not have collisions (will be checked at runtime) *)
+let hash_atom a: int =
+  assert(A.length a = 14 && a.(1) >= -3);
+  a.(1) <- a.(1) + 3; (* only FC can be negative *)
+  (A.unsafe_get a 0) + (* anum *)
+  1000 * (A.unsafe_get a 1) +
+  10000 * (A.unsafe_get a 2) +
+  100000 * (A.unsafe_get a 3) +
+  1000000 * (A.unsafe_get a 4) +
+  10000000 * (A.unsafe_get a 5) +
+  100000000 * (A.unsafe_get a 6) +
+  1000000000 * (A.unsafe_get a 7) +
+  10000000000 * (A.unsafe_get a 8) +
+  100000000000 * (A.unsafe_get a 9) +
+  1000000000000 * (A.unsafe_get a 10) +
+  10000000000000 * (A.unsafe_get a 11) +
+  100000000000000 * (A.unsafe_get a 12) +
+  1000000000000000 * (A.unsafe_get a 13)
+
+let get_anum a =
+  a.(0)
+
 module Atom_pair = struct
 
-  type t = { left: atom ;
-             dist: int ; (* topological distance in bonds *)
-             right: atom }
+  type t = { left:  int ; (* atom hash-code *)
+             dist:  int ; (* topological distance in bonds *)
+             right: int } (* atom hash-code *)
 
-  let compare = compare
+  (* performance critical *)
+  let compare x y =
+    if (x.dist: int) < y.dist then
+      -1
+    else if x.dist > y.dist then
+      1
+    else if (x.left: int) < y.left then
+      -1
+    else if x.left > y.left then
+      1
+    else if (x.right: int) < y.right then
+      -1
+    else if x.right > y.right then
+      1
+    else
+      0
 
   let create t1 dist t2 =
     (* canonicalization here *)
@@ -40,22 +78,14 @@ module Atom_pair = struct
       { left = t2; dist; right = t1 }
 
   let fprintf out x =
-    fprintf out "%s,%d,%s"
-      (Utls.string_of_array string_of_int x.left)
-      x.dist
-      (Utls.string_of_array string_of_int x.right)
+    fprintf out "%d,%d,%d" x.left x.dist x.right
 
   let to_string x =
-    sprintf "%s,%d,%s"
-      (Utls.string_of_array string_of_int x.left)
-      x.dist
-      (Utls.string_of_array string_of_int x.right)
+    sprintf "%d,%d,%d" x.left x.dist x.right
 
   let of_string s =
-    Scanf.sscanf s "%s@,%d,%s" (fun l_a dist r_a ->
-        { left = Utls.array_of_string int_of_string l_a;
-          dist;
-          right = Utls.array_of_string int_of_string r_a }
+    Scanf.sscanf s "%d,%d,%d" (fun left dist right ->
+        { left; dist; right }
       )
 
 end
@@ -108,17 +138,22 @@ let encode_smiles_line line =
   let mol = Rdkit.__init__ ~smi () in
   let n = Rdkit.get_num_atoms mol () in
   let atom_types = A.init n (fun i -> Rdkit.type_EltFCaroNeighbs mol ~i ()) in
+  let hashed_types = A.map hash_atom atom_types in
   let fp = ref APM.empty in
   (* autocorrelation *)
   for i = 0 to n - 2 do
-    for j = i + 1 to n - 1 do
-      let feat =
-        Atom_pair.create
-          atom_types.(i) (Rdkit.get_distance mol ~i ~j ()) atom_types.(j) in
-      fp :=
-        try APM.add feat (1 + APM.find feat !fp) !fp
-        with Not_found -> APM.add feat 1 !fp
-    done
+    (* only take into account HAs *)
+    if get_anum atom_types.(i) > 1 then
+      for j = i + 1 to n - 1 do
+        (* only take into account HAs *)
+        if get_anum atom_types.(j) > 1 then
+          let feat =
+            Atom_pair.create
+              hashed_types.(i) (Rdkit.get_distance mol ~i ~j ()) hashed_types.(j) in
+          fp :=
+            try APM.add feat (1 + APM.find feat !fp) !fp
+            with Not_found -> APM.add feat 1 !fp
+      done
   done;
   { name; feat_counts = !fp }
 
