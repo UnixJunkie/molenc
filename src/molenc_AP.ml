@@ -33,7 +33,7 @@ let hash_atom a: int =
   for i = 1 to 13 do
     assert(a.(i) >= 0 && a.(i) < 10)
   done;
-  (A.unsafe_get a 0) + (* anum *)
+  (      A.unsafe_get a 0) + (* anum *)
   1000 * (A.unsafe_get a 1) +
   10000 * (A.unsafe_get a 2) +
   100000 * (A.unsafe_get a 3) +
