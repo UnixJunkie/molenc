@@ -82,10 +82,10 @@ module Atom_pair = struct
       { left = t2; dist; right = t1 }
 
   let fprintf out x =
-    fprintf out "%d,%d,%d" x.left x.dist x.right
+    fprintf out "%016d,%d,%016d" x.left x.dist x.right
 
   let to_string x =
-    sprintf "%d,%d,%d" x.left x.dist x.right
+    sprintf "%016d,%d,%016d" x.left x.dist x.right
 
   let of_string s =
     Scanf.sscanf s "%d,%d,%d" (fun left dist right ->
