@@ -137,7 +137,7 @@ let fp_string_output writes mode out dict fp =
   incr writes
 
 (* unfolded counted atom pairs fingerprint encoding *)
-let encode_smiles_line line =
+let encode_smiles_line max_dist line =
   let smi, name = BatString.split ~by:"\t" line in
   let mol = Rdkit.__init__ ~smi () in
   let n = Rdkit.get_num_atoms mol () in
@@ -151,12 +151,12 @@ let encode_smiles_line line =
       for j = i + 1 to n - 1 do
         (* only take into account HAs *)
         if get_anum atom_types.(j) > 1 then
-          let feat =
-            Atom_pair.create
-              hashed_types.(i) (Rdkit.get_distance mol ~i ~j ()) hashed_types.(j) in
-          fp :=
-            try APM.add feat (1 + APM.find feat !fp) !fp
-            with Not_found -> APM.add feat 1 !fp
+          let d = Rdkit.get_distance mol ~i ~j () in
+          if d <= max_dist then
+            let feat = Atom_pair.create hashed_types.(i) d hashed_types.(j) in
+            fp :=
+              try APM.add feat (1 + APM.find feat !fp) !fp
+              with Not_found -> APM.add feat 1 !fp
       done
   done;
   { name; feat_counts = !fp }
@@ -213,9 +213,9 @@ let standardize_some do_not tmp_dir =
   tmp_dir
 
 (* molecular encoding, but feature dictionary does not exist yet *)
-let encode_some tmp_dir =
+let encode_some max_dist tmp_dir =
   let smi_fn = sprintf "%s/in_std.smi" tmp_dir in
-  LO.map smi_fn encode_smiles_line
+  LO.map smi_fn (encode_smiles_line max_dist)
 
 (* was used to // standardization only *)
 let catenate_some dst_fn tmp_dir =
@@ -251,6 +251,8 @@ let dico_to_file dict fn =
         ) kvs
     )
 
+(* FBR: we could have an optional less complex atom typing scheme *)
+
 let main () =
   let start = Unix.gettimeofday () in
   Log.(set_log_level INFO);
@@ -278,7 +280,9 @@ let main () =
   let csize = CLI.get_int_def ["-c"] args 200 in
   let no_std = CLI.get_set_bool ["--no-std"] args in
   let force = CLI.get_set_bool ["-f"] args in
-  let _max_dist_opt = CLI.get_int_opt ["-m"] args in
+  let max_dist = match CLI.get_int_opt ["-m"] args with
+    | None -> max_int
+    | Some x -> x in
   let dict_mode, dict = match CLI.get_string_opt ["-d"] args with
     | None -> (Output, Ht.create 20_011)
     | Some fn -> (Input, dico_from_file fn) in
@@ -296,7 +300,7 @@ let main () =
       (* !!! KEEP ~csize:1 below !!! *)
       Parany.run ~csize:1 ~preserve:true nprocs
         ~demux:(fun () -> read_some reads csize input)
-        ~work:(fun tmp_dir -> encode_some (standardize_some no_std tmp_dir))
+        ~work:(fun tmp_dir -> encode_some max_dist (standardize_some no_std tmp_dir))
         ~mux:(L.iter (fp_string_output writes dict_mode output dict))
     );
   (match dict_mode with
