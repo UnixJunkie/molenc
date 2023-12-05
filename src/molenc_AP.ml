@@ -311,15 +311,13 @@ let main () =
   let already_out_fn = Sys.file_exists output_fn in
   let already_dict_fn = (dict_mode = Output) && Sys.file_exists dict_fn in
   (if already_out_fn || already_dict_fn then
-     begin
-       if already_out_fn then
-         Log.warn "Molenc_AP: output file exists: %s" output_fn;
-       if already_dict_fn then
-         Log.warn "Molenc_AP: dict file exists: %s" dict_fn;
-       if not force then exit 1
-       else (Sys.remove output_fn;
-             Sys.remove dict_fn)
-     end
+     (if already_out_fn then
+        Log.warn "Molenc_AP: output file exists: %s" output_fn;
+      if already_dict_fn then
+        Log.warn "Molenc_AP: dict file exists: %s" dict_fn;
+      if not force then
+        exit 1
+     )
   );
   let reads = ref 0 in
   let writes = ref 0 in
