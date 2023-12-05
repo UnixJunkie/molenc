@@ -24,8 +24,9 @@ type mode = Input
 
 type atom = int array
 
-(* an integer for each atom type *)
-let hash_atom a: int =
+(* an integer for each atom type
+ * [anum, fc, aro, nb_other, nb_C, nb_H, nb_N, nb_O, nb_P, nb_S, nb_F, nb_Cl, nb_Br, nb_I] *)
+let int_of_type a: int =
   (* enforce expected length and minimal formal charge *)
   assert(A.length a = 14 && a.(1) >= -3);
   a.(1) <- a.(1) + 3; (* only FC can be negative *)
@@ -48,14 +49,29 @@ let hash_atom a: int =
   100000000000000 * (A.unsafe_get a 12) +
   1000000000000000 * (A.unsafe_get a 13)
 
+(* simple_type: [anum, fc, aro, heavies, hydrogens] *)
+let int_of_simple_type a: int =
+  (* enforce expected length and minimal formal charge *)
+  assert(A.length a = 5 && a.(1) >= -3);
+  a.(1) <- a.(1) + 3; (* only FC can be negative *)
+  (* ensure there are no collisions *)
+  for i = 1 to 4 do
+    assert(a.(i) >= 0 && a.(i) < 10)
+  done;
+  (      A.unsafe_get a 0) + (* anum *)
+  1000 * (A.unsafe_get a 1) +
+  10000 * (A.unsafe_get a 2) +
+  100000 * (A.unsafe_get a 3) +
+  1000000 * (A.unsafe_get a 4)
+
 let get_anum a =
   a.(0)
 
 module Atom_pair = struct
 
-  type t = { left:  int ; (* atom hash-code *)
+  type t = { left:  int ; (* atom int code *)
              dist:  int ; (* topological distance in bonds *)
-             right: int } (* atom hash-code *)
+             right: int } (* atom int code *)
 
   (* performance critical *)
   let compare x y =
@@ -82,10 +98,10 @@ module Atom_pair = struct
       { left = t2; dist; right = t1 }
 
   let fprintf out x =
-    fprintf out "%016d,%d,%016d" x.left x.dist x.right
+    fprintf out "%d,%d,%d" x.left x.dist x.right
 
   let to_string x =
-    sprintf "%016d,%d,%016d" x.left x.dist x.right
+    sprintf "%d,%d,%d" x.left x.dist x.right
 
   let of_string s =
     Scanf.sscanf s "%d,%d,%d" (fun left dist right ->
@@ -141,13 +157,13 @@ let encode_smiles_line max_dist simple_types line =
   let smi, name = BatString.split ~by:"\t" line in
   let mol = Rdkit.__init__ ~smi () in
   let n = Rdkit.get_num_atoms mol () in
-  let typer =
+  let typer, type2int =
     if simple_types then
-      Rdkit.type_atom_simple
+      (Rdkit.type_atom_simple, int_of_simple_type)
     else
-      Rdkit.type_EltFCaroNeighbs in
+      (Rdkit.type_EltFCaroNeighbs, int_of_type) in
   let atom_types = A.init n (fun i -> typer mol ~i ()) in
-  let hashed_types = A.map hash_atom atom_types in
+  let hashed_types = A.map type2int atom_types in
   let fp = ref APM.empty in
   (* autocorrelation *)
   for i = 0 to n - 2 do
@@ -288,16 +304,22 @@ let main () =
   let max_dist = match CLI.get_int_opt ["-m"] args with
     | None -> max_int
     | Some x -> x in
-  let dict_mode, dict = match CLI.get_string_opt ["-d"] args with
-    | None -> (Output, Ht.create 20_011)
-    | Some fn -> (Input, dico_from_file fn) in
+  let dict_mode, dict, dict_fn = match CLI.get_string_opt ["-d"] args with
+    | None -> (Output, Ht.create 20_011, input_fn ^ ".dix")
+    | Some fn -> (Input, dico_from_file fn, fn) in
   CLI.finalize (); (* ------------------------------------------------------ *)
-  (if Sys.file_exists output_fn then
-     let () = Log.warn "Molenc_AP.main: output file exists: %s" output_fn in
-     if not force then
-       exit 1
-     else
-       Sys.remove output_fn
+  let already_out_fn = Sys.file_exists output_fn in
+  let already_dict_fn = (dict_mode = Output) && Sys.file_exists dict_fn in
+  (if already_out_fn || already_dict_fn then
+     begin
+       if already_out_fn then
+         Log.warn "Molenc_AP: output file exists: %s" output_fn;
+       if already_dict_fn then
+         Log.warn "Molenc_AP: dict file exists: %s" dict_fn;
+       if not force then exit 1
+       else (Sys.remove output_fn;
+             Sys.remove dict_fn)
+     end
   );
   let reads = ref 0 in
   let writes = ref 0 in
@@ -309,7 +331,7 @@ let main () =
         ~mux:(L.iter (fp_string_output writes dict_mode output dict))
     );
   (match dict_mode with
-   | Output -> dico_to_file dict (input_fn ^ ".dix")
+   | Output -> dico_to_file dict dict_fn
    | _ -> ());
   let dt = Unix.gettimeofday() -. start in
   Log.info "wrote %#d molecules (%.2f Hz)" !writes ((float !writes) /. dt)
