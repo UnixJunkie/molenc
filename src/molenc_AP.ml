@@ -137,11 +137,16 @@ let fp_string_output writes mode out dict fp =
   incr writes
 
 (* unfolded counted atom pairs fingerprint encoding *)
-let encode_smiles_line max_dist line =
+let encode_smiles_line max_dist simple_types line =
   let smi, name = BatString.split ~by:"\t" line in
   let mol = Rdkit.__init__ ~smi () in
   let n = Rdkit.get_num_atoms mol () in
-  let atom_types = A.init n (fun i -> Rdkit.type_EltFCaroNeighbs mol ~i ()) in
+  let typer =
+    if simple_types then
+      Rdkit.type_atom_simple
+    else
+      Rdkit.type_EltFCaroNeighbs in
+  let atom_types = A.init n (fun i -> typer mol ~i ()) in
   let hashed_types = A.map hash_atom atom_types in
   let fp = ref APM.empty in
   (* autocorrelation *)
@@ -213,9 +218,9 @@ let standardize_some do_not tmp_dir =
   tmp_dir
 
 (* molecular encoding, but feature dictionary does not exist yet *)
-let encode_some max_dist tmp_dir =
+let encode_some max_dist simple_types tmp_dir =
   let smi_fn = sprintf "%s/in_std.smi" tmp_dir in
-  LO.map smi_fn (encode_smiles_line max_dist)
+  LO.map smi_fn (encode_smiles_line max_dist simple_types)
 
 (* was used to // standardization only *)
 let catenate_some dst_fn tmp_dir =
@@ -265,6 +270,7 @@ let main () =
                -i <input.smi>: input molecules\n  \
                -o <output.AP>: unfolded counted atom pairs output\n  \
                -d <dico.dix>: use existing feature dictionary\n  \
+               [--less-types]: use simpler atom typing scheme\n  \
                [-f]: overwrite output file, if any\n  \
                [--no-std]: do not standardize molecules\n  \
                [-m <int>]: maximum atom pairs distance (in bonds; default=OFF)\n  \
@@ -280,6 +286,7 @@ let main () =
   let csize = CLI.get_int_def ["-c"] args 200 in
   let no_std = CLI.get_set_bool ["--no-std"] args in
   let force = CLI.get_set_bool ["-f"] args in
+  let simple_types = CLI.get_set_bool ["--less-types"] args in
   let max_dist = match CLI.get_int_opt ["-m"] args with
     | None -> max_int
     | Some x -> x in
@@ -300,7 +307,7 @@ let main () =
       (* !!! KEEP ~csize:1 below !!! *)
       Parany.run ~csize:1 ~preserve:true nprocs
         ~demux:(fun () -> read_some reads csize input)
-        ~work:(fun tmp_dir -> encode_some max_dist (standardize_some no_std tmp_dir))
+        ~work:(fun tmp_dir -> encode_some max_dist simple_types (standardize_some no_std tmp_dir))
         ~mux:(L.iter (fp_string_output writes dict_mode output dict))
     );
   (match dict_mode with
