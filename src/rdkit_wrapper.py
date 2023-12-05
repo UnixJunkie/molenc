@@ -135,6 +135,15 @@ class Rdkit:
                     nb_other += 1
         return [anum, fc, aro, nb_other, nb_C, nb_H, nb_N, nb_O, nb_P, nb_S, nb_F, nb_Cl, nb_Br, nb_I]
 
+    # simpler atom typing scheme, to reduce the dimension of fingerprints, if needed
+    def type_atom_simple(self, i: int) -> list[int]:
+        a = self.mol.GetAtomWithIdx(i)
+        anum = a.GetAtomicNum()
+        fc = a.GetFormalCharge()
+        aro = int(a.GetIsAromatic())
+        heavies, hydrogens = count_neighbors(a)
+        return [anum, fc, aro, heavies, hydrogens]
+    
     # # pyml_bindgen doesn't support list of tuples or even tuples...
     # # type each atom of the molecule
     # def type_atoms(self):
