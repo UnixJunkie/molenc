@@ -256,8 +256,6 @@ let dico_to_file dict fn =
         ) kvs
     )
 
-(* FBR: we could have an optional less complex atom typing scheme *)
-
 let main () =
   let start = Unix.gettimeofday () in
   Log.(set_log_level INFO);
