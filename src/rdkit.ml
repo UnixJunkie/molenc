@@ -6,6 +6,7 @@ module Rdkit : sig
   val __init__ : smi:string -> unit -> t
   val type_atom : t -> i:int -> unit -> int array
   val type_EltFCaroNeighbs : t -> i:int -> unit -> int array
+  val type_atom_simple : t -> i:int -> unit -> int array
   val get_num_atoms : t -> unit -> int
   val get_distance : t -> i:int -> j:int -> unit -> int
 
@@ -160,6 +161,15 @@ class Rdkit:
                     nb_other += 1
         return [anum, fc, aro, nb_other, nb_C, nb_H, nb_N, nb_O, nb_P, nb_S, nb_F, nb_Cl, nb_Br, nb_I]
 
+    # simpler atom typing scheme, to reduce the dimension of fingerprints, if needed
+    def type_atom_simple(self, i: int) -> list[int]:
+        a = self.mol.GetAtomWithIdx(i)
+        anum = a.GetAtomicNum()
+        fc = a.GetFormalCharge()
+        aro = int(a.GetIsAromatic())
+        heavies, hydrogens = count_neighbors(a)
+        return [anum, fc, aro, heavies, hydrogens]
+    
     # # pyml_bindgen doesn't support list of tuples or even tuples...
     # # type each atom of the molecule
     # def type_atoms(self):
@@ -243,6 +253,12 @@ class Rdkit:
 
   let type_EltFCaroNeighbs t ~i () =
     let callable = Py.Object.find_attr_string t "type_EltFCaroNeighbs" in
+    let kwargs = filter_opt [ Some ("i", Py.Int.of_int i) ] in
+    Py.List.to_array_map Py.Int.to_int
+    @@ Py.Callable.to_function_with_keywords callable [||] kwargs
+
+  let type_atom_simple t ~i () =
+    let callable = Py.Object.find_attr_string t "type_atom_simple" in
     let kwargs = filter_opt [ Some ("i", Py.Int.of_int i) ] in
     Py.List.to_array_map Py.Int.to_int
     @@ Py.Callable.to_function_with_keywords callable [||] kwargs
