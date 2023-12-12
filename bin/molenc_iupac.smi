@@ -1,0 +1,15 @@
+#!/usr/bin/env python3
+
+import sys
+from STOUT import translate_forward, translate_reverse
+
+# SMILES to IUPAC name translation
+
+SMILES = sys.argv[1]
+IUPAC_name = translate_forward(SMILES)
+print("IUPAC name of "+SMILES+" is: "+IUPAC_name)
+
+# IUPAC name to SMILES translation
+
+SMILES = translate_reverse(IUPAC_name)
+print("SMILES of "+IUPAC_name+" is: "+SMILES)
