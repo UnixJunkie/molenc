@@ -72,6 +72,16 @@ def smi_randomize(smi: str, n: int, seed: int) -> list[str]:
         res.append(rand_smi)
     return res
 
+# encode by an integer what kind of ring this atom is involved in
+def ring_membership(a):
+    if a.IsInRing():
+        if a.GetIsAromatic():
+            return 2 # in aromatic ring
+        else:
+            return 1 # in aliphatic ring
+    else:
+        return 0 # not in ring
+
 class Rdkit:
     # this is needed because the OCaml side want to know how
     # to get an object of type t
