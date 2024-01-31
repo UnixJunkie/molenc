@@ -106,7 +106,7 @@ class Rdkit:
         a = self.mol.GetAtomWithIdx(i)
         anum = a.GetAtomicNum()
         fc = a.GetFormalCharge()
-        aro = int(a.GetIsAromatic())
+        aro = ring_membership(a)
         # count direct neighbors
         nb_other = 0 # unsupported atoms
         nb_C  = 0
@@ -150,7 +150,7 @@ class Rdkit:
         a = self.mol.GetAtomWithIdx(i)
         anum = a.GetAtomicNum()
         fc = a.GetFormalCharge()
-        aro = int(a.GetIsAromatic())
+        aro = ring_membership(a)
         heavies, hydrogens = count_neighbors(a)
         return [anum, fc, aro, heavies, hydrogens]
     
