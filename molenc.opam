@@ -43,7 +43,7 @@ depends: [
   "dokeysto"
   "dolog" {>= "5.0.0"}
   "dune" {>= "1.11"}
-  "line_oriented"
+  "line_oriented" {>= "1.2.0"}
   "minicli" {>= "5.0.0"}
   "ocaml" {>= "5.1.0"}
   "ocamlgraph"
@@ -51,6 +51,7 @@ depends: [
   "vector3"
   "pyml" {>= "20211015"}
 ]
+available: arch != "arm32" & arch != "x86_32"
 synopsis: "Molecular encoder/featurizer using rdkit and OCaml"
 description: """Chemical fingerprints are lossy encodings of molecules.
 molenc allows to encode molecules using unfolded-counted fingerprints
