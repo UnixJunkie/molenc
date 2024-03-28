@@ -71,6 +71,17 @@ let max_feat_id x =
 let nb_features x =
   1 + (max_feat_id x)
 
+(* equivalent to the "popcount" operation for binary fingerprints *)
+let sum_values fp =
+  let len = BA1.dim fp in
+  let i = ref 1 in (* values start at 1 *)
+  let total = ref 0 in
+  while !i < len do
+    total := !total + (BA1.unsafe_get fp !i);
+    i := !i + 2
+  done;
+  !total
+
 (* sparse to dense conversion *)
 let to_dense (max_len: int) (x: t): int array =
   let res = A.make max_len 0 in
@@ -255,13 +266,3 @@ let drop_features to_drop fp =
       incr i
     ) kept;
   res
-
-let sum_values fp =
-  let len = BA1.dim fp in
-  let i = ref 1 in (* values start at 1 *)
-  let total = ref 0 in
-  while !i < len do
-    total := !total + (BA1.unsafe_get fp !i);
-    i := !i + 2
-  done;
-  !total
