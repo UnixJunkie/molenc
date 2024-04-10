@@ -54,9 +54,6 @@ let fp_to_string fp =
 
 (* FBR: in verbose mode: output atom environments by incr. (grouped by) radius *)
 
-(* FBR: BUG; for each atom, we need not go up to the graph diameter;
- *           we just need to go up to the max radius from this atom *)
-
 (* unfolded counted RFP encoding *)
 let encode_smiles_line max_radius line =
   let smi, name = BatString.split ~by:"\t" line in
@@ -64,16 +61,19 @@ let encode_smiles_line max_radius line =
   (* !!! this fingerprint needs all hydrogens to be present on the molecular graph !!! *)
   let mol = Rdkit.add_hydrogens mol_noH () in
   let num_atoms = Rdkit.get_num_atoms mol () in
-  let diameter = Rdkit.get_diameter mol () in
   let elements = Rdkit.get_elements mol () in
   let indexes = A.init num_atoms (fun i -> i) in
-  (* encode each atom using all diameters from 0 to max_radius *)  
-  let radii = A.of_list (L.range 0 `To (min max_radius diameter)) in
   { name;
     feat_counts =
       A.fold (fun acc0 a_i ->
           (* current atom's environments *)
           let buff = Buffer.create 128 in
+          (* encode each atom using all radii; from 0 to max radius
+             for this atom (furthest neighbor on the molecular graph) *)
+          let radii =
+            let dists = Rdkit.get_distances mol ~i:a_i () in
+            let r_max = 1 + (min max_radius (A.max dists)) in
+            A.init r_max (fun i -> i) in
           A.fold (fun acc1 radius ->
               let atom_env = get_atom_env a_i radius mol indexes elements in
               (* separate layers *)
