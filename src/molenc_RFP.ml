@@ -40,10 +40,13 @@ let get_atom_env center_atom_i radius mol indexes elements =
 let fp_to_string fp =
   let buff = Buffer.create 1024 in
   Printf.bprintf buff "%s\t" fp.name;
+  let started = ref false in
   SMap.iter (fun env count ->
       (* separate environments *)
-      if Buffer.length buff > 0 then
+      if !started then
         Buffer.add_char buff ';'
+      else
+        started := true
       ;
       Printf.bprintf buff "%s:%d" env count
     ) fp.feat_counts;
@@ -52,7 +55,9 @@ let fp_to_string fp =
 (* unfolded counted RFP encoding *)
 let encode_smiles_line max_radius line =
   let smi, name = BatString.split ~by:"\t" line in
-  let mol = Rdkit.__init__ ~smi () in
+  let mol_noH = Rdkit.__init__ ~smi () in
+  (* !!! this fingerprint needs all hydrogens to be present on the molecular graph !!! *)
+  let mol = Rdkit.add_hydrogens mol_noH () in
   let num_atoms = Rdkit.get_num_atoms mol () in
   let diameter = Rdkit.get_diameter mol () in
   let elements = Rdkit.get_elements mol () in
