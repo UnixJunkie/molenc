@@ -197,7 +197,7 @@ class Rdkit:
 
     # molecular graph diameter
     def get_diameter(self) -> int:
-        return np.max(self.mat)
+        return int(np.max(self.mat))
 
     # get the distance (in bonds) between a pair of atoms
     def get_distance(self, i: int, j: int) -> int:
