@@ -1,6 +1,7 @@
 
 import rdkit, deepsmiles, random, re, sys, typing
 from rdkit import Chem
+import numpy as np
 
 def nb_heavy_atom_neighbors(a: rdkit.Chem.rdchem.Atom) -> int:
     res = 0
@@ -164,6 +165,10 @@ class Rdkit:
 
     def get_num_atoms(self) -> int:
         return self.mol.GetNumAtoms()
+
+    # molecular graph diameter
+    def get_diameter(self) -> int:
+        return np.max(self.mat)
 
     # get the distance (in bonds) between a pair of atoms
     def get_distance(self, i: int, j: int) -> int:

@@ -9,6 +9,8 @@ val type_atom_simple: t -> i:int -> unit -> int array
 
 val get_num_atoms: t -> unit -> int
 
+val get_diameter: t -> unit -> int
+
 val get_distance: t -> i:int -> j:int -> unit -> int
 
 val get_deep_smiles: t -> seed:int -> n:int -> randomize:bool -> smi:string -> unit -> string array
