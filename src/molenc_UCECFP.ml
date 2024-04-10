@@ -27,41 +27,45 @@ type unfolded_counted_fp = { name: string;
 
 (* FBR: implement bound on max atom env. radius *)
 
+(* FBR: atom env module? *)
+
+(* chemical formula at [radius] away from [center_atom_i] *)
+let get_atom_env center_atom_i radius mol indexes elements =
+  A.fold (fun acc a_i ->
+      (* FBR: export this distance matrix once and for all from Python *)
+      if Rdkit.get_distance mol ~i:center_atom_i ~j:a_i () = radius then
+        let elt = A.unsafe_get elements a_i in
+        let prev_count = SMap.find_default 0 elt acc in
+        SMap.add elt (prev_count + 1) acc
+      else (* not part of the atom_env *)
+        acc
+    ) SMap.empty indexes
+
 (* UECFP* encoding *)
-let encode_smiles_line _max_radius line =
+let encode_smiles_line max_radius line =
   let smi, _name = BatString.split ~by:"\t" line in
   let mol = Rdkit.__init__ ~smi () in
-  let _num_atoms = Rdkit.get_num_atoms mol () in
-  (* compute diameter *)
-  (* encode each atom using all diameters from 0 to N *)
-  failwith "not implemented yet"
-
-(* read [chunk_size] molecules and store them in a temp_file *)
-let read_some reads chunk_size input =
-  let count = ref 0 in
-  let tmp_dir = Filename.temp_dir "molenc_" "" (* no suffix *) in
-  let tmp_smi_fn = sprintf "%s/in.smi" tmp_dir in
-  LO.with_out_file tmp_smi_fn (fun output ->
-      try
-        for _i = 1 to chunk_size do
-          let line = input_line input in
-          fprintf output "%s\n" line;
-          incr count
-        done
-      with End_of_file -> ()
+  let num_atoms = Rdkit.get_num_atoms mol () in
+  let diameter = Rdkit.get_diameter mol () in
+  let elements = Rdkit.get_elements mol () in
+  (* encode each atom using all diameters from 0 to max_radius *)
+  let indexes = A.init num_atoms (fun i -> i) in
+  let radii = A.init (min max_radius diameter) (fun i -> i) in
+  let res = Buffer.create 1024 in
+  SMap.iter (Printf.bprintf res "%s:%d")
+    (A.fold (fun acc0 a_i ->
+         let buff = Buffer.create 128 in
+         A.fold (fun acc1 radius ->
+             let atom_env = get_atom_env a_i radius mol indexes elements in
+             (* get a chemical formula *)
+             SMap.iter (Printf.bprintf buff "%s:%d") atom_env;
+             let curr_env = Buffer.contents buff in
+             let count = SMap.find_default 0 curr_env acc1 in
+             SMap.add curr_env (count + 1) acc1
+           ) acc0 radii
+       ) SMap.empty indexes
     );
-  if !count = 0 then
-    let () = Log.info "read %#d molecules" !reads in
-    assert(0 = Sys.command (sprintf "rm -rf %s" tmp_dir));
-    raise Parany.End_of_input
-  else
-    (reads := !reads + !count;
-     tmp_dir)
-
-(* molecular encoding, but feature dictionary does not exist yet *)
-let encode_some max_dist simple_types tmp_dir =
-  let smi_fn = sprintf "%s/in_std.smi" tmp_dir in
-  LO.map smi_fn (encode_smiles_line max_dist simple_types)
+  Buffer.contents res
 
 let main () =
   let start = Unix.gettimeofday () in
@@ -100,13 +104,6 @@ let main () =
   );
   let reads = ref 0 in
   let writes = ref 0 in
-  LO.with_infile_outfile input_fn output_fn (fun input _output ->
-      (* !!! KEEP ~csize:1 below !!! *)
-      Parany.run ~csize:1 ~preserve:true nprocs
-        ~demux:(fun () -> read_some reads csize input)
-        ~work:(fun tmp_dir -> encode_some max_radius tmp_dir)
-        ~mux:(fun _ -> failwith "not implemented yet")
-    );
   let dt = Unix.gettimeofday() -. start in
   Log.info "wrote %#d molecules (%.2f Hz)" !writes ((float !writes) /. dt)
 
