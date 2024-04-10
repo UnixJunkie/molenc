@@ -61,8 +61,8 @@ let encode_smiles_line max_radius line =
   let num_atoms = Rdkit.get_num_atoms mol () in
   let diameter = Rdkit.get_diameter mol () in
   let elements = Rdkit.get_elements mol () in
-  (* encode each atom using all diameters from 0 to max_radius *)
   let indexes = A.init num_atoms (fun i -> i) in
+  (* encode each atom using all diameters from 0 to max_radius *)  
   let radii = A.init (1 + (min max_radius diameter)) (fun i -> i) in
   { name;
     feat_counts =
@@ -76,7 +76,12 @@ let encode_smiles_line max_radius line =
                  Buffer.add_char buff ','
               );
               (* chemical formula for this layer *)
-              SMap.iter (Printf.bprintf buff "%s%d") atom_env;
+              SMap.iter (fun k v ->
+                  if v > 1 then
+                    Printf.bprintf buff "%s%d" k v
+                  else (* as in chemical formulae *)
+                    Printf.bprintf buff "%s" k
+                ) atom_env;
               let curr_env = Buffer.contents buff in
               let count = SMap.find_default 0 curr_env acc1 in
               SMap.add curr_env (count + 1) acc1
