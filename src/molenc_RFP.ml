@@ -2,7 +2,7 @@
  * Tsuda laboratory, Tokyo University,
  * 5-1-5 Kashiwa-no-ha, Kashiwa-shi, Chiba-ken, 277-8561, Japan.
  *
- * UCECFP* encoder *)
+ * RFP encoder *)
 
 open Printf
 
