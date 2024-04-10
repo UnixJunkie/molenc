@@ -52,6 +52,11 @@ let fp_to_string fp =
     ) fp.feat_counts;
   Buffer.contents buff
 
+(* FBR: in verbose mode: output atom environments by incr. (grouped by) radius *)
+
+(* FBR: BUG; for each atom, we need not go up to the graph diameter;
+ *           we just need to go up to the max radius from this atom *)
+
 (* unfolded counted RFP encoding *)
 let encode_smiles_line max_radius line =
   let smi, name = BatString.split ~by:"\t" line in
@@ -63,7 +68,7 @@ let encode_smiles_line max_radius line =
   let elements = Rdkit.get_elements mol () in
   let indexes = A.init num_atoms (fun i -> i) in
   (* encode each atom using all diameters from 0 to max_radius *)  
-  let radii = A.init (1 + (min max_radius diameter)) (fun i -> i) in
+  let radii = A.of_list (L.range 0 `To (min max_radius diameter)) in
   { name;
     feat_counts =
       A.fold (fun acc0 a_i ->
