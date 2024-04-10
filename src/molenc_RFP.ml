@@ -26,10 +26,9 @@ type fp = { name: string;
             feat_counts: int SMap.t }
 
 (* chemical formula at [radius] bonds away from [center_atom_i] *)
-let get_atom_env center_atom_i radius mol indexes elements =
+let get_atom_env distances radius indexes elements =
   A.fold (fun acc a_i ->
-      (* FBR: import this distance matrix once and for all from Python *)
-      if Rdkit.get_distance mol ~i:center_atom_i ~j:a_i () = radius then
+      if distances.(a_i) = radius then
         let elt = A.unsafe_get elements a_i in
         let prev_count = SMap.find_default 0 elt acc in
         SMap.add elt (prev_count + 1) acc
@@ -70,12 +69,12 @@ let encode_smiles_line max_radius line =
           let buff = Buffer.create 128 in
           (* encode each atom using all radii; from 0 to max radius
              for this atom (furthest neighbor on the molecular graph) *)
+          let dists = Rdkit.get_distances mol ~i:a_i () in          
           let radii =
-            let dists = Rdkit.get_distances mol ~i:a_i () in
             let r_max = 1 + (min max_radius (A.max dists)) in
             A.init r_max (fun i -> i) in
           A.fold (fun acc1 radius ->
-              let atom_env = get_atom_env a_i radius mol indexes elements in
+              let atom_env = get_atom_env dists radius indexes elements in
               (* separate layers *)
               (if Buffer.length buff > 0 then
                  Buffer.add_char buff ','
