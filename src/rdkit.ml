@@ -4,6 +4,7 @@ module Rdkit : sig
   val of_pyobject : Pytypes.pyobject -> t
   val to_pyobject : t -> Pytypes.pyobject
   val __init__ : smi:string -> unit -> t
+  val add_hydrogens : t -> unit -> t
   val type_atom : t -> i:int -> unit -> int array
   val type_EltFCaroNeighbs : t -> i:int -> unit -> int array
   val type_atom_simple : t -> i:int -> unit -> int array
@@ -117,6 +118,10 @@ class Rdkit:
     # to get an object of type t
     def __init__(self, smi: str):
         self.mol = Chem.MolFromSmiles(smi)
+        self.mat = Chem.GetDistanceMatrix(self.mol)
+
+    def add_hydrogens(self):
+        self.mol = Chem.AddHs(self.mol)
         self.mat = Chem.GetDistanceMatrix(self.mol)
 
     # (atomic_num, #HA, #H, valence - #H, formal_charge)
@@ -268,6 +273,11 @@ class Rdkit:
   let __init__ ~smi () =
     let callable = Py.Module.get (import_module ()) "Rdkit" in
     let kwargs = filter_opt [ Some ("smi", Py.String.of_string smi) ] in
+    of_pyobject @@ Py.Callable.to_function_with_keywords callable [||] kwargs
+
+  let add_hydrogens t () =
+    let callable = Py.Object.find_attr_string t "add_hydrogens" in
+    let kwargs = filter_opt [] in
     of_pyobject @@ Py.Callable.to_function_with_keywords callable [||] kwargs
 
   let type_atom t ~i () =
