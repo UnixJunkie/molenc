@@ -15,6 +15,8 @@ val get_diameter: t -> unit -> int
 
 val get_distance: t -> i:int -> j:int -> unit -> int
 
+val get_distances: t -> i:int -> unit -> int array
+
 val get_deep_smiles: t -> seed:int -> n:int -> randomize:bool -> smi:string -> unit -> string array
 
 val get_elements: t -> unit -> string array

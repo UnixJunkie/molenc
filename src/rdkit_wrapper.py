@@ -179,6 +179,10 @@ class Rdkit:
     def get_distance(self, i: int, j: int) -> int:
         return int(self.mat[i][j])
 
+    # distances (in bonds) from atom [i] to all other atoms in molecule
+    def get_distances(self, i: int) -> list[int]:
+        return list(map(lambda x: int(x), self.mat[i]))
+
     # chemical element of each atom in the molecule
     def get_elements(self) -> list[str]:
         res = []
