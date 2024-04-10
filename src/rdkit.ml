@@ -8,6 +8,7 @@ module Rdkit : sig
   val type_EltFCaroNeighbs : t -> i:int -> unit -> int array
   val type_atom_simple : t -> i:int -> unit -> int array
   val get_num_atoms : t -> unit -> int
+  val get_diameter : t -> unit -> int
   val get_distance : t -> i:int -> j:int -> unit -> int
 
   val get_deep_smiles :
@@ -27,6 +28,7 @@ end = struct
          {pyml_bindgen_string_literal|
 import rdkit, deepsmiles, random, re, sys, typing
 from rdkit import Chem
+import numpy as np
 
 def nb_heavy_atom_neighbors(a: rdkit.Chem.rdchem.Atom) -> int:
     res = 0
@@ -191,6 +193,10 @@ class Rdkit:
     def get_num_atoms(self) -> int:
         return self.mol.GetNumAtoms()
 
+    # molecular graph diameter
+    def get_diameter(self) -> int:
+        return np.max(self.mat)
+
     # get the distance (in bonds) between a pair of atoms
     def get_distance(self, i: int, j: int) -> int:
         return int(self.mat[i][j])
@@ -275,6 +281,11 @@ class Rdkit:
 
   let get_num_atoms t () =
     let callable = Py.Object.find_attr_string t "get_num_atoms" in
+    let kwargs = filter_opt [] in
+    Py.Int.to_int @@ Py.Callable.to_function_with_keywords callable [||] kwargs
+
+  let get_diameter t () =
+    let callable = Py.Object.find_attr_string t "get_diameter" in
     let kwargs = filter_opt [] in
     Py.Int.to_int @@ Py.Callable.to_function_with_keywords callable [||] kwargs
 
