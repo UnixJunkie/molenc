@@ -1,4 +1,4 @@
-(* Copyright (C) 2023, Francois Berenger
+(* Copyright (C) 2024, Francois Berenger
  * Tsuda laboratory, Tokyo University,
  * 5-1-5 Kashiwa-no-ha, Kashiwa-shi, Chiba-ken, 277-8561, Japan.
  *
@@ -35,8 +35,6 @@ let encode_smiles_line _max_radius line =
   (* compute diameter *)
   (* encode each atom using all diameters from 0 to N *)
   failwith "not implemented yet"
-
-let verbose = ref false
 
 (* read [chunk_size] molecules and store them in a temp_file *)
 let read_some reads chunk_size input =
@@ -95,11 +93,10 @@ let main () =
   CLI.finalize (); (* ------------------------------------------------------ *)
   let already_out_fn = Sys.file_exists output_fn in
   (if already_out_fn then
-     begin
-       Log.warn "Molenc_AP: output file exists: %s" output_fn;
-       if not force then
-         exit 1
-     end
+     (Log.warn "Molenc_AP: output file exists: %s" output_fn;
+      if not force then
+        exit 1
+     );
   );
   let reads = ref 0 in
   let writes = ref 0 in
