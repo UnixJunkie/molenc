@@ -90,6 +90,10 @@ class Rdkit:
         self.mol = Chem.MolFromSmiles(smi)
         self.mat = Chem.GetDistanceMatrix(self.mol)
 
+    def add_hydrogens(self):
+        self.mol = Chem.AddHs(self.mol)
+        self.mat = Chem.GetDistanceMatrix(self.mol)
+
     # (atomic_num, #HA, #H, valence - #H, formal_charge)
     def type_atom(self, i: int) -> list[int]:
         a = self.mol.GetAtomWithIdx(i)

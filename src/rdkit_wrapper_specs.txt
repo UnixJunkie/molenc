@@ -1,6 +1,8 @@
 
 val __init__: smi:string -> unit -> t
 
+val add_hydrogens: t -> unit -> t
+
 val type_atom: t -> i:int -> unit -> int array
 
 val type_EltFCaroNeighbs: t -> i:int -> unit -> int array
@@ -16,4 +18,3 @@ val get_distance: t -> i:int -> j:int -> unit -> int
 val get_deep_smiles: t -> seed:int -> n:int -> randomize:bool -> smi:string -> unit -> string array
 
 val get_elements: t -> unit -> string array
-
