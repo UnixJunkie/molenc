@@ -19,6 +19,8 @@ module Rdkit : sig
     smi:string ->
     unit ->
     string array
+
+  val get_elements : t -> unit -> string array
 end = struct
   let filter_opt l = List.filter_map Fun.id l
 
@@ -181,7 +183,7 @@ class Rdkit:
         aro = ring_membership(a)
         heavies, hydrogens = count_neighbors(a)
         return [anum, fc, aro, heavies, hydrogens]
-    
+
     # # pyml_bindgen doesn't support list of tuples or even tuples...
     # # type each atom of the molecule
     # def type_atoms(self):
@@ -200,6 +202,13 @@ class Rdkit:
     # get the distance (in bonds) between a pair of atoms
     def get_distance(self, i: int, j: int) -> int:
         return int(self.mat[i][j])
+
+    # chemical element of each atom in the molecule
+    def get_elements(self) -> list[str]:
+        res = []
+        for a in self.mol.GetAtoms():
+            res += a.GetSymbol()
+        return res
 
     # seed: random_seed
     # n: number of randomized SMILES to use
@@ -307,6 +316,12 @@ class Rdkit:
           Some ("smi", Py.String.of_string smi);
         ]
     in
+    Py.List.to_array_map Py.String.to_string
+    @@ Py.Callable.to_function_with_keywords callable [||] kwargs
+
+  let get_elements t () =
+    let callable = Py.Object.find_attr_string t "get_elements" in
+    let kwargs = filter_opt [] in
     Py.List.to_array_map Py.String.to_string
     @@ Py.Callable.to_function_with_keywords callable [||] kwargs
 end
