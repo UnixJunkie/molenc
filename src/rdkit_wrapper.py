@@ -93,6 +93,7 @@ class Rdkit:
     def add_hydrogens(self):
         self.mol = Chem.AddHs(self.mol)
         self.mat = Chem.GetDistanceMatrix(self.mol)
+        return self
 
     # (atomic_num, #HA, #H, valence - #H, formal_charge)
     def type_atom(self, i: int) -> list[int]:
@@ -168,7 +169,7 @@ class Rdkit:
     #     return res
 
     def get_num_atoms(self) -> int:
-        return self.mol.GetNumAtoms()
+        return len(self.mat)
 
     # molecular graph diameter
     def get_diameter(self) -> int:
