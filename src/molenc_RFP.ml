@@ -63,7 +63,7 @@ let encode_smiles_line max_radius line =
   let elements = Rdkit.get_elements mol () in
   (* encode each atom using all diameters from 0 to max_radius *)
   let indexes = A.init num_atoms (fun i -> i) in
-  let radii = A.init (min max_radius diameter) (fun i -> i) in
+  let radii = A.init (1 + (min max_radius diameter)) (fun i -> i) in
   { name;
     feat_counts =
       A.fold (fun acc0 a_i ->
