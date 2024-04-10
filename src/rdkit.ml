@@ -11,6 +11,7 @@ module Rdkit : sig
   val get_num_atoms : t -> unit -> int
   val get_diameter : t -> unit -> int
   val get_distance : t -> i:int -> j:int -> unit -> int
+  val get_distances : t -> i:int -> unit -> int array
 
   val get_deep_smiles :
     t ->
@@ -209,6 +210,10 @@ class Rdkit:
     def get_distance(self, i: int, j: int) -> int:
         return int(self.mat[i][j])
 
+    # distances (in bonds) from atom [i] to all other atoms in molecule
+    def get_distances(self, i: int) -> list[int]:
+        return list(map(lambda x: int(x), self.mat[i]))
+
     # chemical element of each atom in the molecule
     def get_elements(self) -> list[str]:
         res = []
@@ -315,6 +320,12 @@ class Rdkit:
       filter_opt [ Some ("i", Py.Int.of_int i); Some ("j", Py.Int.of_int j) ]
     in
     Py.Int.to_int @@ Py.Callable.to_function_with_keywords callable [||] kwargs
+
+  let get_distances t ~i () =
+    let callable = Py.Object.find_attr_string t "get_distances" in
+    let kwargs = filter_opt [ Some ("i", Py.Int.of_int i) ] in
+    Py.List.to_array_map Py.Int.to_int
+    @@ Py.Callable.to_function_with_keywords callable [||] kwargs
 
   let get_deep_smiles t ~seed ~n ~randomize ~smi () =
     let callable = Py.Object.find_attr_string t "get_deep_smiles" in
