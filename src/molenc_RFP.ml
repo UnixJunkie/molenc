@@ -22,17 +22,13 @@ let () = Py.initialize ~version:3 ()
 type mode = Input
           | Output
 
-type unfolded_counted_fp = { name: string;
-                             feat_counts: int SMap.t }
+type fp = { name: string;
+            feat_counts: int SMap.t }
 
-(* FBR: implement bound on max atom env. radius *)
-
-(* FBR: atom env module? *)
-
-(* chemical formula at [radius] away from [center_atom_i] *)
+(* chemical formula at [radius] bonds away from [center_atom_i] *)
 let get_atom_env center_atom_i radius mol indexes elements =
   A.fold (fun acc a_i ->
-      (* FBR: export this distance matrix once and for all from Python *)
+      (* FBR: import this distance matrix once and for all from Python *)
       if Rdkit.get_distance mol ~i:center_atom_i ~j:a_i () = radius then
         let elt = A.unsafe_get elements a_i in
         let prev_count = SMap.find_default 0 elt acc in
@@ -41,9 +37,21 @@ let get_atom_env center_atom_i radius mol indexes elements =
         acc
     ) SMap.empty indexes
 
-(* UECFP* encoding *)
+let fp_to_string fp =
+  let buff = Buffer.create 1024 in
+  Printf.bprintf buff "%s\t" fp.name;
+  SMap.iter (fun env count ->
+      (* separate environments *)
+      if Buffer.length buff > 0 then
+        Buffer.add_char buff ';'
+      ;
+      Printf.bprintf buff "%s:%d" env count
+    ) fp.feat_counts;
+  Buffer.contents buff
+
+(* unfolded counted RFP encoding *)
 let encode_smiles_line max_radius line =
-  let smi, _name = BatString.split ~by:"\t" line in
+  let smi, name = BatString.split ~by:"\t" line in
   let mol = Rdkit.__init__ ~smi () in
   let num_atoms = Rdkit.get_num_atoms mol () in
   let diameter = Rdkit.get_diameter mol () in
@@ -51,21 +59,25 @@ let encode_smiles_line max_radius line =
   (* encode each atom using all diameters from 0 to max_radius *)
   let indexes = A.init num_atoms (fun i -> i) in
   let radii = A.init (min max_radius diameter) (fun i -> i) in
-  let res = Buffer.create 1024 in
-  SMap.iter (Printf.bprintf res "%s:%d")
-    (A.fold (fun acc0 a_i ->
-         let buff = Buffer.create 128 in
-         A.fold (fun acc1 radius ->
-             let atom_env = get_atom_env a_i radius mol indexes elements in
-             (* get a chemical formula *)
-             SMap.iter (Printf.bprintf buff "%s:%d") atom_env;
-             let curr_env = Buffer.contents buff in
-             let count = SMap.find_default 0 curr_env acc1 in
-             SMap.add curr_env (count + 1) acc1
-           ) acc0 radii
-       ) SMap.empty indexes
-    );
-  Buffer.contents res
+  { name;
+    feat_counts =
+      A.fold (fun acc0 a_i ->
+          (* current atom's environments *)
+          let buff = Buffer.create 128 in
+          A.fold (fun acc1 radius ->
+              let atom_env = get_atom_env a_i radius mol indexes elements in
+              (* separate layers *)
+              (if Buffer.length buff > 0 then
+                 Buffer.add_char buff ','
+              );
+              (* chemical formula for this layer *)
+              SMap.iter (Printf.bprintf buff "%s%d") atom_env;
+              let curr_env = Buffer.contents buff in
+              let count = SMap.find_default 0 curr_env acc1 in
+              SMap.add curr_env (count + 1) acc1
+            ) acc0 radii
+        ) SMap.empty indexes
+  }
 
 let main () =
   let start = Unix.gettimeofday () in
@@ -77,7 +89,7 @@ let main () =
      (eprintf "usage:\n  \
                %s -i in.smi -o out.fp\n  \
                -i <input.smi>: input molecules\n  \
-               -o <output.fp>: UCECFP output\n  \
+               [-o <output.fp>]: UCECFP output\n  \
                [-f]: overwrite output file, if any\n  \
                [-m <int>]: maximum atom env. radius (in bonds; default=OFF)\n  \
                [-np <int>]: parallelize on NCORES (default=1)\n  \
@@ -87,14 +99,15 @@ let main () =
       exit 1)
   );
   let input_fn = CLI.get_string ["-i"] args in
-  let output_fn = CLI.get_string ["-o"] args in
-  let nprocs = CLI.get_int_def ["-np"] args 1 in
-  let csize = CLI.get_int_def ["-c"] args 200 in
-  let force = CLI.get_set_bool ["-f"] args in
+  let _output_fn = CLI.get_string ["-o"] args in
+  let _nprocs = CLI.get_int_def ["-np"] args 1 in
+  let _csize = CLI.get_int_def ["-c"] args 200 in
+  let _force = CLI.get_set_bool ["-f"] args in
   let max_radius = match CLI.get_int_opt ["-m"] args with
     | None -> max_int
     | Some x -> x in
   CLI.finalize (); (* ------------------------------------------------------ *)
+  (*
   let already_out_fn = Sys.file_exists output_fn in
   (if already_out_fn then
      (Log.warn "Molenc_AP: output file exists: %s" output_fn;
@@ -102,8 +115,20 @@ let main () =
         exit 1
      );
   );
+*)
   let reads = ref 0 in
   let writes = ref 0 in
+  LO.with_in_file input_fn (fun input ->
+      try
+        while true do
+          let line = input_line input in
+          incr reads;
+          let fp = encode_smiles_line max_radius line in
+          Printf.printf "%s\n" (fp_to_string fp);
+          incr writes
+        done
+      with End_of_file -> ()
+    );
   let dt = Unix.gettimeofday() -. start in
   Log.info "wrote %#d molecules (%.2f Hz)" !writes ((float !writes) /. dt)
 
