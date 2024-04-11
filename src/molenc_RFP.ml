@@ -7,13 +7,8 @@
 (* FBR: carefully test on some molecules *)
 
 (* FBR: how to encode an atom environment as an unambiguous integer (and be reversible)?
-        - I could assign a distinct prime number to each chemical element
-        - then the sum of powers (the power is the number of times the element was seen)
-          of those primes should be decodable
-        - ask the CCL?
-        - OR, just encode the corresp. string as a number?      
-        - create the right alphabet (all required chars plus 0-9 digits); then
-          encode as a number in that base
+   - only works w/o overflow for rather small radius values
+   - use a feature dictionary (as before...)
  *)
 
 open Printf
@@ -99,7 +94,7 @@ let encode_smiles_line max_radius line =
           let buff = Buffer.create 128 in
           (* encode each atom using all radii; from 0 to max radius
              for this atom (furthest neighbor on the molecular graph) *)
-          let dists = Rdkit.get_distances mol ~i:a_i () in          
+          let dists = Rdkit.get_distances mol ~i:a_i () in
           let radii =
             let r_max = 1 + (min max_radius (A.max dists)) in
             A.init r_max (fun i -> i) in
