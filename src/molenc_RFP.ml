@@ -53,11 +53,13 @@ let fp_to_string fp =
 
 (* FBR: in verbose mode: output atom environments by incr. (grouped by) radius *)
 
+(* FBR: carefully test on some molecules *)
+
 (* unfolded counted RFP encoding *)
 let encode_smiles_line max_radius line =
   let smi, name = BatString.split ~by:"\t" line in
   let mol_noH = Rdkit.__init__ ~smi () in
-  (* !!! this fingerprint needs all hydrogens to be present on the molecular graph !!! *)
+  (* this fingerprint needs all hydrogens *)
   let mol = Rdkit.add_hydrogens mol_noH () in
   let num_atoms = Rdkit.get_num_atoms mol () in
   let elements = Rdkit.get_elements mol () in
@@ -113,7 +115,7 @@ let main () =
       exit 1)
   );
   let input_fn = CLI.get_string ["-i"] args in
-  let _output_fn = CLI.get_string ["-o"] args in
+  let output_fn = CLI.get_string ["-o"] args in
   let _nprocs = CLI.get_int_def ["-np"] args 1 in
   let _csize = CLI.get_int_def ["-c"] args 200 in
   let _force = CLI.get_set_bool ["-f"] args in
@@ -132,13 +134,13 @@ let main () =
 *)
   let reads = ref 0 in
   let writes = ref 0 in
-  LO.with_in_file input_fn (fun input ->
+  LO.with_infile_outfile input_fn output_fn (fun input output ->
       try
         while true do
           let line = input_line input in
           incr reads;
           let fp = encode_smiles_line max_radius line in
-          Printf.printf "%s\n" (fp_to_string fp);
+          Printf.fprintf output "%s\n" (fp_to_string fp);
           incr writes
         done
       with End_of_file -> ()
