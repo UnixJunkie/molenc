@@ -4,8 +4,6 @@
  *
  * RFP encoder *)
 
-(* FBR: in verbose mode: output atom environments by incr. (grouped by) radius *)
-
 (* FBR: carefully test on some molecules *)
 
 (* FBR: how to encode an atom environment as an unambiguous integer (and be reversible)?
@@ -13,8 +11,7 @@
         - then the sum of powers (the power is the number of times the element was seen)
           of those primes should be decodable
         - ask the CCL?
-        - OR, just encode the corresp. string as a number?
-        - Huffman compress the string, then corresponding integer?
+        - OR, just encode the corresp. string as a number?      
         - create the right alphabet (all required chars plus 0-9 digits); then
           encode as a number in that base
  *)
