@@ -218,7 +218,7 @@ class Rdkit:
     def get_elements(self) -> list[str]:
         res = []
         for a in self.mol.GetAtoms():
-            res += a.GetSymbol()
+            res.append(a.GetSymbol())
         return res
 
     # seed: random_seed
