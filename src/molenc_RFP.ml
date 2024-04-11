@@ -4,6 +4,21 @@
  *
  * RFP encoder *)
 
+(* FBR: in verbose mode: output atom environments by incr. (grouped by) radius *)
+
+(* FBR: carefully test on some molecules *)
+
+(* FBR: how to encode an atom environment as an unambiguous integer (and be reversible)?
+        - I could assign a distinct prime number to each chemical element
+        - then the sum of powers (the power is the number of times the element was seen)
+          of those primes should be decodable
+        - ask the CCL?
+        - OR, just encode the corresp. string as a number?
+        - Huffman compress the string, then corresponding integer?
+        - create the right alphabet (all required chars plus 0-9 digits); then
+          encode as a number in that base
+ *)
+
 open Printf
 
 module A = BatArray
@@ -14,6 +29,7 @@ module L = BatList
 module LO = Line_oriented
 module Log = Dolog.Log
 module Rdkit = Molenc.Rdkit.Rdkit
+module S = BatString
 module Utls = Molenc.Utls
 
 (* because the Rdkit module uses Pyml *)
@@ -51,9 +67,24 @@ let fp_to_string fp =
     ) fp.feat_counts;
   Buffer.contents buff
 
-(* FBR: in verbose mode: output atom environments by incr. (grouped by) radius *)
-
-(* FBR: carefully test on some molecules *)
+let debug_fp_str_log fp_str =
+  let name, fp = S.split fp_str ~by:"\t" in
+  Log.debug "name: %s" name;
+  let toks = S.split_on_char ';' fp in
+  (* sort atom envs. from least to most precise *)
+  let sorted =
+    L.sort (fun (s1: string) s2 ->
+        let (r1: int) = S.count_char s1 ',' in
+        let r2 = S.count_char s2 ',' in
+        (* less specific atom envs come first *)
+        if r1 < r2 then
+          -1
+        else if r1 > r2 then
+          1
+        else (* if same radius: alphabetical order *)
+          compare s1 s2
+      ) toks in
+  L.iter (Log.debug "%s") sorted
 
 (* unfolded counted RFP encoding *)
 let encode_smiles_line max_radius line =
@@ -122,7 +153,11 @@ let main () =
   let max_radius = match CLI.get_int_opt ["-m"] args with
     | None -> max_int
     | Some x -> x in
+  let verbose = CLI.get_set_bool ["-v"] args in
   CLI.finalize (); (* ------------------------------------------------------ *)
+  (if verbose then
+     Log.(set_log_level DEBUG)
+  );
   (*
   let already_out_fn = Sys.file_exists output_fn in
   (if already_out_fn then
@@ -131,7 +166,7 @@ let main () =
         exit 1
      );
   );
-*)
+  *)
   let reads = ref 0 in
   let writes = ref 0 in
   LO.with_infile_outfile input_fn output_fn (fun input output ->
@@ -140,7 +175,12 @@ let main () =
           let line = input_line input in
           incr reads;
           let fp = encode_smiles_line max_radius line in
-          Printf.fprintf output "%s\n" (fp_to_string fp);
+          let fp_str = fp_to_string fp in
+          (if verbose then
+             debug_fp_str_log fp_str
+           else
+             Printf.fprintf output "%s\n" fp_str
+          );
           incr writes
         done
       with End_of_file -> ()
