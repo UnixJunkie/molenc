@@ -33,35 +33,6 @@ type mode = Input
 type fp = { name: string;
             feat_counts: int SMap.t }
 
-module Ptable = struct
-
-  (* the first atomic number (0) is FAKE but necessary for tabulation *)
-  let anums = A.of_list (L.range 0 `To 118)
-
-  (* associate a prime number to each atomic number,
-     1st elt. also for tabulation reasons *)
-  let primes =
-    [|-1;2;3;5;7;11;13;17;19;23;29;31;37;41;43;47;53;59;61;67;71;73;
-      79;83;89;97;101;103;107;109;113;127;131;137;139;149;151;157;163;
-      167;173;179;181;191;193;197;199;211;223;227;229;233;239;241;251;
-      257;263;269;271;277;281;283;293;307;311;313;317;331;337;347;349;
-      353;359;367;373;379;383;389;397;401;409;419;421;431;433;439;443;
-      449;457;461;463;467;479;487;491;499;503;509;521;523;541;547;557;
-      563;569;571;577;587;593;599;601;607;613;617;619;631;641;643;647|]
-
-  (* chemical symbols; 1st elt. is also for tabulation reasons only *)
-  let symbols =
-    [|"";"H";"He";"Li";"Be";"B";"C";"N";"O";"F";"Ne";"Na";"Mg";"Al";"Si";"P";
-      "S";"Cl";"Ar";"K";"Ca";"Sc";"Ti";"V";"Cr";"Mn";"Fe";"Co";"Ni";"Cu";"Zn";
-      "Ga";"Ge";"As";"Se";"Br";"Kr";"Rb";"Sr";"Y";"Zr";"Nb";"Mo";"Tc";"Ru";"Rh";
-      "Pd";"Ag";"Cd";"In";"Sn";"Sb";"Te";"I";"Xe";"Cs";"Ba";"La";"Ce";"Pr";"Nd";
-      "Pm";"Sm";"Eu";"Gd";"Tb";"Dy";"Ho";"Er";"Tm";"Yb";"Lu";"Hf";"Ta";"W";"Re";
-      "Os";"Ir";"Pt";"Au";"Hg";"Tl";"Pb";"Bi";"Po";"At";"Rn";"Fr";"Ra";"Ac";"Th";
-      "Pa";"U";"Np";"Pu";"Am";"Cm";"Bk";"Cf";"Es";"Fm";"Md";"No";"Lr";"Rf";"Db";
-      "Sg";"Bh";"Hs";"Mt";"Ds";"Rg";"Cn";"Nh";"Fl";"Mc";"Lv";"Ts";"Og"|]
-
-end
-
 (* chemical formula at [radius] bonds away from [center_atom_i] *)
 let get_atom_env distances radius indexes elements =
   A.fold (fun acc a_i ->
@@ -72,6 +43,41 @@ let get_atom_env distances radius indexes elements =
       else (* not part of the atom_env *)
         acc
     ) SMap.empty indexes
+
+type formula_item = Element of string
+                  | Count of int
+
+let rec count_elements = function
+  | [] -> []
+  | [Element symb] -> [(symb, 1)]
+  | [Count _] -> assert(false) (* should have been processed before *)
+  | (Element s0) :: (Element s1) :: rest ->
+    (s0, 1) :: count_elements (Element s1 :: rest)
+  | (Element symb) :: (Count c) :: rest ->
+    (symb, c) :: (count_elements rest)
+  | _ -> assert(false)
+
+let int_of_chemical_formula f =
+  let element_counts = A.make 119 0 in
+  (* tokenize chemical elements starting from two chars ones *)
+  let element_counts_0 =
+    Str.bounded_full_split Ptable.elements_regexp f 1024 in
+  let element_counts_1 =
+    L.map (function Str.Delim symbol -> Element symbol
+                  | Str.Text count -> Count (int_of_string count)
+      ) element_counts_0 in
+  let element_counts_2 = count_elements element_counts_1 in
+  L.iter (fun (symb, count) ->
+      let anum = Ptable.anum_of_symbol symb in
+      element_counts.(anum) <- count
+    ) element_counts_2;
+  A.fold_lefti (fun acc anum count ->
+      if count > 0 then
+        (* sum of powers of primes *)
+        acc * (BatInt.pow Ptable.primes.(anum) count)
+      else
+        acc
+    ) 1 element_counts
 
 let fp_to_string fp =
   let buff = Buffer.create 1024 in
