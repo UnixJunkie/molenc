@@ -20,7 +20,7 @@
   (modules encoder decoder filter butina pubchem_decoder uniq to_dense get_mol
            sybyl syb_atom mol2 sdf smi ph4 rank ap_encoder prune merge MST
            palette gnuplot lig_box shannon fragmentable_mol indexer pareto
-           finder AP_BBAD split sdf_read dsmi BBAD molenc_AP molenc_RFP)
+           finder AP_BBAD split sdf_read dsmi BBAD molenc_AP molenc_RFP ptable)
   (libraries molenc bst batteries dolog minicli parany cpm dokeysto
              ocamlgraph vector3 line_oriented pyml))
 
