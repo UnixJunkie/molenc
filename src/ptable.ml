@@ -4,6 +4,45 @@ module Ht = BatHashtbl
 module L = BatList
 module Log = Dolog.Log
 
+(* Statistics for ChEMBL-34:
+#atom_count symbol prime
+61440436 H    2
+53818425 C    3
+ 8561288 O    5
+ 8478199 N    7
+ 1040693 F   11
+  932402 S   13
+  584961 Cl  17
+  122574 Br  19
+   55866 P   23
+   20896 I   29
+   15555 Na  31
+    5937 B   37
+    3924 Si  41
+    3432 Se  43
+    1557 K   47
+     555 Li  53
+     281 As  59
+     220 Te  61
+     165 Zn  67
+     155 Ca  71
+     130 Mg  73
+     120 Al  79
+      42 Ag  83
+      18 Sr  89
+      12 Rb  97
+      12 Ba 101
+       8 Cs 103
+       6 At 107
+       5 Bi 109
+       4 Xe 113
+       4 Ra 127
+       2 Kr 131
+       2 Be 137
+       1 He 139
+       1 Ga 149
+*)
+
 (* the first atomic number (0) is FAKE but necessary for tabulation *)
 let anums = A.of_list (L.range 0 `To 118)
 
