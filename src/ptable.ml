@@ -88,7 +88,7 @@ let prime_for_symbol (s: string): int =
 (* the first atomic number (0) is FAKE but necessary for tabulation *)
 let anums = A.of_list (L.range 0 `To 118)
 
-let elements_regexp = Str.regexp "He|Li|Be|Ne|Na|Mg|Al|Si|Cl|Ar|Ca|Sc|Ti|Cr|Mn|Fe|Co|Ni|Cu|Zn|Ga|Ge|As|Se|Br|Kr|Rb|Sr|Zr|Nb|Mo|Tc|Ru|Rh|Pd|Ag|Cd|In|Sn|Sb|Te|Xe|Cs|Ba|La|Ce|Pr|Nd|Pm|Sm|Eu|Gd|Tb|Dy|Ho|Er|Tm|Yb|Lu|Hf|Ta|Re|Os|Ir|Pt|Au|Hg|Tl|Pb|Bi|Po|At|Rn|Fr|Ra|Ac|Th|Pa|Np|Pu|Am|Cm|Bk|Cf|Es|Fm|Md|No|Lr|Rf|Db|Sg|Bh|Hs|Mt|Ds|Rg|Cn|Nh|Fl|Mc|Lv|Ts|Og|H|B|C|N|O|F|P|S|K|V|Y|I|W|U"
+let elements_regexp = Str.regexp "He\\|Li\\|Be\\|Ne\\|Na\\|Mg\\|Al\\|Si\\|Cl\\|Ar\\|Ca\\|Sc\\|Ti\\|Cr\\|Mn\\|Fe\\|Co\\|Ni\\|Cu\\|Zn\\|Ga\\|Ge\\|As\\|Se\\|Br\\|Kr\\|Rb\\|Sr\\|Zr\\|Nb\\|Mo\\|Tc\\|Ru\\|Rh\\|Pd\\|Ag\\|Cd\\|In\\|Sn\\|Sb\\|Te\\|Xe\\|Cs\\|Ba\\|La\\|Ce\\|Pr\\|Nd\\|Pm\\|Sm\\|Eu\\|Gd\\|Tb\\|Dy\\|Ho\\|Er\\|Tm\\|Yb\\|Lu\\|Hf\\|Ta\\|Re\\|Os\\|Ir\\|Pt\\|Au\\|Hg\\|Tl\\|Pb\\|Bi\\|Po\\|At\\|Rn\\|Fr\\|Ra\\|Ac\\|Th\\|Pa\\|Np\\|Pu\\|Am\\|Cm\\|Bk\\|Cf\\|Es\\|Fm\\|Md\\|No\\|Lr\\|Rf\\|Db\\|Sg\\|Bh\\|Hs\\|Mt\\|Ds\\|Rg\\|Cn\\|Nh\\|Fl\\|Mc\\|Lv\\|Ts\\|Og\\|H\\|B\\|C\\|N\\|O\\|F\\|P\\|S\\|K\\|V\\|Y\\|I\\|W\\|U"
 
 (* chemical symbols; 1st elt. is also for tabulation reasons only *)
 let symbols =
