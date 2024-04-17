@@ -77,7 +77,9 @@ let int_of_chemical_formula _debug f =
   let element_counts_2 = count_elements element_counts_1 in
   L.iter (fun (symb, count) ->
       let anum = Ptable.anum_of_symbol symb in
-      element_counts.(anum) <- count
+      (* robust even to extended formulas like CH3CH2OH
+         instead of the proper C2H6O *)
+      element_counts.(anum) <- element_counts.(anum) + count
     ) element_counts_2;
   (* FBR: in debug mode, print this counts table *)
   A.fold_lefti (fun acc anum count ->
