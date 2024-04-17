@@ -58,6 +58,13 @@ let rec count_elements = function
     (symb, c) :: (count_elements rest)
   | _ -> assert(false)
 
+let parse_int s =
+  try int_of_string s
+  with exn ->
+    (Log.fatal "Molenc_RFP.parse_int: cannot parse: %s" s;
+     raise exn)
+
+(* FBR: protect against integer overflow using zarith *)
 let int_of_chemical_formula _debug f =
   let element_counts = A.make 119 0 in
   (* lexer: tokenize chemical elements starting from two chars ones *)
@@ -65,7 +72,7 @@ let int_of_chemical_formula _debug f =
     Str.bounded_full_split Ptable.elements_regexp f 1024 in
   let element_counts_1 =
     L.map (function Str.Delim symbol -> Element symbol
-                  | Str.Text count -> Count (int_of_string count)
+                  | Str.Text count -> Count (parse_int count)
       ) element_counts_0 in
   let element_counts_2 = count_elements element_counts_1 in
   L.iter (fun (symb, count) ->
