@@ -8,7 +8,7 @@
 
 (* FBR: how to encode an atom environment as an unambiguous integer (and be reversible)?
    - only works w/o overflow for rather small radius values
-   - use a feature dictionary (as before...)
+   - reverse order prime factors by frequency in ChEMBL
  *)
 
 open Printf
@@ -74,7 +74,7 @@ let int_of_chemical_formula f =
   A.fold_lefti (fun acc anum count ->
       if count > 0 then
         (* sum of powers of primes *)
-        acc * (BatInt.pow Ptable.primes.(anum) count)
+        acc * (BatInt.pow (Ptable.prime_for_anum anum) count)
       else
         acc
     ) 1 element_counts
