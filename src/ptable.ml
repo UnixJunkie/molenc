@@ -42,20 +42,51 @@ module Log = Dolog.Log
        1 He 139
        1 Ga 149
 *)
+let symbol2prime =
+  Ht.of_list [("H",2);
+              ("C",3);
+              ("O",5);
+              ("N",7);
+              ("F",11);
+              ("S",13);
+              ("Cl",17);
+              ("Br",19);
+              ("P",23);
+              ("I",29);
+              ("Na",31);
+              ("B",37);
+              ("Si",41);
+              ("Se",43);
+              ("K",47);
+              ("Li",53);
+              ("As",59);
+              ("Te",61);
+              ("Zn",67);
+              ("Ca",71);
+              ("Mg",73);
+              ("Al",79);
+              ("Ag",83);
+              ("Sr",89);
+              ("Rb",97);
+              ("Ba",101);
+              ("Cs",103);
+              ("At",107);
+              ("Bi",109);
+              ("Xe",113);
+              ("Ra",127);
+              ("Kr",131);
+              ("Be",137);
+              ("He",139);
+              ("Ga",149)]
+
+let prime_for_symbol (s: string): int =
+  try Ht.find symbol2prime s
+  with Not_found ->
+    (Log.fatal "Ptable.prime_for_symbol: no prime assigned to %s" s;
+     exit 1)
 
 (* the first atomic number (0) is FAKE but necessary for tabulation *)
 let anums = A.of_list (L.range 0 `To 118)
-
-(* associate a prime number to each atomic number,
-   1st elt. also for tabulation reasons *)
-let primes =
-  [|-1;2;3;5;7;11;13;17;19;23;29;31;37;41;43;47;53;59;61;67;71;73;
-    79;83;89;97;101;103;107;109;113;127;131;137;139;149;151;157;163;
-    167;173;179;181;191;193;197;199;211;223;227;229;233;239;241;251;
-    257;263;269;271;277;281;283;293;307;311;313;317;331;337;347;349;
-    353;359;367;373;379;383;389;397;401;409;419;421;431;433;439;443;
-    449;457;461;463;467;479;487;491;499;503;509;521;523;541;547;557;
-    563;569;571;577;587;593;599;601;607;613;617;619;631;641;643;647|]
 
 let elements_regexp = Str.regexp "He|Li|Be|Ne|Na|Mg|Al|Si|Cl|Ar|Ca|Sc|Ti|Cr|Mn|Fe|Co|Ni|Cu|Zn|Ga|Ge|As|Se|Br|Kr|Rb|Sr|Zr|Nb|Mo|Tc|Ru|Rh|Pd|Ag|Cd|In|Sn|Sb|Te|Xe|Cs|Ba|La|Ce|Pr|Nd|Pm|Sm|Eu|Gd|Tb|Dy|Ho|Er|Tm|Yb|Lu|Hf|Ta|Re|Os|Ir|Pt|Au|Hg|Tl|Pb|Bi|Po|At|Rn|Fr|Ra|Ac|Th|Pa|Np|Pu|Am|Cm|Bk|Cf|Es|Fm|Md|No|Lr|Rf|Db|Sg|Bh|Hs|Mt|Ds|Rg|Cn|Nh|Fl|Mc|Lv|Ts|Og|H|B|C|N|O|F|P|S|K|V|Y|I|W|U"
 
@@ -69,6 +100,13 @@ let symbols =
     "Os";"Ir";"Pt";"Au";"Hg";"Tl";"Pb";"Bi";"Po";"At";"Rn";"Fr";"Ra";"Ac";"Th";
     "Pa";"U";"Np";"Pu";"Am";"Cm";"Bk";"Cf";"Es";"Fm";"Md";"No";"Lr";"Rf";"Db";
     "Sg";"Bh";"Hs";"Mt";"Ds";"Rg";"Cn";"Nh";"Fl";"Mc";"Lv";"Ts";"Og"|]
+
+let symbol_of_anum a =
+  if a = 0 || a > 118 then
+    (Log.fatal "Ptable.symbol_of_anum: no such anum: %d" a;
+     exit 1)
+  else
+    symbols.(a)
 
 let symbol2anum =
   Ht.of_list [("H",1);
@@ -195,3 +233,6 @@ let anum_of_symbol s =
   with Not_found ->
     (Log.fatal "Ptable.anum_of_symbol: no such chemical element: %s" s;
      exit 1)
+
+let prime_for_anum a =
+  prime_for_symbol (symbol_of_anum a)
