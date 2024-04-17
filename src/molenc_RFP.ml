@@ -47,6 +47,7 @@ let get_atom_env distances radius indexes elements =
 type formula_item = Element of string
                   | Count of int
 
+(* parse list of tokens *)
 let rec count_elements = function
   | [] -> []
   | [Element symb] -> [(symb, 1)]
@@ -57,9 +58,9 @@ let rec count_elements = function
     (symb, c) :: (count_elements rest)
   | _ -> assert(false)
 
-let int_of_chemical_formula f =
+let int_of_chemical_formula _debug f =
   let element_counts = A.make 119 0 in
-  (* tokenize chemical elements starting from two chars ones *)
+  (* lexer: tokenize chemical elements starting from two chars ones *)
   let element_counts_0 =
     Str.bounded_full_split Ptable.elements_regexp f 1024 in
   let element_counts_1 =
@@ -71,9 +72,10 @@ let int_of_chemical_formula f =
       let anum = Ptable.anum_of_symbol symb in
       element_counts.(anum) <- count
     ) element_counts_2;
+  (* FBR: in debug mode, print this counts table *)
   A.fold_lefti (fun acc anum count ->
       if count > 0 then
-        (* sum of powers of primes *)
+        (* sum of powers of primes; also called "Godel numbering" *)
         acc * (BatInt.pow (Ptable.prime_for_anum anum) count)
       else
         acc
