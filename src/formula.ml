@@ -52,6 +52,15 @@ let encode _debug f =
       ) Z.one element_counts in
   Z.to_int big_int
 
+let compute_exponent composite prime =
+  let rec loop acc x =
+    if x mod prime = 0 then
+      loop (acc + 1) (x / prime)
+    else
+      acc in
+  loop 0 composite
+
 (* int -> formula *)
 let decode _debug _x =
-  failwith "not implemented yet"
+  (* prime x is a factor if y mod x = 0 *)
+  failwith "FBR: TO IMPLEMENT"
