@@ -23,7 +23,8 @@ let parse_int s =
     (Log.fatal "Formula.parse_int: cannot parse: %s" s;
      raise exn)
 
-let int_of_chemical_formula _debug f =
+(* formula -> int *)
+let encode _debug f =
   let element_counts = A.make 119 0 in
   (* lexer: tokenize chemical elements starting from two chars ones *)
   let element_counts_0 =
@@ -50,3 +51,7 @@ let int_of_chemical_formula _debug f =
           acc
       ) Z.one element_counts in
   Z.to_int big_int
+
+(* int -> formula *)
+let decode _debug _x =
+  failwith "not implemented yet"

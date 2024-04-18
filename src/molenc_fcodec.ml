@@ -47,7 +47,7 @@ let main () =
       Log.info "formula: %s" formula;
       (* encode to integer *)
       try
-        let code = Formula.int_of_chemical_formula false formula in
+        let code = Formula.encode false formula in
         Log.info "code: %d" code
       with Z.Overflow ->
         Log.error "code: overflow for %s" smi
