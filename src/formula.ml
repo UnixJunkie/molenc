@@ -2,6 +2,9 @@
 module A = BatArray
 module L = BatList
 module Log = Dolog.Log
+module SMap = BatMap.String
+
+open Printf
 
 type formula_item = Element of string
                   | Count of int
@@ -52,7 +55,7 @@ let encode _debug f =
       ) Z.one element_counts in
   Z.to_int big_int
 
-let compute_exponent composite prime =
+let find_exponent composite prime =
   let rec loop acc x =
     if x mod prime = 0 then
       loop (acc + 1) (x / prime)
@@ -61,6 +64,18 @@ let compute_exponent composite prime =
   loop 0 composite
 
 (* int -> formula *)
-let decode _debug _x =
-  (* prime x is a factor if y mod x = 0 *)
-  failwith "FBR: TO IMPLEMENT"
+let decode (code: int): string =
+  let counts = A.map (find_exponent code) Ptable.all_primes in
+  let prime_counts = A.combine Ptable.all_primes counts in
+  let symb2count =
+    A.fold (fun acc (prime, count) ->
+        if count > 0 then
+          let symb = Ptable.symbol_for_prime prime in
+          SMap.add symb count acc
+        else
+          acc
+      ) SMap.empty prime_counts in
+  (* get back formula as a string *)
+  let buff = Buffer.create 128 in
+  SMap.iter (bprintf buff "%s%d") symb2count;
+  Buffer.contents buff
