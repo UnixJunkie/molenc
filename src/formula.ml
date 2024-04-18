@@ -20,7 +20,7 @@ let rec count_elements = function
 let parse_int s =
   try int_of_string s
   with exn ->
-    (Log.fatal "Molenc_RFP.parse_int: cannot parse: %s" s;
+    (Log.fatal "Formula.parse_int: cannot parse: %s" s;
      raise exn)
 
 let int_of_chemical_formula _debug f =
