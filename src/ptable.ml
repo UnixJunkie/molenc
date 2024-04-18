@@ -79,6 +79,43 @@ let symbol2prime =
               ("He",139);
               ("Ga",149)]
 
+let prime2symbol =
+  Ht.of_list [(2  ,"H" );
+              (3  ,"C" );
+              (5  ,"O" );
+              (7  ,"N" );
+              (11 ,"F" );
+              (13 ,"S" );
+              (17 ,"Cl");
+              (19 ,"Br");
+              (23 ,"P" );
+              (29 ,"I" );
+              (31 ,"Na");
+              (37 ,"B" );
+              (41 ,"Si");
+              (43 ,"Se");
+              (47 ,"K" );
+              (53 ,"Li");
+              (59 ,"As");
+              (61 ,"Te");
+              (67 ,"Zn");
+              (71 ,"Ca");
+              (73 ,"Mg");
+              (79 ,"Al");
+              (83 ,"Ag");
+              (89 ,"Sr");
+              (97 ,"Rb");
+              (101,"Ba");
+              (103,"Cs");
+              (107,"At");
+              (109,"Bi");
+              (113,"Xe");
+              (127,"Ra");
+              (131,"Kr");
+              (137,"Be");
+              (139,"He");
+              (149,"Ga")]
+  
 (* Enough primes to cover the whole periodic table
    $> primes 2 | head -118 | tr '\n' ';'
 *)
@@ -97,8 +134,16 @@ let prime_for_symbol (s: string): int =
     (Log.fatal "Ptable.prime_for_symbol: no prime assigned to %s" s;
      exit 1)
 
+let symbol_for_prime (p: int): string =
+  try Ht.find prime2symbol p
+  with Not_found ->
+    (Log.fatal "Ptable.symbol_for_prime: no symbol assigned to %d" p;
+     exit 1)
+
+let max_atomic_number = 118
+
 (* the first atomic number (0) is FAKE but necessary for tabulation *)
-let anums = A.of_list (L.range 0 `To 118)
+let anums = A.of_list (L.range 0 `To max_atomic_number)
 
 let elements_regexp = Str.regexp "He\\|Li\\|Be\\|Ne\\|Na\\|Mg\\|Al\\|Si\\|Cl\\|Ar\\|Ca\\|Sc\\|Ti\\|Cr\\|Mn\\|Fe\\|Co\\|Ni\\|Cu\\|Zn\\|Ga\\|Ge\\|As\\|Se\\|Br\\|Kr\\|Rb\\|Sr\\|Zr\\|Nb\\|Mo\\|Tc\\|Ru\\|Rh\\|Pd\\|Ag\\|Cd\\|In\\|Sn\\|Sb\\|Te\\|Xe\\|Cs\\|Ba\\|La\\|Ce\\|Pr\\|Nd\\|Pm\\|Sm\\|Eu\\|Gd\\|Tb\\|Dy\\|Ho\\|Er\\|Tm\\|Yb\\|Lu\\|Hf\\|Ta\\|Re\\|Os\\|Ir\\|Pt\\|Au\\|Hg\\|Tl\\|Pb\\|Bi\\|Po\\|At\\|Rn\\|Fr\\|Ra\\|Ac\\|Th\\|Pa\\|Np\\|Pu\\|Am\\|Cm\\|Bk\\|Cf\\|Es\\|Fm\\|Md\\|No\\|Lr\\|Rf\\|Db\\|Sg\\|Bh\\|Hs\\|Mt\\|Ds\\|Rg\\|Cn\\|Nh\\|Fl\\|Mc\\|Lv\\|Ts\\|Og\\|H\\|B\\|C\\|N\\|O\\|F\\|P\\|S\\|K\\|V\\|Y\\|I\\|W\\|U"
 
@@ -114,7 +159,7 @@ let symbols =
     "Sg";"Bh";"Hs";"Mt";"Ds";"Rg";"Cn";"Nh";"Fl";"Mc";"Lv";"Ts";"Og"|]
 
 let symbol_of_anum a =
-  if a = 0 || a > 118 then
+  if a = 0 || a > max_atomic_number then
     (Log.fatal "Ptable.symbol_of_anum: no such anum: %d" a;
      exit 1)
   else
