@@ -55,6 +55,18 @@ let encode _debug f =
       ) Z.one element_counts in
   Z.to_int big_int
 
+let z_2 = Z.of_int 2
+let z_3 = Z.of_int 3
+let z_5 = Z.of_int 5
+let z_7 = Z.of_int 7
+
+(* Godel numbering for radius up to three bonds *)
+let encode_envs e0 e1 e2 e3 =
+  Z.(to_int (pow z_2 e0 *
+               pow z_3 e1 *
+                 pow z_5 e2 *
+                   pow z_7 e3))
+  
 let find_exponent composite prime =
   let rec loop acc x =
     if x mod prime = 0 then
