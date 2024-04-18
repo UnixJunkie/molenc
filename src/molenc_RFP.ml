@@ -8,7 +8,7 @@
 
 (* FBR: how to encode an atom environment as an unambiguous integer (and be reversible)?
    - only works w/o overflow for rather small radius values
-   - reverse order prime factors by frequency in ChEMBL
+   - try to encode/decode whole ChEMBL-34
  *)
 
 open Printf
@@ -64,7 +64,6 @@ let parse_int s =
     (Log.fatal "Molenc_RFP.parse_int: cannot parse: %s" s;
      raise exn)
 
-(* FBR: protect against integer overflow using zarith *)
 let int_of_chemical_formula _debug f =
   let element_counts = A.make 119 0 in
   (* lexer: tokenize chemical elements starting from two chars ones *)
@@ -81,14 +80,17 @@ let int_of_chemical_formula _debug f =
          instead of the proper C2H6O *)
       element_counts.(anum) <- element_counts.(anum) + count
     ) element_counts_2;
-  (* FBR: in debug mode, print this counts table *)
-  A.fold_lefti (fun acc anum count ->
-      if count > 0 then
-        (* sum of powers of primes; also called "Godel numbering" *)
-        acc * (BatInt.pow (Ptable.prime_for_anum anum) count)
-      else
-        acc
-    ) 1 element_counts
+  (* potentially too large number to fit OCaml's 64 bits signed integers *)
+  let big_int =
+    A.fold_lefti (fun acc anum count ->
+        if count > 0 then
+          let p = Z.of_int (Ptable.prime_for_anum anum) in
+          (* sum of powers of primes; also called "Godel numbering" *)
+          Z.mul acc (Z.pow p count)
+        else
+          acc
+      ) Z.one element_counts in
+  Z.to_int big_int
 
 let fp_to_string fp =
   let buff = Buffer.create 1024 in
