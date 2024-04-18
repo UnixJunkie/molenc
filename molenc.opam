@@ -50,6 +50,7 @@ depends: [
   "parany" {>= "12.1.1"}
   "vector3"
   "pyml" {>= "20211015"}
+  "zarith"
 ]
 available: arch != "arm32" & arch != "x86_32"
 synopsis: "Molecular encoder/featurizer using rdkit and OCaml"
