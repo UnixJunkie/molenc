@@ -22,7 +22,7 @@
            palette gnuplot lig_box shannon fragmentable_mol indexer pareto
            finder AP_BBAD split sdf_read dsmi BBAD molenc_AP molenc_RFP ptable)
   (libraries molenc bst batteries dolog minicli parany cpm dokeysto
-             ocamlgraph vector3 line_oriented pyml))
+             ocamlgraph vector3 line_oriented pyml zarith))
 
 ;; never installed executables
 (executables
