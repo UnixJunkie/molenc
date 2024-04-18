@@ -4,11 +4,8 @@
  *
  * RFP encoder *)
 
-(* FBR: carefully test on some molecules *)
-
-(* FBR: how to encode an atom environment as an unambiguous integer (and be reversible)?
-   - only works w/o overflow for rather small radius values
-   - try to encode/decode whole ChEMBL-34
+(* FBR: carefully test on some molecules
+   - use an encoding dictionary; reserve feature 0 for unknown features
  *)
 
 open Printf
@@ -77,6 +74,18 @@ let debug_fp_str_log fp_str =
           compare s1 s2
       ) toks in
   L.iter (Log.debug "%s") sorted
+
+(* algorithm to encode given atom:
+   - get max radius away from this atom (R)
+   - trim to max_radius the user is asking (M)
+   - get all layers of atom environments for this atom as a list
+   - record features concerning this atom by varying the radius
+     from 0 to min(R,M)
+
+   to encode the whole molecule, we need to do this for each atom
+
+   then we count the number of times each atom env. was seen
+ *)
 
 (* unfolded counted RFP encoding *)
 let encode_smiles_line max_radius line =
