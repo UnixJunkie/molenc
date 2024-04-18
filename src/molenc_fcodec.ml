@@ -48,7 +48,10 @@ let main () =
       (* encode to integer *)
       try
         let code = Formula.encode false formula in
-        Log.info "code: %d" code
+        Log.info "code: %d" code;
+        let formula' = Formula.decode code in
+        Log.info "formula': %s" formula';
+        assert(formula = formula')
       with Z.Overflow ->
         Log.error "code: overflow for %s" smi
     (* decode to chemical formula *)
