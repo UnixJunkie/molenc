@@ -29,8 +29,6 @@ let formula_of_elements (elts: string array): string =
   SMap.iter (bprintf buff "%s%d") elt2count;
   Buffer.contents buff
 
-(* FBR: run on whole ChEMBL to see how much whole molecules are encodable *)
-
 type work_result = OK of string
                  | Overflow of string
 
