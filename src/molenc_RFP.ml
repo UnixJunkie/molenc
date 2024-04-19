@@ -145,6 +145,38 @@ let fp_string_output mode out dict fp =
     ) feat_counts;
   fprintf out "]\n"
 
+let dico_format_header = "UHD-1.0.0"
+
+let dico_from_file fn =
+  Log.info "reading %s" fn;
+  let lines = LO.lines_of_file fn in
+  match lines with
+  | [] -> (Log.fatal "Molenc_RFP.dico_from_file: %s is empty" fn;
+           exit 1)
+  | header :: body ->
+    (* The Ultra High Dimensional fp? *)
+    let () = assert(header = dico_format_header) in
+    let dict = Ht.create (L.length body) in
+    L.iter (fun line ->
+        Scanf.sscanf line "%s@\t%d" (fun feat idx ->
+            Ht.add dict feat idx
+          )
+      ) body;
+    Log.info "%d features" (Ht.length dict);
+    dict
+
+let dico_to_file dict fn =
+  Log.info "creating %s (%#d features)" fn (Ht.length dict);
+  let kvs = Ht.to_list dict in
+  (* sort by incr. feat index *)
+  let kvs = L.sort (fun (_f1, i) (_f2, j) -> BatInt.compare i j) kvs in
+  LO.with_out_file fn (fun output ->
+      fprintf output "%s\n" dico_format_header;
+      L.iter (fun (feat, idx) ->
+          fprintf output "%s\t%d\n" feat idx
+        ) kvs
+    )
+
 let main () =
   let start = Unix.gettimeofday () in
   Log.(set_log_level INFO);
