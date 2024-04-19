@@ -5,7 +5,8 @@
  * RFP encoder *)
 
 (* FBR: carefully test on some molecules
-   - use an encoding dictionary; reserve feature 0 for unknown features
+   - use an encoding dictionary; reserve feature 0 for unknown features;
+     maybe integrate into molenc_AP; w/ CLI option like --UCECFP
  *)
 
 open Printf
@@ -21,7 +22,7 @@ module Rdkit = Molenc.Rdkit.Rdkit
 module S = BatString
 module Utls = Molenc.Utls
 
-(* because the Rdkit module uses Pyml *)
+(* the Rdkit module relies on Pyml *)
 let () = Py.initialize ~version:3 ()
 
 type mode = Input
@@ -81,7 +82,25 @@ let environments_for_atom distances fp_radius elements =
     l := (String.concat "," (L.take i formulas)) :: !l
   done;
   !l
-  
+
+let environments_for_molecule fp_radius mol_noH =
+  let mol = Rdkit.add_hydrogens mol_noH () in
+  let num_atoms = Rdkit.get_num_atoms mol () in
+  let elements = Rdkit.get_elements mol () in
+  let atom_envs =
+    (* gather all environments *)
+    A.init num_atoms (fun i ->
+        let dists = Rdkit.get_distances mol ~i () in
+        environments_for_atom dists fp_radius elements
+      ) in
+  (* count them *)  
+  A.fold_left (fun acc0 l ->
+      L.fold_left (fun acc1 formula ->
+          let count = SMap.find_default 0 formula acc1 in
+          SMap.add formula (count + 1) acc1
+        ) acc0 l
+    ) SMap.empty atom_envs
+
 let fp_to_string fp =
   let buff = Buffer.create 1024 in
   Printf.bprintf buff "%s\t" fp.name;
