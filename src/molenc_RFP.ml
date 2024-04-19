@@ -78,7 +78,7 @@ let environments_for_atom distances fp_radius elements =
   (* return all strings; from r=0 to max_radius *)
   let l = ref [] in
   for i = 1 + max_radius downto 1 do
-    l := (L.take i formulas) :: !l
+    l := (String.concat "," (L.take i formulas)) :: !l
   done;
   !l
   
