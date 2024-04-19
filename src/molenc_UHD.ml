@@ -2,10 +2,9 @@
  * Tsuda laboratory, Tokyo University,
  * 5-1-5 Kashiwa-no-ha, Kashiwa-shi, Chiba-ken, 277-8561, Japan.
  *
- * RFP encoder *)
+ * UHD encoder *)
 
 (* FBR:TODO
-   - rename as UHD
    - compute dictionaries for ChEMBL-34: r=1, r=2, r=3 and r=+inf
    - whille working on ChEMBL at r=+inf, collect profiling traces
  *)
@@ -155,7 +154,7 @@ let dico_from_file fn =
   Log.info "reading %s" fn;
   let lines = LO.lines_of_file fn in
   match lines with
-  | [] -> (Log.fatal "Molenc_RFP.dico_from_file: %s is empty" fn;
+  | [] -> (Log.fatal "Molenc_UHD.dico_from_file: %s is empty" fn;
            exit 1)
   | header :: body ->
     (* The Ultra High Dimensional fp? *)
@@ -215,7 +214,7 @@ let main () =
   );
   let already_out_fn = Sys.file_exists output_fn in
   (if already_out_fn then
-     (Log.warn "Molenc_RFP: output file exists: %s" output_fn;
+     (Log.warn "Molenc_UHD: output file exists: %s" output_fn;
       if not force then
         exit 1
      );
