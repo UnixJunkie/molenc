@@ -5,8 +5,8 @@
  * RFP encoder *)
 
 (* FBR: carefully test on some molecules
-   - use an encoding dictionary; reserve feature 0 for unknown features;
-     maybe integrate into molenc_AP; w/ CLI option like --UCECFP
+   - implement dictionary mode
+   - rename as UHD
  *)
 
 open Printf
@@ -32,7 +32,7 @@ type mode = Input
 type fp = { name: string;
             feat_counts: int SMap.t }
 
-(* chemical formula at [radius] bonds away from [center_atom_i] *)
+(* chemical formula at [radius] bonds away from center atom *)
 let get_atom_env distances radius indexes elements =
   A.fold (fun acc a_i ->
       if distances.(a_i) = radius then
@@ -94,7 +94,7 @@ let environments_for_molecule fp_radius mol_noH =
         let dists = Rdkit.get_distances mol ~i () in
         environments_for_atom dists fp_radius elements
       ) in
-  (* count them *)  
+  (* count them *)
   A.fold_left (fun acc0 l ->
       L.fold_left (fun acc1 formula ->
           let count = SMap.find_default 0 formula acc1 in
@@ -102,12 +102,11 @@ let environments_for_molecule fp_radius mol_noH =
         ) acc0 l
     ) SMap.empty atom_envs
 
-(* unfolded counted RFP encoding *)
+(* unfolded counted fingerprint encoding *)
 let encode_smiles_line max_radius line =
   let smi, name = BatString.split ~by:"\t" line in
   let mol_noH = Rdkit.__init__ ~smi () in
   { name; feat_counts = environments_for_molecule max_radius mol_noH }
-
 
 let fp_string_output mode out dict fp =
   fprintf out "%s,0.0,[" fp.name;
@@ -134,7 +133,11 @@ let fp_string_output mode out dict fp =
             let prev_count = IMap.find_default 0 0 acc in
             IMap.add 0 (1 + prev_count) acc
         ) fp.feat_counts IMap.empty in
-  (* FBR: warn about the number of unknown features in a molecule *)  
+  (* warn if unknown features *)
+  (try
+     Log.warn "%s: %d unknown features" fp.name (IMap.find 0 feat_counts)
+   with Not_found -> ()
+  );
   let started = ref false in
   IMap.iter (fun feat count ->
       if !started then
@@ -198,9 +201,9 @@ let main () =
   );
   let input_fn = CLI.get_string ["-i"] args in
   let output_fn = CLI.get_string ["-o"] args in
-  let _nprocs = CLI.get_int_def ["-np"] args 1 in
-  let _csize = CLI.get_int_def ["-c"] args 200 in
-  let _force = CLI.get_set_bool ["-f"] args in
+  let nprocs = CLI.get_int_def ["-np"] args 1 in
+  let csize = CLI.get_int_def ["-c"] args 200 in
+  let force = CLI.get_set_bool ["-f"] args in
   let max_radius = match CLI.get_int_opt ["-m"] args with
     | None -> max_int
     | Some x -> x in
@@ -209,30 +212,30 @@ let main () =
   (if verbose then
      Log.(set_log_level DEBUG)
   );
-  (*
   let already_out_fn = Sys.file_exists output_fn in
   (if already_out_fn then
-     (Log.warn "Molenc_AP: output file exists: %s" output_fn;
+     (Log.warn "Molenc_RFP: output file exists: %s" output_fn;
       if not force then
         exit 1
      );
   );
-  *)
-  let reads = ref 0 in
   let writes = ref 0 in
   let dict = Ht.create 20_011 in
+  let dict_fn = input_fn ^ ".dix" in
   LO.with_infile_outfile input_fn output_fn (fun input output ->
-      try
-        while true do
-          let line = input_line input in
-          incr reads;
-          let fp = encode_smiles_line max_radius line in
-          fp_string_output Output output dict fp;
-          incr writes
-        done
-      with End_of_file -> ()
+      Parany.run ~csize ~preserve:true nprocs
+        ~demux:(fun () ->
+            try input_line input
+            with End_of_file -> raise Parany.End_of_input)
+        ~work:(encode_smiles_line max_radius)
+        ~mux:(function fp ->
+            fp_string_output Output output dict fp;
+            incr writes;
+            if !writes mod 1_000 = 0 then
+              eprintf "wrote: %#d\r%!" !writes)
     );
   let dt = Unix.gettimeofday() -. start in
-  Log.info "wrote %#d molecules (%.2f Hz)" !writes ((float !writes) /. dt)
+  Log.info "wrote %#d molecules (%.2f Hz)" !writes ((float !writes) /. dt);
+  dico_to_file dict dict_fn
 
 let () = main ()
