@@ -4,9 +4,10 @@
  *
  * RFP encoder *)
 
-(* FBR: carefully test on some molecules
-   - implement dictionary mode
+(* FBR:TODO
    - rename as UHD
+   - compute dictionaries for ChEMBL-34: r=1, r=2, r=3 and r=+inf
+   - whille working on ChEMBL at r=+inf, collect profiling traces
  *)
 
 open Printf
