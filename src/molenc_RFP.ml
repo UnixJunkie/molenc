@@ -14,6 +14,7 @@ open Printf
 module A = BatArray
 module CLI = Minicli.CLI
 module Ht = BatHashtbl
+module IMap = BatMap.Int
 module SMap = BatMap.String
 module L = BatList
 module LO = Line_oriented
@@ -101,79 +102,48 @@ let environments_for_molecule fp_radius mol_noH =
         ) acc0 l
     ) SMap.empty atom_envs
 
-let fp_to_string fp =
-  let buff = Buffer.create 1024 in
-  Printf.bprintf buff "%s\t" fp.name;
-  let started = ref false in
-  SMap.iter (fun env count ->
-      (* separate environments *)
-      if !started then
-        Buffer.add_char buff ';'
-      else
-        started := true
-      ;
-      Printf.bprintf buff "%s:%d" env count
-    ) fp.feat_counts;
-  Buffer.contents buff
-
-let debug_fp_str_log fp_str =
-  let name, fp = S.split fp_str ~by:"\t" in
-  Log.debug "name: %s" name;
-  let toks = S.split_on_char ';' fp in
-  (* sort atom envs. from least to most precise *)
-  let sorted =
-    L.sort (fun (s1: string) s2 ->
-        let (r1: int) = S.count_char s1 ',' in
-        let r2 = S.count_char s2 ',' in
-        (* less specific atom envs come first *)
-        if r1 < r2 then
-          -1
-        else if r1 > r2 then
-          1
-        else (* if same radius: alphabetical order *)
-          compare s1 s2
-      ) toks in
-  L.iter (Log.debug "%s") sorted
-
 (* unfolded counted RFP encoding *)
 let encode_smiles_line max_radius line =
   let smi, name = BatString.split ~by:"\t" line in
   let mol_noH = Rdkit.__init__ ~smi () in
-  (* this fingerprint needs all hydrogens *)
-  let mol = Rdkit.add_hydrogens mol_noH () in
-  let num_atoms = Rdkit.get_num_atoms mol () in
-  let elements = Rdkit.get_elements mol () in
-  let indexes = A.init num_atoms (fun i -> i) in
-  { name;
-    feat_counts =
-      A.fold (fun acc0 a_i ->
-          (* current atom's environments *)
-          let buff = Buffer.create 128 in
-          (* encode each atom using all radii; from 0 to max radius
-             for this atom (furthest neighbor on the molecular graph) *)
-          let dists = Rdkit.get_distances mol ~i:a_i () in
-          let radii =
-            let r_max = 1 + (min max_radius (A.max dists)) in
-            A.init r_max (fun i -> i) in
-          A.fold (fun acc1 radius ->
-              let atom_env = get_atom_env dists radius indexes elements in
-              (* separate layers *)
-              (if Buffer.length buff > 0 then
-                 Buffer.add_char buff ','
-              );
-              (* chemical formula for this layer *)
-              SMap.iter (fun k v ->
-                  if v > 1 then
-                    Printf.bprintf buff "%s%d" k v
-                  else (* as in chemical formulae *)
-                    Printf.bprintf buff "%s" k
-                ) atom_env;
-              let curr_env = Buffer.contents buff in
-              let count = SMap.find_default 0 curr_env acc1 in
-              SMap.add curr_env (count + 1) acc1
-            ) acc0 radii
-        ) SMap.empty indexes
-  }
+  { name; feat_counts = environments_for_molecule max_radius mol_noH }
+
+
+let fp_string_output mode out dict fp =
+  fprintf out "%s,0.0,[" fp.name;
+  let feat_counts = match mode with
+    | Output -> (* writable dict *)
+      (* feature index 0 is a reserved value for later users of the same dict:
+         unkown feature *)
+      let feat_i = ref (1 + Ht.length dict) in
+      SMap.fold (fun feat count acc ->
+          let feat' =
+            try Ht.find dict feat
+            with Not_found ->
+              let idx = !feat_i in
+              Ht.add dict feat !feat_i;
+              incr feat_i;
+              idx in
+          IMap.add feat' count acc
+        ) fp.feat_counts IMap.empty
+    | Input -> (* read-only dict *)
+      SMap.fold (fun feat count acc ->
+          try IMap.add (Ht.find dict feat) count acc
+          with Not_found ->
+            let () = Log.warn "unknown feat: %s" feat in
+            let prev_count = IMap.find_default 0 0 acc in
+            IMap.add 0 (1 + prev_count) acc
+        ) fp.feat_counts IMap.empty in
+  (* FBR: warn about the number of unknown features in a molecule *)  
+  let started = ref false in
+  IMap.iter (fun feat count ->
+      if !started then
+        fprintf out ";%d:%d" feat count
+      else
+        (started := true;
+         fprintf out "%d:%d" feat count)
+    ) feat_counts;
+  fprintf out "]\n"
 
 let main () =
   let start = Unix.gettimeofday () in
@@ -218,18 +188,14 @@ let main () =
   *)
   let reads = ref 0 in
   let writes = ref 0 in
+  let dict = Ht.create 20_011 in
   LO.with_infile_outfile input_fn output_fn (fun input output ->
       try
         while true do
           let line = input_line input in
           incr reads;
           let fp = encode_smiles_line max_radius line in
-          let fp_str = fp_to_string fp in
-          (if verbose then
-             debug_fp_str_log fp_str
-           else
-             Printf.fprintf output "%s\n" fp_str
-          );
+          fp_string_output Output output dict fp;
           incr writes
         done
       with End_of_file -> ()
