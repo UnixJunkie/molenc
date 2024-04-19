@@ -41,6 +41,47 @@ let get_atom_env distances radius indexes elements =
         acc
     ) SMap.empty indexes
 
+(* chemical formula for atom env. layer *)
+let string_of_elt2count smap =
+  let buff = Buffer.create 128 in
+  SMap.iter (fun elt count ->
+      if count > 1 then
+        bprintf buff "%s%d" elt count
+      else (* count=1 *)
+        Buffer.add_string buff elt
+    ) smap;
+  Buffer.contents buff
+
+(* algorithm to encode given atom:
+   - get max radius away from this atom (R)
+   - trim to max_radius the user is asking (M)
+   - get all layers of atom environments for this atom as a list
+   - record features concerning this atom by varying the radius
+     from 0 to min(R,M)
+
+   to encode the whole molecule, we need to do this for each atom
+
+   then we count the number of times each atom env. was seen
+ *)
+let environments_for_atom distances fp_radius elements =
+  let max_radius = min fp_radius (A.max distances) in
+  (* r=0 must also be taken into account *)
+  let res = A.init (1 + max_radius) (fun _rad -> SMap.empty) in
+  A.iteri (fun i dist ->
+      if dist <= max_radius then
+        let elt = A.unsafe_get elements i in
+        let smap = A.unsafe_get res dist in
+        let count = SMap.find_default 0 elt smap in
+        A.unsafe_set res dist (SMap.add elt (count + 1) smap)
+    ) distances;
+  let formulas = A.to_list (A.map string_of_elt2count res) in
+  (* return all strings; from r=0 to max_radius *)
+  let l = ref [] in
+  for i = 1 + max_radius downto 1 do
+    l := (L.take i formulas) :: !l
+  done;
+  !l
+  
 let fp_to_string fp =
   let buff = Buffer.create 1024 in
   Printf.bprintf buff "%s\t" fp.name;
@@ -74,18 +115,6 @@ let debug_fp_str_log fp_str =
           compare s1 s2
       ) toks in
   L.iter (Log.debug "%s") sorted
-
-(* algorithm to encode given atom:
-   - get max radius away from this atom (R)
-   - trim to max_radius the user is asking (M)
-   - get all layers of atom environments for this atom as a list
-   - record features concerning this atom by varying the radius
-     from 0 to min(R,M)
-
-   to encode the whole molecule, we need to do this for each atom
-
-   then we count the number of times each atom env. was seen
- *)
 
 (* unfolded counted RFP encoding *)
 let encode_smiles_line max_radius line =
