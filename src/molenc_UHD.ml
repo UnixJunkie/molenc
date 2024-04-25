@@ -5,8 +5,10 @@
  * UHD encoder *)
 
 (* FBR:TODO
-   - compute dictionaries for ChEMBL-34: r=1, r=2, r=3 and r=+inf
-   - whille working on ChEMBL at r=+inf, collect profiling traces
+   - compute dictionaries for ChEMBL-34: r=1, r=2, r=3 and r=+inf; DONE; process it
+   - output number of times feature was seen in the dictionary file
+     - this info is not read when loading in a dictionary; but it can be used
+       to reorder features; from most frequent to least frequent
  *)
 
 open Printf
