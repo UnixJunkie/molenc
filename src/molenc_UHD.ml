@@ -26,8 +26,9 @@ module Utls = Molenc.Utls
 (* the Rdkit module relies on Pyml *)
 let () = Py.initialize ~version:3 ()
 
-type mode = Input
-          | Output
+(* is the feature dictionary read in or written out *)
+type dict_mode = Input of string
+               | Output of string
 
 type fp = { name: string;
             feat_counts: int SMap.t }
@@ -111,33 +112,32 @@ let encode_smiles_line max_radius line =
 let fp_string_output mode out dict fp =
   fprintf out "%s,0.0,[" fp.name;
   let feat_counts = match mode with
-    | Output -> (* writable dict *)
-      (* feature index 0 is a reserved value for later users of the same dict:
-         unkown feature *)
-      let feat_i = ref (1 + Ht.length dict) in
-      SMap.fold (fun feat count acc ->
-          let feat' =
-            try Ht.find dict feat
-            with Not_found ->
-              let idx = !feat_i in
-              Ht.add dict feat !feat_i;
-              incr feat_i;
-              idx in
-          IMap.add feat' count acc
-        ) fp.feat_counts IMap.empty
-    | Input -> (* read-only dict *)
-      SMap.fold (fun feat count acc ->
-          try IMap.add (Ht.find dict feat) count acc
-          with Not_found ->
-            let () = Log.warn "unknown feat: %s" feat in
-            let prev_count = IMap.find_default 0 0 acc in
-            IMap.add 0 (1 + prev_count) acc
-        ) fp.feat_counts IMap.empty in
+    | Output _ -> (* writable dict *)
+       (* feature index 0 is a reserved value for later users of the same dict:
+          unkown feature *)
+       assert(Ht.length dict = 0); (* should be empty *)
+       let feat_i = ref 1 in
+       SMap.fold (fun feat count acc ->
+           let feat' =
+             try Ht.find dict feat
+             with Not_found ->
+               let idx = !feat_i in
+               Ht.add dict feat idx;
+               incr feat_i;
+               idx in
+           IMap.add feat' count acc
+         ) fp.feat_counts IMap.empty
+    | Input _ -> (* read-only dict *)
+       SMap.fold (fun feat count acc ->
+           try IMap.add (Ht.find dict feat) count acc
+           with Not_found ->
+             (* let () = Log.warn "unknown feat: %s" feat in *)
+             let prev_count = IMap.find_default 0 0 acc in
+             IMap.add 0 (1 + prev_count) acc
+         ) fp.feat_counts IMap.empty in
   (* warn if unknown features *)
-  (try
-     Log.warn "%s: %d unknown features" fp.name (IMap.find 0 feat_counts)
-   with Not_found -> ()
-  );
+  (try Log.warn "%s: %d unknown features" fp.name (IMap.find 0 feat_counts)
+   with Not_found -> ());
   let started = ref false in
   IMap.iter (fun feat count ->
       if !started then
@@ -169,7 +169,8 @@ let dico_from_file fn =
     dict
 
 let dico_to_file dict fn =
-  Log.info "creating %s (%#d features)" fn (Ht.length dict);
+  Log.info "writing feature dictionary to %s (%#d features)"
+    fn (Ht.length dict);
   let kvs = Ht.to_list dict in
   (* sort by incr. feat index *)
   let kvs = L.sort (fun (_f1, i) (_f2, j) -> BatInt.compare i j) kvs in
@@ -190,6 +191,7 @@ let main () =
      (eprintf "usage:\n  \
                %s -i in.smi -o out.fp\n  \
                -i <input.smi>: input molecules\n  \
+               [-d <dict.dix>: use existing feature dictionary\n  \
                [-o <output.fp>]: UCECFP output\n  \
                [-f]: overwrite output file, if any\n  \
                [-m <int>]: maximum atom env. radius (in bonds; default=OFF)\n  \
@@ -201,6 +203,9 @@ let main () =
   );
   let input_fn = CLI.get_string ["-i"] args in
   let output_fn = CLI.get_string ["-o"] args in
+  let mode = match CLI.get_string_opt ["-d"] args with
+    | None -> Output (input_fn ^ ".dix")
+    | Some dict_fn -> Input dict_fn in
   let nprocs = CLI.get_int_def ["-np"] args 1 in
   let csize = CLI.get_int_def ["-c"] args 200 in
   let force = CLI.get_set_bool ["-f"] args in
@@ -220,8 +225,9 @@ let main () =
      );
   );
   let writes = ref 0 in
-  let dict = Ht.create 20_011 in
-  let dict_fn = input_fn ^ ".dix" in
+  let dict = match mode with
+    | Output _ -> Ht.create 20_011
+    | Input fn -> dico_from_file fn in
   LO.with_infile_outfile input_fn output_fn (fun input output ->
       Parany.run ~csize ~preserve:true nprocs
         ~demux:(fun () ->
@@ -229,13 +235,15 @@ let main () =
             with End_of_file -> raise Parany.End_of_input)
         ~work:(encode_smiles_line max_radius)
         ~mux:(function fp ->
-            fp_string_output Output output dict fp;
+            fp_string_output mode output dict fp;
             incr writes;
             if !writes mod 1_000 = 0 then
               eprintf "wrote: %#d\r%!" !writes)
     );
   let dt = Unix.gettimeofday() -. start in
   Log.info "wrote %#d molecules (%.2f Hz)" !writes ((float !writes) /. dt);
-  dico_to_file dict dict_fn
+  match mode with
+  | Output dict_fn -> dico_to_file dict dict_fn
+  | Input _ -> ()
 
 let () = main ()
