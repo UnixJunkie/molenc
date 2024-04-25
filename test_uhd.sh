@@ -7,7 +7,7 @@ make
 \rm -f data/ethanol.uhd data/ethanol.smi.dix
 
 # run
-_build/default/src/molenc_RFP.exe -f -i data/ethanol.smi -o data/ethanol.uhd
+_build/default/src/molenc_UHD.exe -f -i data/ethanol.smi -o data/ethanol.uhd
 
 # check Vs refs
 diff data/ethanol.uhd     data/ethanol.uhd.ref
