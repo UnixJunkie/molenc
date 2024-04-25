@@ -117,8 +117,7 @@ let fp_string_output mode out dict fp =
     | Output _ -> (* writable dict *)
        (* feature index 0 is a reserved value for later users of the same dict:
           unkown feature *)
-       assert(Ht.length dict = 0); (* should be empty *)
-       let feat_i = ref 1 in
+       let feat_i = ref (1 + Ht.length dict) in
        SMap.fold (fun feat count acc ->
            let feat' =
              try Ht.find dict feat
