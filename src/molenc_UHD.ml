@@ -89,14 +89,16 @@ let environments_for_atom distances fp_radius elements =
 
 let environments_for_molecule fp_radius mol_noH =
   let mol = Rdkit.add_hydrogens mol_noH () in
-  let num_atoms = Rdkit.get_num_atoms mol () in
   let elements = Rdkit.get_elements mol () in
   let atom_envs =
     (* gather all environments *)
-    A.init num_atoms (fun i ->
-        let dists = Rdkit.get_distances mol ~i () in
-        environments_for_atom dists fp_radius elements
-      ) in
+    A.mapi (fun i elt ->
+        if elt = "H" then
+          [] (* only consider heavy atoms to reduce dimensionality of the FP *)
+        else
+          let dists = Rdkit.get_distances mol ~i () in
+          environments_for_atom dists fp_radius elements
+      ) elements in
   (* count them *)
   A.fold_left (fun acc0 l ->
       L.fold_left (fun acc1 formula ->
