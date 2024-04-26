@@ -117,27 +117,28 @@ let fp_string_output mode out dict fp =
   fprintf out "%s,0.0,[" fp.name;
   let feat_counts = match mode with
     | Output _ -> (* writable dict *)
-       (* feature index 0 is a reserved value for later users of the same dict:
-          unkown feature *)
-       let feat_i = ref (1 + Ht.length dict) in
-       SMap.fold (fun feat count acc ->
-           let feat' =
-             try Ht.find dict feat
-             with Not_found ->
-               let idx = !feat_i in
-               Ht.add dict feat idx;
-               incr feat_i;
-               idx in
-           IMap.add feat' count acc
-         ) fp.feat_counts IMap.empty
+      (* feature index 0 is a reserved value for later users of the same dict:
+         unkown feature *)
+      let feat_i = ref (1 + Ht.length dict) in
+      SMap.fold (fun feat count acc ->
+          let feat_idx, seen =
+            try Ht.find dict feat
+            with Not_found ->
+              let idx = !feat_i in
+              Ht.add dict feat (idx, 0);
+              incr feat_i;
+              (idx, 0) in
+          Ht.replace dict feat (feat_idx, seen + count);
+          IMap.add feat_idx count acc
+        ) fp.feat_counts IMap.empty
     | Input _ -> (* read-only dict *)
-       SMap.fold (fun feat count acc ->
-           try IMap.add (Ht.find dict feat) count acc
-           with Not_found ->
-             (* let () = Log.warn "unknown feat: %s" feat in *)
-             let prev_count = IMap.find_default 0 0 acc in
-             IMap.add 0 (1 + prev_count) acc
-         ) fp.feat_counts IMap.empty in
+      SMap.fold (fun feat count acc ->
+          try IMap.add (fst (Ht.find dict feat)) count acc
+          with Not_found ->
+            (* let () = Log.warn "unknown feat: %s" feat in *)
+            let prev_count = IMap.find_default 0 0 acc in
+            IMap.add 0 (1 + prev_count) acc
+        ) fp.feat_counts IMap.empty in
   (* warn if unknown features *)
   (try Log.warn "%s: %d unknown features" fp.name (IMap.find 0 feat_counts)
    with Not_found -> ());
@@ -164,8 +165,8 @@ let dico_from_file fn =
     let () = assert(header = dico_format_header) in
     let dict = Ht.create (L.length body) in
     L.iter (fun line ->
-        Scanf.sscanf line "%s@\t%d" (fun feat idx ->
-            Ht.add dict feat idx
+        Scanf.sscanf line "%s@\t%d\t%d" (fun feat idx count ->
+            Ht.add dict feat (idx, count)
           )
       ) body;
     Log.info "%d features" (Ht.length dict);
@@ -176,11 +177,13 @@ let dico_to_file dict fn =
     fn (Ht.length dict);
   let kvs = Ht.to_list dict in
   (* sort by incr. feat index *)
-  let kvs = L.sort (fun (_f1, i) (_f2, j) -> BatInt.compare i j) kvs in
+  let kvs =
+    L.sort (fun (_f1, (i, _count1)) (_f2, (j, _count2)) ->
+        BatInt.compare i j) kvs in
   LO.with_out_file fn (fun output ->
       fprintf output "%s\n" dico_format_header;
-      L.iter (fun (feat, idx) ->
-          fprintf output "%s\t%d\n" feat idx
+      L.iter (fun (feat, (idx, count)) ->
+          fprintf output "%s\t%d\t%d\n" feat idx count
         ) kvs
     )
 
