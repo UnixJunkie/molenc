@@ -48,22 +48,29 @@ def lines_of_file(fn):
     with open(fn) as input:
         return list(map(str.strip, input.readlines()))
 
-# current training-set line format: space-separated
-# ^<target_val:float> <feat:int>:<val:float> <feat:int>:<val:float> ...$
+# current training-set line format example:
+# mol_0,0.0,[1:23;8:3;22:2;45:6;56:1]
 def split_AP_line(line):
-    fields = line.split(' ')
-    pIC50 = float(fields[0])
-    feat_val_strings = fields[1:]
-    return (pIC50, feat_val_strings)
+    fields = line.split(',')
+    name = str(fields[0])
+    pIC50 = float(fields[1])
+    feat_val_strings = fields[2]
+    return (name, pIC50, feat_val_strings)
 
-def read_features(row, col, data, i, max_feat_idx, feat_vals):
+def read_features(row, col, data, i, max_feat_idx, feat_vals_str):
     # print('feat_vals: %d' % (len(feat_vals)))
-    for feat_val in feat_vals:
+    feat_vals = feat_vals_str.strip('[]')
+    for feat_val in feat_vals.split(';'):
         feat_str, val_str = feat_val.split(':')
         feat = int(feat_str)
         val = float(val_str)
         # print('%d:%d' % (feat, val))
-        assert(feat <= max_feat_idx)
+        # assert(feat <= max_feat_idx)        
+        if feat > max_feat_idx:
+            print("molenc_rfr.py: read_features: \
+feat > max_feat_idx: %d > %d" % (feat, max_feat_idx),
+                  file=sys.stderr)
+            sys.exit(1)
         if val != 0.0:
             row.append(i)
             col.append(feat)
