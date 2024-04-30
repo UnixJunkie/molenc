@@ -4,11 +4,14 @@ module Rdkit : sig
   val of_pyobject : Pytypes.pyobject -> t
   val to_pyobject : t -> Pytypes.pyobject
   val __init__ : smi:string -> unit -> t
+  val add_hydrogens : t -> unit -> t
   val type_atom : t -> i:int -> unit -> int array
   val type_EltFCaroNeighbs : t -> i:int -> unit -> int array
   val type_atom_simple : t -> i:int -> unit -> int array
   val get_num_atoms : t -> unit -> int
+  val get_diameter : t -> unit -> int
   val get_distance : t -> i:int -> j:int -> unit -> int
+  val get_distances : t -> i:int -> unit -> int array
 
   val get_deep_smiles :
     t ->
@@ -18,6 +21,8 @@ module Rdkit : sig
     smi:string ->
     unit ->
     string array
+
+  val get_elements : t -> unit -> string array
 end = struct
   let filter_opt l = List.filter_map Fun.id l
 
@@ -27,6 +32,7 @@ end = struct
          {pyml_bindgen_string_literal|
 import rdkit, deepsmiles, random, re, sys, typing
 from rdkit import Chem
+import numpy as np
 
 def nb_heavy_atom_neighbors(a: rdkit.Chem.rdchem.Atom) -> int:
     res = 0
@@ -115,6 +121,11 @@ class Rdkit:
         self.mol = Chem.MolFromSmiles(smi)
         self.mat = Chem.GetDistanceMatrix(self.mol)
 
+    def add_hydrogens(self):
+        self.mol = Chem.AddHs(self.mol)
+        self.mat = Chem.GetDistanceMatrix(self.mol)
+        return self
+
     # (atomic_num, #HA, #H, valence - #H, formal_charge)
     def type_atom(self, i: int) -> list[int]:
         a = self.mol.GetAtomWithIdx(i)
@@ -179,7 +190,7 @@ class Rdkit:
         aro = ring_membership(a)
         heavies, hydrogens = count_neighbors(a)
         return [anum, fc, aro, heavies, hydrogens]
-    
+
     # # pyml_bindgen doesn't support list of tuples or even tuples...
     # # type each atom of the molecule
     # def type_atoms(self):
@@ -189,11 +200,26 @@ class Rdkit:
     #     return res
 
     def get_num_atoms(self) -> int:
-        return self.mol.GetNumAtoms()
+        return len(self.mat)
+
+    # molecular graph diameter
+    def get_diameter(self) -> int:
+        return int(np.max(self.mat))
 
     # get the distance (in bonds) between a pair of atoms
     def get_distance(self, i: int, j: int) -> int:
         return int(self.mat[i][j])
+
+    # distances (in bonds) from atom [i] to all other atoms in molecule
+    def get_distances(self, i: int) -> list[int]:
+        return list(map(lambda x: int(x), self.mat[i]))
+
+    # chemical element of each atom in the molecule
+    def get_elements(self) -> list[str]:
+        res = []
+        for a in self.mol.GetAtoms():
+            res.append(a.GetSymbol())
+        return res
 
     # seed: random_seed
     # n: number of randomized SMILES to use
@@ -255,6 +281,11 @@ class Rdkit:
     let kwargs = filter_opt [ Some ("smi", Py.String.of_string smi) ] in
     of_pyobject @@ Py.Callable.to_function_with_keywords callable [||] kwargs
 
+  let add_hydrogens t () =
+    let callable = Py.Object.find_attr_string t "add_hydrogens" in
+    let kwargs = filter_opt [] in
+    of_pyobject @@ Py.Callable.to_function_with_keywords callable [||] kwargs
+
   let type_atom t ~i () =
     let callable = Py.Object.find_attr_string t "type_atom" in
     let kwargs = filter_opt [ Some ("i", Py.Int.of_int i) ] in
@@ -278,12 +309,23 @@ class Rdkit:
     let kwargs = filter_opt [] in
     Py.Int.to_int @@ Py.Callable.to_function_with_keywords callable [||] kwargs
 
+  let get_diameter t () =
+    let callable = Py.Object.find_attr_string t "get_diameter" in
+    let kwargs = filter_opt [] in
+    Py.Int.to_int @@ Py.Callable.to_function_with_keywords callable [||] kwargs
+
   let get_distance t ~i ~j () =
     let callable = Py.Object.find_attr_string t "get_distance" in
     let kwargs =
       filter_opt [ Some ("i", Py.Int.of_int i); Some ("j", Py.Int.of_int j) ]
     in
     Py.Int.to_int @@ Py.Callable.to_function_with_keywords callable [||] kwargs
+
+  let get_distances t ~i () =
+    let callable = Py.Object.find_attr_string t "get_distances" in
+    let kwargs = filter_opt [ Some ("i", Py.Int.of_int i) ] in
+    Py.List.to_array_map Py.Int.to_int
+    @@ Py.Callable.to_function_with_keywords callable [||] kwargs
 
   let get_deep_smiles t ~seed ~n ~randomize ~smi () =
     let callable = Py.Object.find_attr_string t "get_deep_smiles" in
@@ -296,6 +338,12 @@ class Rdkit:
           Some ("smi", Py.String.of_string smi);
         ]
     in
+    Py.List.to_array_map Py.String.to_string
+    @@ Py.Callable.to_function_with_keywords callable [||] kwargs
+
+  let get_elements t () =
+    let callable = Py.Object.find_attr_string t "get_elements" in
+    let kwargs = filter_opt [] in
     Py.List.to_array_map Py.String.to_string
     @@ Py.Callable.to_function_with_keywords callable [||] kwargs
 end

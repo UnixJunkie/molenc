@@ -1,6 +1,7 @@
 
 import rdkit, deepsmiles, random, re, sys, typing
 from rdkit import Chem
+import numpy as np
 
 def nb_heavy_atom_neighbors(a: rdkit.Chem.rdchem.Atom) -> int:
     res = 0
@@ -89,6 +90,11 @@ class Rdkit:
         self.mol = Chem.MolFromSmiles(smi)
         self.mat = Chem.GetDistanceMatrix(self.mol)
 
+    def add_hydrogens(self):
+        self.mol = Chem.AddHs(self.mol)
+        self.mat = Chem.GetDistanceMatrix(self.mol)
+        return self
+
     # (atomic_num, #HA, #H, valence - #H, formal_charge)
     def type_atom(self, i: int) -> list[int]:
         a = self.mol.GetAtomWithIdx(i)
@@ -153,7 +159,7 @@ class Rdkit:
         aro = ring_membership(a)
         heavies, hydrogens = count_neighbors(a)
         return [anum, fc, aro, heavies, hydrogens]
-    
+
     # # pyml_bindgen doesn't support list of tuples or even tuples...
     # # type each atom of the molecule
     # def type_atoms(self):
@@ -163,11 +169,26 @@ class Rdkit:
     #     return res
 
     def get_num_atoms(self) -> int:
-        return self.mol.GetNumAtoms()
+        return len(self.mat)
+
+    # molecular graph diameter
+    def get_diameter(self) -> int:
+        return int(np.max(self.mat))
 
     # get the distance (in bonds) between a pair of atoms
     def get_distance(self, i: int, j: int) -> int:
         return int(self.mat[i][j])
+
+    # distances (in bonds) from atom [i] to all other atoms in molecule
+    def get_distances(self, i: int) -> list[int]:
+        return list(map(lambda x: int(x), self.mat[i]))
+
+    # chemical element of each atom in the molecule
+    def get_elements(self) -> list[str]:
+        res = []
+        for a in self.mol.GetAtoms():
+            res.append(a.GetSymbol())
+        return res
 
     # seed: random_seed
     # n: number of randomized SMILES to use
