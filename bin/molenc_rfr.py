@@ -399,62 +399,65 @@ if __name__ == '__main__':
         # break any ordering the input file might have
         random.shuffle(all_lines)
     model = None
+    train_lines = []
+    test_lines = []
     if cv_folds == 1:
         train_lines, test_lines = train_test_split(train_p, all_lines)
-	if classification:
+        if classification:
             _names_train, X_train, y_train = \
-            	read_AP_lines_class(max_feat, train_lines)
+                read_AP_lines_class(max_feat, train_lines)
             names_test, X_test, y_test = \
-            	read_AP_lines_class(max_feat, test_lines)
+                read_AP_lines_class(max_feat, test_lines)
             if model_input_fn != '':
-    		log('load model from %s' % model_input_fn)
-                    model = joblib.load(model_input_fn)
-            else:
-    		model = train_class(ntrees, nprocs, msl, max_features,
-    				    X_train, y_train)
-                    if model_output_fn != '':
-                        log('saving model to %s' % model_output_fn)
-                        joblib.dump(model, model_output_fn, compress=('xz',9))
-     	# predict w/ trained model
-    	if train_p < 1.0:
-    		y_preds = test(model, X_test)
-                    dump_pred_labels(output_fn, names_test, y_preds)
-                    # train_p = 0.0: we are in production,
-                    # assume there are no labels
-                    if train_p > 0.0:
-                        auc = sklearn.metrics.roc_auc_score(y_test, y_preds)
-                        mcc = sklearn.metrics.matthews_corrcoef(y_test, y_preds)
-                        log('AUC: %.3f MCC: %.3f' % (auc, mcc))
-        else: #regression
-            X_train, y_train = read_AP_lines_regr(max_feat, train_lines)
-            X_test, y_test = read_AP_lines_regr(max_feat, test_lines)
-            if model_input_fn != '':
-                log('loading model from %s' % model_input_fn)
+                log('load model from %s' % model_input_fn)
                 model = joblib.load(model_input_fn)
             else:
-                model = train_regr(ntrees, crit, nprocs, msl, max_features,
-                                   max_samples, X_train, y_train)
+                model = train_class(ntrees, nprocs, msl, max_features,
+                                    X_train, y_train)
                 if model_output_fn != '':
                     log('saving model to %s' % model_output_fn)
-                    if no_compress:
-                        joblib.dump(model, model_output_fn, compress=False)
-                    else:
-                        joblib.dump(model, model_output_fn, compress=3)
+                    joblib.dump(model, model_output_fn, compress=('xz',9))
             # predict w/ trained model
             if train_p < 1.0:
                 y_preds = test(model, X_test)
-                dump_pred_scores(output_fn, y_preds)
-                r2 = r2_score(y_test, y_preds)
-                rmse = mean_squared_error(y_test, y_preds, squared=False)
-                if train_p > 0.0:
-                    # train/test case
-                    log('R2: %f RMSE: %f' % (r2, rmse))
+                dump_pred_labels(output_fn, names_test, y_preds)
+            # train_p = 0.0: we are in production,
+            # assume there are no labels
+            if train_p > 0.0:
+                auc = sklearn.metrics.roc_auc_score(y_test, y_preds)
+                mcc = sklearn.metrics.matthews_corrcoef(y_test, y_preds)
+                log('AUC: %.3f MCC: %.3f' % (auc, mcc))
+        else: #regression
+                X_train, y_train = read_AP_lines_regr(max_feat, train_lines)
+                X_test, y_test = read_AP_lines_regr(max_feat, test_lines)
+                if model_input_fn != '':
+                    log('loading model from %s' % model_input_fn)
+                    model = joblib.load(model_input_fn)
                 else:
-                    # maybe production run or predictions
-                    # on an external validation set
-                    log('R2: %f RMSE: %f !!! ONLY VALID if test set had target values !!!' % (r2, rmse))
-        else: # cv_folds > 1
-    	if classification:
+                    model = train_regr(ntrees, crit, nprocs, msl, max_features,
+                                       max_samples, X_train, y_train)
+                    if model_output_fn != '':
+                        log('saving model to %s' % model_output_fn)
+                        if no_compress:
+                            joblib.dump(model, model_output_fn, compress=False)
+                        else:
+                            joblib.dump(model, model_output_fn, compress=3)
+                # predict w/ trained model
+                if train_p < 1.0:
+                    y_preds = test(model, X_test)
+                    dump_pred_scores(output_fn, y_preds)
+                    r2 = r2_score(y_test, y_preds)
+                    rmse = mean_squared_error(y_test, y_preds, squared=False)
+                    if train_p > 0.0:
+                        # train/test case
+                        log('R2: %f RMSE: %f' % (r2, rmse))
+                    else:
+                        # maybe production run or predictions
+                        # on an external validation set
+                        log('R2: %f RMSE: %f !!! ONLY VALID if test set had target values !!!' % (r2, rmse))
+    else:
+        assert(cv_folds > 1)
+        if classification:
                 truth, preds = train_test_NxCV_class(max_feat, ntrees, nprocs, msl,
                                                      max_features, all_lines,
                                                      cv_folds)
@@ -462,7 +465,7 @@ if __name__ == '__main__':
                 auc = sklearn.metrics.roc_auc_score(truth, preds)
                 mcc = sklearn.metrics.matthews_corrcoef(truth, preds)
                 log('AUC: %.3f MCC: %.3f' % (auc, mcc))
-    	else: #regression
+        else: #regression
                 truth, preds = train_test_NxCV_regr(max_feat, ntrees, crit,
                                                     nprocs, msl, max_features,
                                                     max_samples, all_lines,
