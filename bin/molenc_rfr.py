@@ -385,6 +385,8 @@ if __name__ == '__main__':
     assert(0.0 <= train_p <= 1.0)
     max_features = args.train_feats
     assert(0.0 < max_features <= 1.0)
+    # FBR: for classification and regression, the max_features defaults should not be the same
+    #      IIRC for classif. this is sqrt(N); for regre. this is N
     max_samples = args.max_samples # this one must default to None
     if max_samples == 1.0:
         max_samples = None # BUG in sklearn RFR probably; this forces 1.0
