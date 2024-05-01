@@ -19,8 +19,10 @@ import joblib
 
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import r2_score, mean_squared_error
+from sklearn.metrics import r2_score, root_mean_squared_error
 from scipy import sparse
+
+# FBR: TODO NxCV should really be parallelized...
 
 def hour_min_sec():
     tm = time.localtime()
@@ -191,7 +193,7 @@ def train_test_NxCV_regr(max_feat, ntrees, crit, nprocs, msl, max_features,
         for y in y_preds:
             y_preds_lst.append(y)
         r2 = r2_score(y_ref, y_preds_lst)
-        rmse = mean_squared_error(y_ref, y_preds_lst, squared=False)
+        rmse = root_mean_squared_error(y_ref, y_preds_lst)
         log('fold: %d R2: %f RMSE: %f' % (fold, r2, rmse))
         preds = preds + y_preds_lst
         fold += 1
@@ -227,7 +229,7 @@ def dump_pred_scores(output_fn, preds):
                 print('%f' % pred, file=output)
 
 # a prediction is an integer class label, not a float
-# FBR: maybe output the active class proba as an additional column
+# FBR: TODO maybe output the active class proba as an additional column
 def dump_pred_labels(output_fn, names, preds):
     assert(len(names) == len(preds))
     if output_fn != '':
@@ -392,7 +394,7 @@ if __name__ == '__main__':
     assert(0.0 <= train_p <= 1.0)
     max_features = args.train_feats
     assert(0.0 < max_features <= 1.0)
-    # FBR: for classification and regression, the max_features defaults should not be the same
+    # FBR: TODO for classification and regression, the max_features defaults should not be the same
     #      IIRC for classif. this is sqrt(N); for regre. this is N
     max_samples = args.max_samples # this one must default to None
     if max_samples == 1.0:
@@ -456,7 +458,7 @@ if __name__ == '__main__':
                     y_preds = test(model, X_test)
                     dump_pred_scores(output_fn, y_preds)
                     r2 = r2_score(y_test, y_preds)
-                    rmse = mean_squared_error(y_test, y_preds, squared=False)
+                    rmse = root_mean_squared_error(y_test, y_preds)
                     if train_p > 0.0:
                         # train/test case
                         log('R2: %f RMSE: %f' % (r2, rmse))
@@ -481,7 +483,7 @@ if __name__ == '__main__':
                                                     cv_folds)
                 log('truths: %d preds: %d' % (len(truth), len(preds)))
                 r2 = r2_score(truth, preds)
-                rmse = mean_squared_error(truth, preds, squared=False)
+                rmse = root_mean_squared_error(truth, preds)
                 r2_rmse = 'R2=%.3f RMSE=%.4f' % (r2, rmse)
                 log(r2_rmse)
                 title = '%s N=%d folds=%d mtry=%g %s' % (input_fn, ntrees, cv_folds, max_features, r2_rmse)
