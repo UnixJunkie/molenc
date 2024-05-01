@@ -15,9 +15,10 @@ import sklearn
 import sys
 import tempfile
 import time
+import typing
 import joblib
 
-from sklearn.linear_model import ElasticNetCV
+from sklearn.linear_model import ElasticNet, ElasticNetCV
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import r2_score, root_mean_squared_error
@@ -157,8 +158,11 @@ def train_class_ElN(nprocs, X_train, y_train):
     log('ElasticNet classifier training...')
     model = ElasticNetCV(cv=5, n_jobs=nprocs, random_state=314159265,
                          selection='random')
+    # model = ElasticNet(alpha=0.004517461806329454, l1_ratio=0.5, random_state=314159265,
+    #                    selection='random')
     model.fit(X_train, y_train)
-    log('ElasticNet alpha=%f l1_ratio=%f', model.alpha_, model.l1_ratio_)
+    # e.g. alpha=0.004517461806329454 l1_ratio=0.5
+    log('ElasticNet: alpha=%f l1_ratio=%f' % (model.alpha_, model.l1_ratio_))
     return model
 
 def test(model, X_test):
@@ -286,6 +290,12 @@ def gnuplot(title0, actual_values, predicted_values):
         print('%f %f' % (x, y), file=data_temp_file)
     data_temp_file.close()
     os.system("gnuplot --persist %s" % commands_temp_fn)
+
+def label_of_proba(p: float) -> int:
+    if p <= 0.5:
+        return 0
+    else:
+        return 1
 
 if __name__ == '__main__':
     before = time.time()
@@ -456,6 +466,8 @@ if __name__ == '__main__':
             # predict w/ trained model
             if train_p < 1.0:
                 y_preds = test(model, X_test)
+                if elastic_net: # is a regressor, not a classifier
+                    y_preds = list(map(label_of_proba, y_preds))
                 dump_pred_labels(output_fn, names_test, y_preds)
             # train_p = 0.0: we are in production,
             # assume there are no labels
