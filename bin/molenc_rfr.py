@@ -17,6 +17,7 @@ import tempfile
 import time
 import joblib
 
+from sklearn.linear_model import ElasticNetCV
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import r2_score, root_mean_squared_error
@@ -141,8 +142,8 @@ def train_regr(ntrees, crit, nprocs, msl, max_features, max_samples,
     return model
 
 # WARNING: in binary classification, y_train must be only 0s and 1s
-def train_class(ntrees, nprocs, msl, max_features, X_train, y_train):
-    log('classifier training...')
+def train_class_RFC(ntrees, nprocs, msl, max_features, X_train, y_train):
+    log('RFC classifier training...')
     model = RandomForestClassifier(n_estimators = ntrees,
                                    criterion = 'gini',
                                    n_jobs = nprocs,
@@ -150,6 +151,14 @@ def train_class(ntrees, nprocs, msl, max_features, X_train, y_train):
                                    min_samples_leaf = msl,
                                    max_features = max_features)
     model.fit(X_train, y_train)
+    return model
+
+def train_class_ElN(nprocs, X_train, y_train):
+    log('ElasticNet classifier training...')
+    model = ElasticNetCV(cv=5, n_jobs=nprocs, random_state=314159265,
+                         selection='random')
+    model.fit(X_train, y_train)
+    log('ElasticNet alpha=%f l1_ratio=%f', model.alpha_, model.l1_ratio_)
     return model
 
 def test(model, X_test):
@@ -199,7 +208,8 @@ def train_test_NxCV_regr(max_feat, ntrees, crit, nprocs, msl, max_features,
         fold += 1
     return (truth, preds)
 
-def train_test_NxCV_class(max_feat, ntrees, nprocs, msl, max_features,
+def train_test_NxCV_class(elastic_net,
+                          max_feat, ntrees, nprocs, msl, max_features,
                           all_lines, cv_folds):
     truth = []
     preds = []
@@ -207,8 +217,13 @@ def train_test_NxCV_class(max_feat, ntrees, nprocs, msl, max_features,
     train_tests = list_split(all_lines, cv_folds)
     for train_set, test_set in train_tests:
         _names, X_train, y_train = read_AP_lines_class(max_feat, train_set)
-        model = train_class(ntrees, nprocs, msl, max_features,
-                            X_train, y_train)
+        model = None
+        if elastic_net:
+            model = train_class_ElN(nprocs,
+                                    X_train, y_train)
+        else:
+            model = train_class_RFC(ntrees, nprocs, msl, max_features,
+                                    X_train, y_train)
         _names, X_test, y_ref = read_AP_lines_class(max_feat, test_set)
         truth = truth + y_ref
         y_preds = test(model, X_test)
@@ -310,6 +325,11 @@ if __name__ == '__main__':
                         dest = 'no_compress',
                         default = False,
                         help = 'turn off saved model compression')
+    parser.add_argument('--eln',
+                        action = "store_true",
+                        dest = 'elastic_net',
+                        default = False,
+                        help = 'use ElasticNet instead of RFC (must be combined w/ --classif)')
     parser.add_argument('-np',
                         metavar = '<int>', type = int,
                         dest = 'nprocs',
@@ -400,6 +420,7 @@ if __name__ == '__main__':
     if max_samples == 1.0:
         max_samples = None # BUG in sklearn RFR probably; this forces 1.0
     no_compress = args.no_compress
+    elastic_net = args.elastic_net
     classification = args.classification
     regressor = not classification
     # work ---------------------------------------------------------
@@ -423,8 +444,12 @@ if __name__ == '__main__':
                 log('load model from %s' % model_input_fn)
                 model = joblib.load(model_input_fn)
             else:
-                model = train_class(ntrees, nprocs, msl, max_features,
-                                    X_train, y_train)
+                if elastic_net:
+                    model = train_class_ElN(nprocs,
+                                            X_train, y_train)
+                else:
+                    model = train_class_RFC(ntrees, nprocs, msl, max_features,
+                                            X_train, y_train)
                 if model_output_fn != '':
                     log('saving model to %s' % model_output_fn)
                     joblib.dump(model, model_output_fn, compress=('xz',9))
@@ -469,7 +494,8 @@ if __name__ == '__main__':
     else:
         assert(cv_folds > 1)
         if classification:
-                truth, preds = train_test_NxCV_class(max_feat, ntrees, nprocs, msl,
+                truth, preds = train_test_NxCV_class(elastic_net,
+                                                     max_feat, ntrees, nprocs, msl,
                                                      max_features, all_lines,
                                                      cv_folds)
                 log('truths: %d preds: %d' % (len(truth), len(preds)))
