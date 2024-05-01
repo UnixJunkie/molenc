@@ -83,7 +83,7 @@ def read_AP_lines_regr(max_feature_index, lines):
     col = []
     data = []
     for i, line in enumerate(lines):
-        pIC50, features_str = split_AP_line(line)
+        _name, pIC50, features_str = split_AP_line(line)
         # log('%d %f' % (i, pIC50))
         pIC50s.append(pIC50)
         read_features(row, col, data, i, max_feature_index, features_str)
