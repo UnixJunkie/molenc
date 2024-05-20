@@ -173,7 +173,7 @@ if __name__ == '__main__':
     log('truths: %d preds: %d' % (len(y_test), len(preds)))
     r2 = r2_score(y_test, preds)
     rmse = root_mean_squared_error(y_test, preds)
-    r2_rmse = 'R2=%.3f RMSE=%.4f' % (r2, rmse)
+    r2_rmse = '%s %s R2=%.3f RMSE=%.4f' % (train_fn, test_fn, r2, rmse)
     log(r2_rmse)
     after = time.time()
     dt = after - before
