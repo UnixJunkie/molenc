@@ -8,6 +8,7 @@ module Rdkit : sig
   val type_atom : t -> i:int -> unit -> int array
   val type_EltFCaroNeighbs : t -> i:int -> unit -> int array
   val type_atom_simple : t -> i:int -> unit -> int array
+  val daylight_type_heavy_atom : t -> i:int -> unit -> int array
   val get_num_atoms : t -> unit -> int
   val get_diameter : t -> unit -> int
   val get_distance : t -> i:int -> j:int -> unit -> int
@@ -191,6 +192,27 @@ class Rdkit:
         heavies, hydrogens = count_neighbors(a)
         return [anum, fc, aro, heavies, hydrogens]
 
+    # Daylight atom type (cf. "atomic invariants" in "Extended-Connectivity Fingerprints" paper
+    # by Rogers and Hahn from JCIM 2010; https://doi.org/10.1021/ci100050t.
+    # WARNING: this atom type is only defined for heavy atoms
+    # WARNING: the molecule must have hydrogens
+    def daylight_type_heavy_atom(self, i: int) -> list[int]:
+        a = self.mol.GetAtomWithIdx(i)
+        # heavy neighbors
+        heavies, hydrogens = count_neighbors(a)
+        # valence minus hydrogens
+        valence = a.GetTotalValence()
+        HA_used_val = valence - hydrogens
+        # atomic num.
+        anum = a.GetAtomicNum()
+        assert(anum > 1) # not supposed to be called on H; cf. warnings above
+        # formal charge
+        formal_charge = a.GetFormalCharge()
+        # hydrogens
+        # in ring
+        in_ring = int(a.IsInRing())
+        return [anum, heavies, hydrogens, HA_used_val, formal_charge, in_ring]
+
     # # pyml_bindgen doesn't support list of tuples or even tuples...
     # # type each atom of the molecule
     # def type_atoms(self):
@@ -300,6 +322,12 @@ class Rdkit:
 
   let type_atom_simple t ~i () =
     let callable = Py.Object.find_attr_string t "type_atom_simple" in
+    let kwargs = filter_opt [ Some ("i", Py.Int.of_int i) ] in
+    Py.List.to_array_map Py.Int.to_int
+    @@ Py.Callable.to_function_with_keywords callable [||] kwargs
+
+  let daylight_type_heavy_atom t ~i () =
+    let callable = Py.Object.find_attr_string t "daylight_type_heavy_atom" in
     let kwargs = filter_opt [ Some ("i", Py.Int.of_int i) ] in
     Py.List.to_array_map Py.Int.to_int
     @@ Py.Callable.to_function_with_keywords callable [||] kwargs
