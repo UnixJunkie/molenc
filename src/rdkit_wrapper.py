@@ -160,6 +160,27 @@ class Rdkit:
         heavies, hydrogens = count_neighbors(a)
         return [anum, fc, aro, heavies, hydrogens]
 
+    # Daylight atom type (cf. "atomic invariants" in "Extended-Connectivity Fingerprints" paper
+    # by Rogers and Hahn from JCIM 2010; https://doi.org/10.1021/ci100050t.
+    # WARNING: this atom type is only defined for heavy atoms
+    # WARNING: the molecule must have hydrogens
+    def daylight_type_heavy_atom(self, i: int) -> list[int]:
+        a = self.mol.GetAtomWithIdx(i)
+        # heavy neighbors
+        heavies, hydrogens = count_neighbors(a)
+        # valence minus hydrogens
+        valence = a.GetTotalValence()
+        HA_used_val = valence - hydrogens
+        # atomic num.
+        anum = a.GetAtomicNum()
+        assert(anum > 1) # not supposed to be called on H; cf. warnings above
+        # formal charge
+        formal_charge = a.GetFormalCharge()
+        # hydrogens
+        # in ring
+        in_ring = int(a.IsInRing())
+        return [anum, heavies, hydrogens, HA_used_val, formal_charge, in_ring]
+
     # # pyml_bindgen doesn't support list of tuples or even tuples...
     # # type each atom of the molecule
     # def type_atoms(self):
