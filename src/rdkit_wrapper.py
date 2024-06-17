@@ -211,6 +211,13 @@ class Rdkit:
             res.append(a.GetSymbol())
         return res
 
+    # atomic numbers of each atom in the molecule
+    def get_anums(self) -> list[int]:
+        res = []
+        for a in self.mol.GetAtoms():
+            res.append(a.GetAtomicNum())
+        return res
+
     # seed: random_seed
     # n: number of randomized SMILES to use
     # randomize: boolean
