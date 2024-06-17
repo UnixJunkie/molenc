@@ -9,6 +9,8 @@ val type_EltFCaroNeighbs: t -> i:int -> unit -> int array
 
 val type_atom_simple: t -> i:int -> unit -> int array
 
+val daylight_type_heavy_atom: t -> i:int -> unit -> int array
+
 val get_num_atoms: t -> unit -> int
 
 val get_diameter: t -> unit -> int
