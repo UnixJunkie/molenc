@@ -24,6 +24,7 @@ module Rdkit : sig
     string array
 
   val get_elements : t -> unit -> string array
+  val get_anums : t -> unit -> int array
 end = struct
   let filter_opt l = List.filter_map Fun.id l
 
@@ -243,6 +244,13 @@ class Rdkit:
             res.append(a.GetSymbol())
         return res
 
+    # atomic numbers of each atom in the molecule
+    def get_anums(self) -> list[int]:
+        res = []
+        for a in self.mol.GetAtoms():
+            res.append(a.GetAtomicNum())
+        return res
+
     # seed: random_seed
     # n: number of randomized SMILES to use
     # randomize: boolean
@@ -373,5 +381,11 @@ class Rdkit:
     let callable = Py.Object.find_attr_string t "get_elements" in
     let kwargs = filter_opt [] in
     Py.List.to_array_map Py.String.to_string
+    @@ Py.Callable.to_function_with_keywords callable [||] kwargs
+
+  let get_anums t () =
+    let callable = Py.Object.find_attr_string t "get_anums" in
+    let kwargs = filter_opt [] in
+    Py.List.to_array_map Py.Int.to_int
     @@ Py.Callable.to_function_with_keywords callable [||] kwargs
 end
