@@ -47,7 +47,7 @@ else:
     exit(1)
 
 # create HTML document
-mols2grid.save(mols, output=output_fn, template="table", prerender=True)
+mols2grid.save(mols, output=output_fn, template="static", prerender=True)
 
 # view in browser
 cmd = "firefox %s" % output_fn
