@@ -371,11 +371,11 @@ if __name__ == '__main__':
             rmse = root_mean_squared_error(y_test, y_preds)
             if train_p > 0.0:
                 # train/test case
-                log('R2: %f RMSE: %f' % (r2, rmse))
+                log('R2: %.3f RMSE: %.3f' % (r2, rmse))
             else:
                 # maybe production run or predictions
                 # on an external validation set
-                log('R2: %f RMSE: %f !!! ONLY VALID if test set had target values !!!' % (r2, rmse))
+                log('R2: %.3f RMSE: %.3f !!! ONLY VALID if test set had target values !!!' % (r2, rmse))
     else:
         assert(cv_folds > 1)
         truth, preds = gpr_train_test_NxCV(all_lines, cv_folds)
