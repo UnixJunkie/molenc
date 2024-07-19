@@ -33,6 +33,7 @@ from sklearn.preprocessing import StandardScaler
 
 # FBR: TODO NxCV should really be parallelized...
 # FBR: get rid of RFR traces remaining in there after
+# FBR: test model load/save to file
 
 # original code from
 # https://github.com/Ryan-Rhys/The-Photoswitch-Dataset/blob/master/examples/gp_regression_on_molecules.ipynb
@@ -156,29 +157,6 @@ def list_split(l, n):
         rest = curr_rest
     return res
 
-def train_test_NxCV_regr(max_feat, ntrees, crit, nprocs, msl, max_features,
-                         max_samples, all_lines, cv_folds):
-    truth = []
-    preds = []
-    fold = 0
-    train_tests = list_split(all_lines, cv_folds)
-    for train_set, test_set in train_tests:
-        X_train, y_train = read_AP_lines_regr(max_feat, train_set)
-        model = train_regr(ntrees, crit, nprocs, msl, max_features,
-                           max_samples, X_train, y_train)
-        X_test, y_ref = read_AP_lines_regr(max_feat, test_set)
-        truth = truth + y_ref
-        y_preds = test(model, X_test)
-        y_preds_lst = []
-        for y in y_preds:
-            y_preds_lst.append(y)
-        r2 = r2_score(y_ref, y_preds_lst)
-        rmse = root_mean_squared_error(y_ref, y_preds_lst)
-        log('fold: %d R2: %f RMSE: %f' % (fold, r2, rmse))
-        preds = preds + y_preds_lst
-        fold += 1
-    return (truth, preds)
-
 def parse_smiles_line(line: str) -> tuple[str, str, float]:
     # print("DEBUG: %s" % line)
     split = line.strip().split()
@@ -201,32 +179,6 @@ def parse_smiles_lines(lines: list[str]) -> tuple[list[rdkit.Chem.rdchem.Mol],
             log("ERROR: rfr.py: parse_smiles_file: could not parse smi for %s: %s" % \
                 (name, smi))
     return (mols, pIC50s)
-
-def parse_smiles_file(fn: str) -> tuple[list[rdkit.Chem.rdchem.Mol],
-                                        list[float]]:
-    return parse_smiles_lines(open(fn).readlines())
-
-def gpr_train_test(train_smi_fn: str, test_smi_fn: str, fp_encoder) -> float:
-    train_mols, train_acts = parse_smiles_file(train_smi_fn)
-    test_mols, test_acts = parse_smiles_file(test_smi_fn)
-
-    X_train = np.array([fp_encoder(mol) for mol in train_mols])
-    X_test  = np.array([fp_encoder(mol) for mol in test_mols])
-
-    y_train = np.array(train_acts)
-    y_test = np.array(test_acts)
-
-    # RFR -----------------------------------------------------------------
-    model = TanimotoGP()
-    model.fit(X_train, y_train)
-    preds, _var = model.predict(X_test)
-
-    return r2_score(y_test, preds)
-
-def gpr_train(X_train, y_train):
-    model = TanimotoGP()
-    model.fit(X_train, y_train)
-    return model
 
 def dump_pred_scores(output_fn, preds):
     if output_fn != '':
@@ -287,6 +239,30 @@ def read_SMILES_lines_regr(lines):
     X_train = np.array([ecfp4_of_mol(mol) for mol in mols])
     y_train = np.array(pIC50s)
     return (X_train, y_train)
+
+def gpr_train(X_train, y_train):
+    model = TanimotoGP()
+    model.fit(X_train, y_train)
+    return model
+
+def gpr_train_test_NxCV(all_lines, cv_folds):
+    truth = []
+    preds = []
+    fold = 0
+    train_tests = list_split(all_lines, cv_folds)
+    for train_set, test_set in train_tests:
+        X_train, y_train = read_SMILES_lines_regr(train_set)
+        X_test, y_ref = read_SMILES_lines_regr(test_set)
+        model = gpr_train(X_train, y_train)
+        truth = truth + list(y_ref)
+        y_preds = gpr_test(model, X_test)
+        y_preds_lst = list(y_preds)
+        r2 = r2_score(y_ref, y_preds_lst)
+        rmse = root_mean_squared_error(y_ref, y_preds_lst)
+        log('fold: %d R2: %f RMSE: %f' % (fold, r2, rmse))
+        preds = preds + y_preds_lst
+        fold += 1
+    return (truth, preds)
 
 if __name__ == '__main__':
     before = time.time()
@@ -408,17 +384,13 @@ if __name__ == '__main__':
     else:
         assert(cv_folds > 1)
         #regression
-        truth, preds = train_test_NxCV_regr(max_feat, ntrees, crit,
-                                            nprocs, msl, max_features,
-                                            max_samples, all_lines,
-                                            cv_folds)
+        truth, preds = gpr_train_test_NxCV(all_lines, cv_folds)
         log('truths: %d preds: %d' % (len(truth), len(preds)))
         r2 = r2_score(truth, preds)
         rmse = root_mean_squared_error(truth, preds)
-        r2_rmse = 'R2=%.3f RMSE=%.4f' % (r2, rmse)
+        r2_rmse = 'GPR R2=%.3f RMSE=%.3f' % (r2, rmse)
         log(r2_rmse)
-        title = '%s N=%d folds=%d mtry=%g %s' % \
-            (input_fn, ntrees, cv_folds, max_features, r2_rmse)
+        title = '%s folds=%d %s' % (input_fn, cv_folds, r2_rmse)
         gnuplot(title, truth, preds)
     after = time.time()
     dt = after - before
