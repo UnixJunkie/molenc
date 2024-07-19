@@ -19,7 +19,10 @@ def mol_of_smi_line(line):
     strip = line.strip()
     words = strip.split()
     smi = words[0]
-    return Chem.MolFromSmiles(smi)
+    name = words[1]
+    mol = Chem.MolFromSmiles(smi)
+    mol.SetProp('name', name)
+    return mol
 
 def smi_read_mols(fn):
     lines = open(fn, 'r').readlines()
@@ -47,7 +50,11 @@ else:
     exit(1)
 
 # create HTML document
-mols2grid.save(mols, output=output_fn, template="static", prerender=True)
+mols2grid.save(mols,
+               # subset=["img", "name"],
+               # n_cols = 2, # designed, nearest_in_training_set
+               # size = (300, 350),
+               output=output_fn, template="static", prerender=True)
 
 # view in browser
 cmd = "firefox %s" % output_fn
