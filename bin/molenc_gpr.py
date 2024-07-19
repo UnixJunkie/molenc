@@ -436,67 +436,26 @@ if __name__ == '__main__':
                         dest = 'rng_seed',
                         default = -1,
                         help = 'RNG seed')
-    parser.add_argument('-n',
-                        metavar = '<int>', type = int,
-                        dest = 'ntrees',
-                        default = 100,
-                        help = 'number of trees')
     parser.add_argument('--no-compress',
                         action = "store_true",
                         dest = 'no_compress',
                         default = False,
                         help = 'turn off saved model compression')
-    parser.add_argument('--eln',
-                        action = "store_true",
-                        dest = 'elastic_net',
-                        default = False,
-                        help = 'use ElasticNet instead of RFC (must be combined w/ --classif)')
     parser.add_argument('-np',
                         metavar = '<int>', type = int,
                         dest = 'nprocs',
                         default = 1,
                         help = 'max number of processes')
-    parser.add_argument('-msl',
-                        metavar = '<int>', type = int,
-                        dest = 'msl',
-                        default = 1,
-                        help = 'min samples leaf')
     parser.add_argument('-p',
                         metavar = '<float>', type = float,
                         dest = 'train_p',
                         default = 0.8,
                         help = 'training set proportion')
-    parser.add_argument('-c',
-                        metavar = '<string>', type = str,
-                        dest = 'criterion',
-                        default = 'squared_error',
-                        help = 'mae|squared_error')
-    parser.add_argument('--mtry',
-                        metavar = '<string>', type = float,
-                        dest = 'train_feats',
-                        default = 1.0,
-                        help = 'float in ]0,1.0]')
-    parser.add_argument('-m',
-                        metavar = '<int>', type = int,
-                        dest = 'max_feat',
-                        default = 10_000,
-                        help = 'max feature index (cf. AP dictionary)')
     parser.add_argument('--NxCV',
                         metavar = '<int>', type = int,
                         dest = 'cv_folds',
                         default = 1,
                         help = 'number of cross validation folds')
-    parser.add_argument('-ms',
-                        metavar = '<float>', type = float,
-                        dest = 'max_samples',
-                        # keep None here, not 1.0; reported sklearn bug
-                        default = None,
-                        help = 'max samples per bootstrap')
-    parser.add_argument('--classif', dest = 'classification',
-                        action ='store_true',
-                        default = False,
-                        help = 'train a classifier \
-                        (default: train a regressor)')
     # parse CLI ---------------------------------------------------------
     if len(sys.argv) == 1:
         # user has no clue of what to do -> usage
@@ -513,16 +472,9 @@ if __name__ == '__main__':
         # only if the user asked for it, we make experiments repeatable
         random.seed(rng_seed)
     output_fn = args.output_fn
-    max_feat = args.max_feat # feat. dict related; _NOT_ model hyper param
     # model's hyper parameters
     cv_folds = args.cv_folds
     assert(cv_folds >= 1)
-    msl = args.msl
-    crit = args.criterion
-    assert(crit in ['mae','squared_error'])
-    # REMARK: faster to train w/ squared_error, but better model with mae
-    ntrees = args.ntrees
-    abort_if(ntrees < 50, 'ntrees must be >= 50')
     nprocs = args.nprocs
     abort_if(nprocs < 1, 'nprocs must be >= 1')
     train_p = args.train_p
@@ -533,17 +485,7 @@ if __name__ == '__main__':
         log('training prod model: train_p <- 1.0')
         train_p = 1.0
     assert(0.0 <= train_p <= 1.0)
-    max_features = args.train_feats
-    assert(0.0 < max_features <= 1.0)
-    # FBR: TODO for classification and regression, the max_features defaults should not be the same
-    #      IIRC for classif. this is sqrt(N); for regre. this is N
-    max_samples = args.max_samples # this one must default to None
-    if max_samples == 1.0:
-        max_samples = None # BUG in sklearn RFR probably; this forces 1.0
     no_compress = args.no_compress
-    elastic_net = args.elastic_net
-    classification = args.classification
-    regressor = not classification
     # work ---------------------------------------------------------
     # read in a .AP file w/ pIC50 values
     all_lines = lines_of_file(input_fn)
@@ -556,87 +498,49 @@ if __name__ == '__main__':
     test_lines = []
     if cv_folds == 1:
         train_lines, test_lines = train_test_split(train_p, all_lines)
-        if classification:
-            _names_train, X_train, y_train = \
-                read_AP_lines_class(max_feat, train_lines)
-            names_test, X_test, y_test = \
-                read_AP_lines_class(max_feat, test_lines)
-            if model_input_fn != '':
-                log('load model from %s' % model_input_fn)
-                model = joblib.load(model_input_fn)
-            else:
-                if elastic_net:
-                    model = train_class_ElN(nprocs,
-                                            X_train, y_train)
+        #regression
+        X_train, y_train = read_AP_lines_regr(max_feat, train_lines)
+        X_test, y_test = read_AP_lines_regr(max_feat, test_lines)
+        if model_input_fn != '':
+            log('loading model from %s' % model_input_fn)
+            model = joblib.load(model_input_fn)
+        else:
+            model = train_regr(ntrees, crit, nprocs, msl, max_features,
+                               max_samples, X_train, y_train)
+            if model_output_fn != '':
+                log('saving model to %s' % model_output_fn)
+                if no_compress:
+                    joblib.dump(model, model_output_fn, compress=False)
                 else:
-                    model = train_class_RFC(ntrees, nprocs, msl, max_features,
-                                            X_train, y_train)
-                if model_output_fn != '':
-                    log('saving model to %s' % model_output_fn)
-                    joblib.dump(model, model_output_fn, compress=('xz',9))
-            # predict w/ trained model
-            if train_p < 1.0:
-                y_preds = test(model, X_test)
-                if elastic_net: # is a regressor, not a classifier
-                    y_preds = list(map(label_of_proba, y_preds))
-                dump_pred_labels(output_fn, names_test, y_preds)
-            # train_p = 0.0: we are in production,
-            # assume there are no labels
+                    joblib.dump(model, model_output_fn, compress=3)
+        # predict w/ trained model
+        if train_p < 1.0:
+            y_preds = test(model, X_test)
+            dump_pred_scores(output_fn, y_preds)
+            r2 = r2_score(y_test, y_preds)
+            rmse = root_mean_squared_error(y_test, y_preds)
             if train_p > 0.0:
-                auc = sklearn.metrics.roc_auc_score(y_test, y_preds)
-                mcc = sklearn.metrics.matthews_corrcoef(y_test, y_preds)
-                log('AUC: %.3f MCC: %.3f' % (auc, mcc))
-        else: #regression
-                X_train, y_train = read_AP_lines_regr(max_feat, train_lines)
-                X_test, y_test = read_AP_lines_regr(max_feat, test_lines)
-                if model_input_fn != '':
-                    log('loading model from %s' % model_input_fn)
-                    model = joblib.load(model_input_fn)
-                else:
-                    model = train_regr(ntrees, crit, nprocs, msl, max_features,
-                                       max_samples, X_train, y_train)
-                    if model_output_fn != '':
-                        log('saving model to %s' % model_output_fn)
-                        if no_compress:
-                            joblib.dump(model, model_output_fn, compress=False)
-                        else:
-                            joblib.dump(model, model_output_fn, compress=3)
-                # predict w/ trained model
-                if train_p < 1.0:
-                    y_preds = test(model, X_test)
-                    dump_pred_scores(output_fn, y_preds)
-                    r2 = r2_score(y_test, y_preds)
-                    rmse = root_mean_squared_error(y_test, y_preds)
-                    if train_p > 0.0:
-                        # train/test case
-                        log('R2: %f RMSE: %f' % (r2, rmse))
-                    else:
-                        # maybe production run or predictions
-                        # on an external validation set
-                        log('R2: %f RMSE: %f !!! ONLY VALID if test set had target values !!!' % (r2, rmse))
+                # train/test case
+                log('R2: %f RMSE: %f' % (r2, rmse))
+            else:
+                # maybe production run or predictions
+                # on an external validation set
+                log('R2: %f RMSE: %f !!! ONLY VALID if test set had target values !!!' % (r2, rmse))
     else:
         assert(cv_folds > 1)
-        if classification:
-                truth, preds = train_test_NxCV_class(elastic_net,
-                                                     max_feat, ntrees, nprocs, msl,
-                                                     max_features, all_lines,
-                                                     cv_folds)
-                log('truths: %d preds: %d' % (len(truth), len(preds)))
-                auc = sklearn.metrics.roc_auc_score(truth, preds)
-                mcc = sklearn.metrics.matthews_corrcoef(truth, preds)
-                log('AUC: %.3f MCC: %.3f' % (auc, mcc))
-        else: #regression
-                truth, preds = train_test_NxCV_regr(max_feat, ntrees, crit,
-                                                    nprocs, msl, max_features,
-                                                    max_samples, all_lines,
-                                                    cv_folds)
-                log('truths: %d preds: %d' % (len(truth), len(preds)))
-                r2 = r2_score(truth, preds)
-                rmse = root_mean_squared_error(truth, preds)
-                r2_rmse = 'R2=%.3f RMSE=%.4f' % (r2, rmse)
-                log(r2_rmse)
-                title = '%s N=%d folds=%d mtry=%g %s' % (input_fn, ntrees, cv_folds, max_features, r2_rmse)
-                gnuplot(title, truth, preds)
+        #regression
+        truth, preds = train_test_NxCV_regr(max_feat, ntrees, crit,
+                                            nprocs, msl, max_features,
+                                            max_samples, all_lines,
+                                            cv_folds)
+        log('truths: %d preds: %d' % (len(truth), len(preds)))
+        r2 = r2_score(truth, preds)
+        rmse = root_mean_squared_error(truth, preds)
+        r2_rmse = 'R2=%.3f RMSE=%.4f' % (r2, rmse)
+        log(r2_rmse)
+        title = '%s N=%d folds=%d mtry=%g %s' % \
+            (input_fn, ntrees, cv_folds, max_features, r2_rmse)
+        gnuplot(title, truth, preds)
     after = time.time()
     dt = after - before
     log('dt: %.2f' % dt)
