@@ -26,6 +26,7 @@ from gpflow.mean_functions import Constant
 from gpflow.utilities import positive
 from gpflow.utilities.ops import broadcasting_elementwise
 from rdkit import Chem
+from rdkit.Chem import rdFingerprintGenerator
 from scipy import sparse
 from sklearn.metrics import r2_score, root_mean_squared_error
 from sklearn.preprocessing import StandardScaler
@@ -120,15 +121,6 @@ def lines_of_file(fn):
     with open(fn) as input:
         return list(map(str.strip, input.readlines()))
 
-# current training-set line format example:
-# mol_0,0.0,[1:23;8:3;22:2;45:6;56:1]
-def split_AP_line(line):
-    fields = line.split(',')
-    name = str(fields[0])
-    pIC50 = float(fields[1])
-    feat_val_strings = fields[2]
-    return (name, pIC50, feat_val_strings)
-
 def train_test_split(train_portion, lines):
     n = len(lines)
     train_n = math.ceil(train_portion * n)
@@ -138,19 +130,6 @@ def train_test_split(train_portion, lines):
     test = lines[train_n:]
     assert(len(train) + len(test) == n)
     return (train, test)
-
-def train_regr(ntrees, crit, nprocs, msl, max_features, max_samples,
-               X_train, y_train):
-    log('regressor training...')
-    model = RandomForestRegressor(n_estimators = ntrees,
-                                  criterion = crit,
-                                  n_jobs = nprocs,
-                                  oob_score = True,
-                                  min_samples_leaf = msl,
-                                  max_features = max_features,
-                                  max_samples = max_samples)
-    model.fit(X_train, y_train)
-    return model
 
 def test(model, X_test):
     return model.predict(X_test)
@@ -207,11 +186,11 @@ def parse_smiles_line(line: str) -> tuple[str, str, float]:
     pIC50 = float(split[2])
     return (smi, name, pIC50)
 
-def parse_smiles_file(fn: str) -> tuple[list[rdkit.Chem.rdchem.Mol],
-                                        list[float]]:
+def parse_smiles_lines(lines: list[str]) -> tuple[list[rdkit.Chem.rdchem.Mol],
+                                                  list[float]]:
     mols = []
     pIC50s = []
-    for line in open(fn).readlines():
+    for line in lines:
         smi, name, pIC50 = parse_smiles_line(line)
         mol = Chem.MolFromSmiles(smi)
         if mol != None:
@@ -221,6 +200,10 @@ def parse_smiles_file(fn: str) -> tuple[list[rdkit.Chem.rdchem.Mol],
             log("ERROR: rfr.py: parse_smiles_file: could not parse smi for %s: %s" % \
                 (name, smi))
     return (mols, pIC50s)
+
+def parse_smiles_file(fn: str) -> tuple[list[rdkit.Chem.rdchem.Mol],
+                                        list[float]]:
+    return parse_smiles_lines(open(fn).readlines())
 
 def gpr_train_test(train_smi_fn: str, test_smi_fn: str, fp_encoder) -> float:
     train_mols, train_acts = parse_smiles_file(train_smi_fn)
@@ -238,6 +221,11 @@ def gpr_train_test(train_smi_fn: str, test_smi_fn: str, fp_encoder) -> float:
     preds, _var = model.predict(X_test)
 
     return r2_score(y_test, preds)
+
+def gpr_train(X_train, y_train):
+    model = TanimotoGP()
+    model.fit(X_train, y_train)
+    return model
 
 def dump_pred_scores(output_fn, preds):
     if output_fn != '':
@@ -279,6 +267,25 @@ def gnuplot(title0, actual_values, predicted_values):
         print('%f %f' % (x, y), file=data_temp_file)
     data_temp_file.close()
     os.system("gnuplot --persist %s" % commands_temp_fn)
+
+def ecfpX_of_mol(mol: rdkit.Chem.rdchem.Mol, radius) -> numpy.ndarray:
+    generator = rdFingerprintGenerator.GetMorganGenerator(radius, fpSize=2048)
+    fp = generator.GetFingerprint(mol)
+    arr = np.zeros((1,), int)
+    DataStructs.ConvertToNumpyArray(fp, arr)
+    # arr: numpy.ndarray of int64 w/ length 2048
+    return arr
+
+def ecfp4_of_mol(mol):
+    return ecfpX_of_mol(mol, 2)
+
+# parse SMILES, ignore names, read pIC50s then encode molecules w/ ECFP4 2048b
+# return (X_train, y_train)
+def read_SMILES_lines_regr(lines):
+    mols, pIC50s = parse_smiles_lines(lines)
+    X_train = np.array([ecfp4_of_mol(mol) for mol in mols])
+    y_train = np.array(pIC50s)
+    return (X_train, y_train)
 
 if __name__ == '__main__':
     before = time.time()
@@ -371,14 +378,13 @@ if __name__ == '__main__':
     if cv_folds == 1:
         train_lines, test_lines = train_test_split(train_p, all_lines)
         #regression
-        X_train, y_train = read_AP_lines_regr(max_feat, train_lines)
-        X_test, y_test = read_AP_lines_regr(max_feat, test_lines)
+        X_train, y_train = read_SMILES_lines_regr(train_lines)
+        X_test, y_test = read_SMILES_lines_regr(test_lines)
         if model_input_fn != '':
             log('loading model from %s' % model_input_fn)
             model = joblib.load(model_input_fn)
         else:
-            model = train_regr(ntrees, crit, nprocs, msl, max_features,
-                               max_samples, X_train, y_train)
+            model = gpr_train(X_train, y_train)
             if model_output_fn != '':
                 log('saving model to %s' % model_output_fn)
                 if no_compress:
