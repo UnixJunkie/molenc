@@ -25,7 +25,7 @@ import typing
 from gpflow.mean_functions import Constant
 from gpflow.utilities import positive
 from gpflow.utilities.ops import broadcasting_elementwise
-from rdkit import Chem
+from rdkit import Chem, DataStructs
 from rdkit.Chem import rdFingerprintGenerator
 from scipy import sparse
 from sklearn.metrics import r2_score, root_mean_squared_error
@@ -131,8 +131,9 @@ def train_test_split(train_portion, lines):
     assert(len(train) + len(test) == n)
     return (train, test)
 
-def test(model, X_test):
-    return model.predict(X_test)
+def gpr_test(model, X_test):
+    preds, _vars = model.predict(X_test)
+    return preds
 
 def list_take_drop(l, n):
     took = l[0:n]
@@ -268,12 +269,12 @@ def gnuplot(title0, actual_values, predicted_values):
     data_temp_file.close()
     os.system("gnuplot --persist %s" % commands_temp_fn)
 
-def ecfpX_of_mol(mol: rdkit.Chem.rdchem.Mol, radius) -> numpy.ndarray:
+def ecfpX_of_mol(mol: rdkit.Chem.rdchem.Mol, radius) -> np.ndarray:
     generator = rdFingerprintGenerator.GetMorganGenerator(radius, fpSize=2048)
     fp = generator.GetFingerprint(mol)
     arr = np.zeros((1,), int)
     DataStructs.ConvertToNumpyArray(fp, arr)
-    # arr: numpy.ndarray of int64 w/ length 2048
+    # arr: np.ndarray of int64 w/ length 2048
     return arr
 
 def ecfp4_of_mol(mol):
@@ -393,7 +394,7 @@ if __name__ == '__main__':
                     joblib.dump(model, model_output_fn, compress=3)
         # predict w/ trained model
         if train_p < 1.0:
-            y_preds = test(model, X_test)
+            y_preds = gpr_test(model, X_test)
             dump_pred_scores(output_fn, y_preds)
             r2 = r2_score(y_test, y_preds)
             rmse = root_mean_squared_error(y_test, y_preds)
