@@ -241,6 +241,23 @@ def train_test_NxCV_class(elastic_net,
         fold += 1
     return (truth, preds)
 
+def gpr_train_test(train_smi_fn: str, test_smi_fn: str, fp_encoder) -> float:
+    train_mols, train_acts = parse_smiles_file(train_smi_fn)
+    test_mols, test_acts = parse_smiles_file(test_smi_fn)
+
+    X_train = np.array([fp_encoder(mol) for mol in train_mols])
+    X_test  = np.array([fp_encoder(mol) for mol in test_mols])
+
+    y_train = np.array(train_acts)
+    y_test = np.array(test_acts)
+
+    # RFR -----------------------------------------------------------------
+    model = TanimotoGP()
+    model.fit(X_train, y_train)
+    preds, _var = model.predict(X_test)
+
+    return r2_score(y_test, preds)
+
 def dump_pred_scores(output_fn, preds):
     if output_fn != '':
         with open(output_fn, 'w') as output:
