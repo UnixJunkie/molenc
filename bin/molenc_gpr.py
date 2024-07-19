@@ -4,7 +4,9 @@
 # Tsuda laboratory, Graduate School of Frontier Sciences,
 # The University of Tokyo, Japan.
 #
-# Random Forests Regressor or Classifier (RFR or RFC) CLI wrapper
+# Gaussian Process Regressor CLI wrapper
+# input file must have three columns; tab-separated;
+# line format: SMILES\tMOLNAME\tpIC50
 
 import argparse
 import gpflow
@@ -32,7 +34,6 @@ from sklearn.metrics import r2_score, root_mean_squared_error
 from sklearn.preprocessing import StandardScaler
 
 # FBR: TODO NxCV should really be parallelized...
-# FBR: get rid of RFR traces remaining in there after
 # FBR: test model load/save to file
 
 # original code from
@@ -47,7 +48,8 @@ class Tanimoto(gpflow.kernels.Kernel):
 
     def K(self, X, X2=None):
         """
-        Compute the Tanimoto kernel matrix σ² * ((<x, y>) / (||x||^2 + ||y||^2 - <x, y>))
+        Compute the Tanimoto kernel matrix
+        σ² * ((<x, y>) / (||x||^2 + ||y||^2 - <x, y>))
 
         :param X: N x D array
         :param X2: M x D array. If None, compute the N x N kernel matrix for X.
@@ -111,13 +113,6 @@ def abort_if(cond, err_msg):
         log("%s", err_msg)
         sys.exit(1)
 
-def count_lines_of_file(fn):
-    count = 0
-    with open(fn) as input:
-        for _l in input:
-            count += 1
-    return count
-
 def lines_of_file(fn):
     with open(fn) as input:
         return list(map(str.strip, input.readlines()))
@@ -176,7 +171,7 @@ def parse_smiles_lines(lines: list[str]) -> tuple[list[rdkit.Chem.rdchem.Mol],
             mols.append(mol)
             pIC50s.append(pIC50)
         else:
-            log("ERROR: rfr.py: parse_smiles_file: could not parse smi for %s: %s" % \
+            log("ERROR: molenc_gpr.py: parse_smiles_lines: could not parse smi for %s: %s" % \
                 (name, smi))
     return (mols, pIC50s)
 
@@ -191,9 +186,9 @@ def gnuplot(title0, actual_values, predicted_values):
     title = title0.replace('_', '\_')
     xy_min = min(actual_values + predicted_values)
     xy_max = max(actual_values + predicted_values)
-    _, commands_temp_fn = tempfile.mkstemp(prefix="pcp_rfr_", suffix=".gpl")
+    _, commands_temp_fn = tempfile.mkstemp(prefix="gpr_", suffix=".gpl")
     commands_temp_file = open(commands_temp_fn, 'w')
-    _, data_temp_fn = tempfile.mkstemp(prefix="pcp_rfr_", suffix=".txt")
+    _, data_temp_fn = tempfile.mkstemp(prefix="gpr_", suffix=".txt")
     data_temp_file = open(data_temp_fn, 'w')
     gnuplot_commands = \
         ["set xlabel 'actual'",
@@ -267,7 +262,7 @@ def gpr_train_test_NxCV(all_lines, cv_folds):
 if __name__ == '__main__':
     before = time.time()
     # CLI options parsing
-    parser = argparse.ArgumentParser(description = 'train/use a RFR model')
+    parser = argparse.ArgumentParser(description = 'train/use a GPR model')
     parser.add_argument('-i',
                         metavar = '<filename>', type = str,
                         dest = 'input_fn',
@@ -328,7 +323,6 @@ if __name__ == '__main__':
         # only if the user asked for it, we make experiments repeatable
         random.seed(rng_seed)
     output_fn = args.output_fn
-    # model's hyper parameters
     cv_folds = args.cv_folds
     assert(cv_folds >= 1)
     nprocs = args.nprocs
@@ -343,18 +337,19 @@ if __name__ == '__main__':
     assert(0.0 <= train_p <= 1.0)
     no_compress = args.no_compress
     # work ---------------------------------------------------------
-    # read in a .AP file w/ pIC50 values
+    # read input
     all_lines = lines_of_file(input_fn)
     if train_p > 0.0:
         # if not using a model in production but train-testing:
         # break any ordering the input file might have
+        if rng_seed == -1:
+            log('WARN: all_lines shuffled w/o rng_seed (not reproducible)')
         random.shuffle(all_lines)
     model = None
     train_lines = []
     test_lines = []
     if cv_folds == 1:
         train_lines, test_lines = train_test_split(train_p, all_lines)
-        #regression
         X_train, y_train = read_SMILES_lines_regr(train_lines)
         X_test, y_test = read_SMILES_lines_regr(test_lines)
         if model_input_fn != '':
@@ -383,7 +378,6 @@ if __name__ == '__main__':
                 log('R2: %f RMSE: %f !!! ONLY VALID if test set had target values !!!' % (r2, rmse))
     else:
         assert(cv_folds > 1)
-        #regression
         truth, preds = gpr_train_test_NxCV(all_lines, cv_folds)
         log('truths: %d preds: %d' % (len(truth), len(preds)))
         r2 = r2_score(truth, preds)
