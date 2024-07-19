@@ -27,9 +27,6 @@ from gpflow.utilities import positive
 from gpflow.utilities.ops import broadcasting_elementwise
 from rdkit import Chem
 from scipy import sparse
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.linear_model import ElasticNet, ElasticNetCV
 from sklearn.metrics import r2_score, root_mean_squared_error
 from sklearn.preprocessing import StandardScaler
 
@@ -132,64 +129,6 @@ def split_AP_line(line):
     feat_val_strings = fields[2]
     return (name, pIC50, feat_val_strings)
 
-def read_features(row, col, data, i, max_feat_idx, feat_vals_str):
-    # print('feat_vals: %d' % (len(feat_vals)))
-    feat_vals = feat_vals_str.strip('[]')
-    for feat_val in feat_vals.split(';'):
-        feat_str, val_str = feat_val.split(':')
-        feat = int(feat_str)
-        val = float(val_str)
-        # print('%d:%d' % (feat, val))
-        # assert(feat <= max_feat_idx)        
-        if feat > max_feat_idx:
-            print("molenc_rfr.py: read_features: \
-feat > max_feat_idx: %d > %d" % (feat, max_feat_idx),
-                  file=sys.stderr)
-            sys.exit(1)
-        if val != 0.0:
-            row.append(i)
-            col.append(feat)
-            data.append(val)
-
-def read_AP_lines_regr(max_feature_index, lines):
-    nb_lines = len(lines)
-    pIC50s = []
-    row = []
-    col = []
-    data = []
-    for i, line in enumerate(lines):
-        _name, pIC50, features_str = split_AP_line(line)
-        # log('%d %f' % (i, pIC50))
-        pIC50s.append(pIC50)
-        read_features(row, col, data, i, max_feature_index, features_str)
-    X = sparse.csr_matrix((data, (row, col)),
-                          shape=(nb_lines, max_feature_index + 1))
-    log('read_AP_lines_regr: (%d,%d)' % (X.shape[0], X.shape[1]))
-    return (X, pIC50s)
-
-def label_of_name(name):
-    if name.startswith('active'):
-        return 1
-    else:
-        return 0
-
-def read_AP_lines_class(max_feature_index, lines):
-    nb_lines = len(lines)
-    names = []
-    labels = []
-    row = []
-    col = []
-    data = []
-    for i, line in enumerate(lines):
-        name, _pIC50, features_str = split_AP_line(line)
-        names.append(name)
-        labels.append(label_of_name(name))
-        read_features(row, col, data, i, max_feature_index, features_str)
-    X = sparse.csr_matrix((data, (row, col)),
-                          shape=(nb_lines, max_feature_index + 1))
-    log('read_AP_lines_class: (%d,%d)' % (X.shape[0], X.shape[1]))
-    return (names, X, labels)
-
 def train_test_split(train_portion, lines):
     n = len(lines)
     train_n = math.ceil(train_portion * n)
@@ -211,29 +150,6 @@ def train_regr(ntrees, crit, nprocs, msl, max_features, max_samples,
                                   max_features = max_features,
                                   max_samples = max_samples)
     model.fit(X_train, y_train)
-    return model
-
-# WARNING: in binary classification, y_train must be only 0s and 1s
-def train_class_RFC(ntrees, nprocs, msl, max_features, X_train, y_train):
-    log('RFC classifier training...')
-    model = RandomForestClassifier(n_estimators = ntrees,
-                                   criterion = 'gini',
-                                   n_jobs = nprocs,
-                                   oob_score = True,
-                                   min_samples_leaf = msl,
-                                   max_features = max_features)
-    model.fit(X_train, y_train)
-    return model
-
-def train_class_ElN(nprocs, X_train, y_train):
-    log('ElasticNet classifier training...')
-    model = ElasticNetCV(cv=5, n_jobs=nprocs, random_state=314159265,
-                         selection='random')
-    # model = ElasticNet(alpha=0.004517461806329454, l1_ratio=0.5, random_state=314159265,
-    #                    selection='random')
-    model.fit(X_train, y_train)
-    # e.g. alpha=0.004517461806329454 l1_ratio=0.5
-    log('ElasticNet: alpha=%f l1_ratio=%f' % (model.alpha_, model.l1_ratio_))
     return model
 
 def test(model, X_test):
@@ -279,35 +195,6 @@ def train_test_NxCV_regr(max_feat, ntrees, crit, nprocs, msl, max_features,
         r2 = r2_score(y_ref, y_preds_lst)
         rmse = root_mean_squared_error(y_ref, y_preds_lst)
         log('fold: %d R2: %f RMSE: %f' % (fold, r2, rmse))
-        preds = preds + y_preds_lst
-        fold += 1
-    return (truth, preds)
-
-def train_test_NxCV_class(elastic_net,
-                          max_feat, ntrees, nprocs, msl, max_features,
-                          all_lines, cv_folds):
-    truth = []
-    preds = []
-    fold = 0
-    train_tests = list_split(all_lines, cv_folds)
-    for train_set, test_set in train_tests:
-        _names, X_train, y_train = read_AP_lines_class(max_feat, train_set)
-        model = None
-        if elastic_net:
-            model = train_class_ElN(nprocs,
-                                    X_train, y_train)
-        else:
-            model = train_class_RFC(ntrees, nprocs, msl, max_features,
-                                    X_train, y_train)
-        _names, X_test, y_ref = read_AP_lines_class(max_feat, test_set)
-        truth = truth + y_ref
-        y_preds = test(model, X_test)
-        y_preds_lst = []
-        for y in y_preds:
-            y_preds_lst.append(y)
-        auc = sklearn.metrics.roc_auc_score(y_ref, y_preds_lst)
-        mcc = sklearn.metrics.matthews_corrcoef(y_ref, y_preds_lst)
-        log('fold: %d AUC: %f MCC: %.3f' % (fold, auc, mcc))
         preds = preds + y_preds_lst
         fold += 1
     return (truth, preds)
@@ -358,15 +245,6 @@ def dump_pred_scores(output_fn, preds):
             for pred in preds:
                 print('%f' % pred, file=output)
 
-# a prediction is an integer class label, not a float
-# FBR: TODO maybe output the active class proba as an additional column
-def dump_pred_labels(output_fn, names, preds):
-    assert(len(names) == len(preds))
-    if output_fn != '':
-        with open(output_fn, 'w') as output:
-            for name_pred in zip(names, preds):
-                print('%s\t%d' % name_pred, file=output)
-
 def gnuplot(title0, actual_values, predicted_values):
     # escape underscores so that gnuplot doesn't interprete them
     title = title0.replace('_', '\_')
@@ -401,12 +279,6 @@ def gnuplot(title0, actual_values, predicted_values):
         print('%f %f' % (x, y), file=data_temp_file)
     data_temp_file.close()
     os.system("gnuplot --persist %s" % commands_temp_fn)
-
-def label_of_proba(p: float) -> int:
-    if p <= 0.5:
-        return 0
-    else:
-        return 1
 
 if __name__ == '__main__':
     before = time.time()
