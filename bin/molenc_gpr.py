@@ -13,6 +13,7 @@ import math
 import numpy as np
 import os
 import random
+import rdkit
 import scipy
 import sklearn
 import sys
@@ -24,6 +25,7 @@ import typing
 from gpflow.mean_functions import Constant
 from gpflow.utilities import positive
 from gpflow.utilities.ops import broadcasting_elementwise
+from rdkit import Chem
 from scipy import sparse
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.ensemble import RandomForestRegressor
@@ -309,6 +311,29 @@ def train_test_NxCV_class(elastic_net,
         preds = preds + y_preds_lst
         fold += 1
     return (truth, preds)
+
+def parse_smiles_line(line: str) -> tuple[str, str, float]:
+    # print("DEBUG: %s" % line)
+    split = line.strip().split()
+    smi = split[0]
+    name = split[1]
+    pIC50 = float(split[2])
+    return (smi, name, pIC50)
+
+def parse_smiles_file(fn: str) -> tuple[list[rdkit.Chem.rdchem.Mol],
+                                        list[float]]:
+    mols = []
+    pIC50s = []
+    for line in open(fn).readlines():
+        smi, name, pIC50 = parse_smiles_line(line)
+        mol = Chem.MolFromSmiles(smi)
+        if mol != None:
+            mols.append(mol)
+            pIC50s.append(pIC50)
+        else:
+            log("ERROR: rfr.py: parse_smiles_file: could not parse smi for %s: %s" % \
+                (name, smi))
+    return (mols, pIC50s)
 
 def gpr_train_test(train_smi_fn: str, test_smi_fn: str, fp_encoder) -> float:
     train_mols, train_acts = parse_smiles_file(train_smi_fn)
