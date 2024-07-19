@@ -34,7 +34,6 @@ from sklearn.metrics import r2_score, root_mean_squared_error
 from sklearn.preprocessing import StandardScaler
 
 # FBR: TODO NxCV should really be parallelized...
-# FBR: test model load/save to file
 
 # original code from
 # https://github.com/Ryan-Rhys/The-Photoswitch-Dataset/blob/master/examples/gp_regression_on_molecules.ipynb
