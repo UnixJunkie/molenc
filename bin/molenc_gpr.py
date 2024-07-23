@@ -30,8 +30,14 @@ from gpflow.utilities.ops import broadcasting_elementwise
 from rdkit import Chem, DataStructs
 from rdkit.Chem import rdFingerprintGenerator
 from scipy import sparse
-from sklearn.metrics import r2_score, root_mean_squared_error
+from sklearn.metrics import r2_score
+# from sklearn.metrics import root_mean_squared_error
+from sklearn.metrics import mean_squared_error # if root_mean_squared_error is not available
 from sklearn.preprocessing import StandardScaler
+
+# sklearn.metrics.root_mean_squared_error
+def root_mean_squared_error(y_true, y_pred):
+    return mean_squared_error(y_true, y_pred, squared=False)
 
 # FBR: TODO NxCV should really be parallelized...
 
@@ -370,18 +376,18 @@ if __name__ == '__main__':
             rmse = root_mean_squared_error(y_test, y_preds)
             if train_p > 0.0:
                 # train/test case
-                log('R2: %.3f RMSE: %.3f' % (r2, rmse))
+                log('R2: %.3f RMSE: %.3f fn: %s' % (r2, rmse, input_fn))
             else:
                 # maybe production run or predictions
                 # on an external validation set
-                log('R2: %.3f RMSE: %.3f !!! ONLY VALID if test set had target values !!!' % (r2, rmse))
+                log('R2: %.3f RMSE: %.3f fn: %s !!! ONLY VALID if test set had target values !!!' % (r2, rmse, input_fn))
     else:
         assert(cv_folds > 1)
         truth, preds = gpr_train_test_NxCV(all_lines, cv_folds)
         log('truths: %d preds: %d' % (len(truth), len(preds)))
         r2 = r2_score(truth, preds)
         rmse = root_mean_squared_error(truth, preds)
-        r2_rmse = 'GPR R2=%.3f RMSE=%.3f' % (r2, rmse)
+        r2_rmse = 'GPR R2=%.3f RMSE=%.3f fn: %s' % (r2, rmse, input_fn)
         log(r2_rmse)
         title = '%s folds=%d %s' % (input_fn, cv_folds, r2_rmse)
         gnuplot(title, truth, preds)
