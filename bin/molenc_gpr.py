@@ -166,25 +166,28 @@ def parse_smiles_line(line: str) -> tuple[str, str, float]:
     return (smi, name, pIC50)
 
 def parse_smiles_lines(lines: list[str]) -> tuple[list[rdkit.Chem.rdchem.Mol],
+                                                  list[str],
                                                   list[float]]:
     mols = []
+    names = []
     pIC50s = []
     for line in lines:
         smi, name, pIC50 = parse_smiles_line(line)
         mol = Chem.MolFromSmiles(smi)
         if mol != None:
             mols.append(mol)
+            names.append(name)
             pIC50s.append(pIC50)
         else:
             log("ERROR: molenc_gpr.py: parse_smiles_lines: could not parse smi for %s: %s" % \
                 (name, smi))
-    return (mols, pIC50s)
+    return (mols, names, pIC50s)
 
-def dump_pred_scores(output_fn, preds):
+def dump_pred_scores(output_fn, names, preds):
     if output_fn != '':
         with open(output_fn, 'w') as output:
-            for pred in preds:
-                print('%f' % pred, file=output)
+            for name, pred in zip(names, preds):
+                print('%s\t%f' % (name, pred), file=output)
 
 def gnuplot(title0, actual_values, predicted_values):
     # escape underscores so that gnuplot doesn't interprete them
@@ -235,10 +238,10 @@ def ecfp4_of_mol(mol):
 # parse SMILES, ignore names, read pIC50s then encode molecules w/ ECFP4 2048b
 # return (X_train, y_train)
 def read_SMILES_lines_regr(lines):
-    mols, pIC50s = parse_smiles_lines(lines)
+    mols, names, pIC50s = parse_smiles_lines(lines)
     X_train = np.array([ecfp4_of_mol(mol) for mol in mols])
     y_train = np.array(pIC50s)
-    return (X_train, y_train)
+    return (X_train, names, y_train)
 
 def gpr_train(X_train, y_train):
     model = TanimotoGP()
@@ -251,8 +254,8 @@ def gpr_train_test_NxCV(all_lines, cv_folds):
     fold = 0
     train_tests = list_split(all_lines, cv_folds)
     for train_set, test_set in train_tests:
-        X_train, y_train = read_SMILES_lines_regr(train_set)
-        X_test, y_ref = read_SMILES_lines_regr(test_set)
+        X_train, _names_train, y_train = read_SMILES_lines_regr(train_set)
+        X_test, _names_test, y_ref = read_SMILES_lines_regr(test_set)
         model = gpr_train(X_train, y_train)
         truth = truth + list(y_ref)
         y_preds = gpr_test(model, X_test)
@@ -355,8 +358,8 @@ if __name__ == '__main__':
     test_lines = []
     if cv_folds == 1:
         train_lines, test_lines = train_test_split(train_p, all_lines)
-        X_train, y_train = read_SMILES_lines_regr(train_lines)
-        X_test, y_test = read_SMILES_lines_regr(test_lines)
+        X_train, _names_train, y_train = read_SMILES_lines_regr(train_lines)
+        X_test, names_test, y_test = read_SMILES_lines_regr(test_lines)
         if model_input_fn != '':
             log('loading model from %s' % model_input_fn)
             model = joblib.load(model_input_fn)
@@ -371,7 +374,7 @@ if __name__ == '__main__':
         # predict w/ trained model
         if train_p < 1.0:
             y_preds = gpr_test(model, X_test)
-            dump_pred_scores(output_fn, y_preds)
+            dump_pred_scores(output_fn, names_test, y_preds)
             r2 = r2_score(y_test, y_preds)
             rmse = root_mean_squared_error(y_test, y_preds)
             if train_p > 0.0:
