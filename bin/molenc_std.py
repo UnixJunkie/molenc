@@ -12,7 +12,7 @@ from rdkit.Chem.MolStandardize import Standardizer
 
 standardizer = Standardizer()
 
-regex = re.compile('\s')
+regex = re.compile('\\s')
 
 def find_whitespace(s):
     m = re.search(regex, s)
