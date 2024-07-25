@@ -387,7 +387,7 @@ if __name__ == '__main__':
         log('truths: %d preds: %d' % (len(truth), len(preds)))
         r2 = r2_score(truth, preds)
         rmse = root_mean_squared_error(truth, preds)
-        r2_rmse = 'GPR R2=%.3f RMSE=%.3f fn: %s' % (r2, rmse, input_fn)
+        r2_rmse = 'GPR R2=%.3f RMSE=%.3f fn=%s' % (r2, rmse, input_fn)
         log(r2_rmse)
         title = '%s folds=%d %s' % (input_fn, cv_folds, r2_rmse)
         gnuplot(title, truth, preds)
