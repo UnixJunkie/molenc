@@ -5,6 +5,8 @@
 # 5-1-5 Kashiwa-no-ha, Kashiwa-shi, Chiba-ken, 277-8561, Japan.
 #
 # stable filter: only non-reactive molecules are printed on stdout
+# input line format: <SMILES:str>\t<NAME:str>
+# output line format: same as input
 
 import sys
 
@@ -78,4 +80,5 @@ input_fn = sys.argv[1]
 
 for mol, line in RobustSmilesMolSupplier(input_fn):
     if stable_filter(mol):
+        # exact input lines replicated to the output
         print(line, end='')
