@@ -33,6 +33,7 @@ install: [
   ["cp" "bin/molenc_sdf2smi.py" "%{bin}%/molenc_sdf2smi.py"]
   ["cp" "bin/molenc_atoms_filter.py" "%{bin}%/molenc_atoms_filter.py"]
   ["cp" "bin/molenc_gpr.py" "%{bin}%/molenc_gpr.py"]
+  ["cp" "bin/molenc_stable.py" "%{bin}%/molenc_stable.py"]
 ]
 depends: [
   "batteries" {>= "3.5.0"}
