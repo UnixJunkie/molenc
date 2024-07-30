@@ -136,6 +136,11 @@ def gpr_test(model, X_test):
     preds, _vars = model.predict(X_test)
     return preds
 
+# production predictions; w/ stddev
+def gpr_pred(model, X_test):
+    # (preds, vars)
+    return model.predict(X_test)
+
 def list_take_drop(l, n):
     took = l[0:n]
     dropped = l[n:]
@@ -190,6 +195,12 @@ def dump_pred_scores(output_fn, names, preds):
         with open(output_fn, 'w') as output:
             for name, pred in zip(names, preds):
                 print('%s\t%f' % (name, pred), file=output)
+
+def dump_pred_vars(output_fn, names, preds, stddevs):
+    if output_fn != '':
+        with open(output_fn, 'w') as output:
+            for name, pred, std in zip(names, preds, stddevs):
+                print('%s\t%f\t%f' % (name, pred, std), file=output)
 
 def gnuplot(title0, actual_values, predicted_values):
     # escape underscores so that gnuplot doesn't interprete them
@@ -374,7 +385,11 @@ if __name__ == '__main__':
                 else:
                     joblib.dump(model, model_output_fn, compress=3)
         # predict w/ trained model
-        if train_p < 1.0:
+        if train_p == 0.0:
+            # production use
+            y_preds, y_vars = gpr_pred(model, X_test)
+            dump_pred_vars(output_fn, names_test, y_preds, y_vars)
+        elif train_p < 1.0:
             y_preds = gpr_test(model, X_test)
             dump_pred_scores(output_fn, names_test, y_preds)
             r2 = r2_score(y_test, y_preds)
