@@ -162,7 +162,9 @@ def parse_smiles_line(line: str) -> tuple[str, str, float]:
     split = line.strip().split()
     smi = split[0]
     name = split[1]
-    pIC50 = float(split[2])
+    pIC50 = 0.0 # default value
+    if len(split) == 3:
+        pIC50 = float(split[2])
     return (smi, name, pIC50)
 
 def parse_smiles_lines(lines: list[str]) -> tuple[list[rdkit.Chem.rdchem.Mol],
