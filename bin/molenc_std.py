@@ -87,6 +87,7 @@ if __name__ == '__main__':
                         out.write("%s\t%s\n" % (smi_std, name))
                         count += 1
                     except Exception:
+                        print("exception: %s" % name, file=sys.stderr)
                         errors += 1
     after = time.time()
     dt = after - before
