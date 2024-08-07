@@ -81,10 +81,13 @@ if __name__ == '__main__':
                 if mol == None:
                     errors += 1
                 else:
-                    std = standardize(preserve_stereo, mol)
-                    smi_std = Chem.MolToSmiles(std)
-                    out.write("%s\t%s\n" % (smi_std, name))
-                count += 1
+                    try:
+                        std = standardize(preserve_stereo, mol)
+                        smi_std = Chem.MolToSmiles(std)
+                        out.write("%s\t%s\n" % (smi_std, name))
+                        count += 1
+                    except Exception:
+                        errors += 1
     after = time.time()
     dt = after - before
     print("%d molecules @ %.2fHz; %d errors" % (count, count / dt, errors),
