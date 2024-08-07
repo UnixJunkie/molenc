@@ -34,6 +34,8 @@ install: [
   ["cp" "bin/molenc_atoms_filter.py" "%{bin}%/molenc_atoms_filter.py"]
   ["cp" "bin/molenc_gpr.py" "%{bin}%/molenc_gpr.py"]
   ["cp" "bin/molenc_stable.py" "%{bin}%/molenc_stable.py"]
+  ["cp" "bin/molenc_SA.py" "%{bin}%/molenc_SA.py"]
+  ["cp" "bin/fpscores.pkl.gz" "%{bin}%/fpscores.pkl.gz"] # molenc_SA.py's data
 ]
 depends: [
   "batteries" {>= "3.5.0"}
