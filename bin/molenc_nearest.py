@@ -7,7 +7,7 @@
 # Annotate a SMILES file using the nearest molecule found in another SMILES
 # file according to the Tanimoto score for the given molecular fingerprint
 # WARNING: this is O(N^2), so inefficient in case there are many
-#          molecules we want to find which one is nearest
+#          "reference" molecules
 
 import argparse, rdkit, sys, time, typing
 
@@ -24,15 +24,6 @@ def log(*args, **kwargs):
     print('%02d:%02d:%02d ' % hms, file=sys.stderr, end='')
     return print(*args, **kwargs, file=sys.stderr)
 
-def abort_if(cond, err_msg):
-    if cond:
-        log("%s", err_msg)
-        sys.exit(1)
-
-def lines_of_file(fn):
-    with open(fn) as input:
-        return list(map(str.strip, input.readlines()))
-
 def parse_smiles_line(line: str) -> tuple[str, str]:
     # print("DEBUG: %s" % line)
     split = line.strip().split()
@@ -45,73 +36,36 @@ generator = rdFingerprintGenerator.GetMorganGenerator(2, fpSize=2048)
 def ecfp4_of_mol(mol):
     return generator.GetFingerprint(mol)
 
-# parse SMILES, ignore names, read pIC50s then encode molecules w/ ECFP4 2048b
-# return (X_train, y_train)
-def read_SMILES_lines_regr(lines):
-    mols, names, pIC50s = parse_smiles_lines(lines)
-    X_train = np.array([ecfp4_of_mol(mol) for mol in mols])
-    y_train = np.array(pIC50s)
-    return (X_train, names, y_train)
-
-def find_nearest(query_mol, ref_mols):
+def find_nearest(query_mol, ref_fps):
     best_i = -1
     best_tani = 0.0
     query_fp = ecfp4_of_mol(query_mol)
-    for i, mol in enumerate(ref_mols):
-        curr_tani = DataStructs.TanimotoSimilarity(query_fp, mol)
+    for i, ref_fp in enumerate(ref_fps):
+        curr_tani = DataStructs.TanimotoSimilarity(query_fp, ref_fp)
         if curr_tani > best_tani:
             best_i = i
             best_tani = curr_tani
-    return i
+    return (best_i, best_tani)
 
 if __name__ == '__main__':
     before = time.time()
     # CLI options parsing
-    parser = argparse.ArgumentParser(description = 'train/use a GPR model')
+    parser = argparse.ArgumentParser(description = 'find nearest molecule \
+    (in fingerprint space)')
     parser.add_argument('-i',
                         metavar = '<filename>', type = str,
                         dest = 'input_fn',
-                        help = 'input data file')
-    parser.add_argument('-o',
+                        help = 'molecules to annotate (SMILES file)')
+    parser.add_argument('-r',
                         metavar = '<filename>', type = str,
-                        dest = 'output_fn',
+                        dest = 'ref_fn',
                         default = '',
-                        help = 'predictions output file')
-    parser.add_argument('--save',
-                        metavar = '<filename>', type = str,
-                        dest = 'model_output_fn',
-                        default = '',
-                        help = 'trained model output file')
-    parser.add_argument('--load',
-                        metavar = '<filename>', type = str,
-                        dest = 'model_input_fn',
-                        default = '',
-                        help = 'trained model input file')
-    parser.add_argument('-s',
-                        metavar = '<int>', type = int,
-                        dest = 'rng_seed',
-                        default = -1,
-                        help = 'RNG seed')
-    parser.add_argument('--no-compress',
-                        action = "store_true",
-                        dest = 'no_compress',
-                        default = False,
-                        help = 'turn off saved model compression')
-    parser.add_argument('-np',
-                        metavar = '<int>', type = int,
-                        dest = 'nprocs',
-                        default = 1,
-                        help = 'max number of processes')
-    parser.add_argument('-p',
-                        metavar = '<float>', type = float,
-                        dest = 'train_p',
-                        default = 0.8,
-                        help = 'training set proportion')
-    parser.add_argument('--NxCV',
-                        metavar = '<int>', type = int,
-                        dest = 'cv_folds',
-                        default = 1,
-                        help = 'number of cross validation folds')
+                        help = 'reference molecules (SMILES file)')
+    # parser.add_argument('-np',
+    #                     metavar = '<int>', type = int,
+    #                     dest = 'nprocs',
+    #                     default = 1,
+    #                     help = 'max number of processes')
     # parse CLI ---------------------------------------------------------
     if len(sys.argv) == 1:
         # user has no clue of what to do -> usage
@@ -119,8 +73,32 @@ if __name__ == '__main__':
         sys.exit(1)
     args = parser.parse_args()
     input_fn = args.input_fn
-    model_input_fn = args.model_input_fn
-    model_output_fn = args.model_output_fn
+    ref_fn = args.ref_fn
+    log("computing FPs for ref. molecules...")
+    ref_names = []
+    ref_smi = []
+    ref_fps = []
+    with open(ref_fn, 'r') as input:
+        for line in input.readlines():
+            strip = line.strip()
+            smi, name = parse_smiles_line(strip)
+            mol = Chem.MolFromSmiles(smi)
+            if mol != None:
+                ref_names.append(name)
+                ref_smi.append(smi)
+                ref_fps.append(ecfp4_of_mol(mol))
+    log("iterating over cand. molecules...")
+    with open(input_fn, 'r') as input:
+        for line in input.readlines():
+            strip = line.strip()
+            smi, name = parse_smiles_line(strip)
+            mol = Chem.MolFromSmiles(smi)
+            if mol != None:
+                i, best_tani = find_nearest(mol, ref_fps)
+                # the candidate molecule
+                print('%s\t%s' % (smi, name))
+                # its molecular annotation
+                print('%s\t%s_T=%.2f' % (ref_smi[i], ref_names[i], best_tani))
     after = time.time()
     dt = after - before
     log('dt: %.2f' % dt)
