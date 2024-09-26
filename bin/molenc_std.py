@@ -37,13 +37,16 @@ def parse_smiles_line(line):
     mol = Chem.MolFromSmiles(smi)
     return (mol, name)
 
-def standardize(preserve_stereo, mol):
-    if preserve_stereo:
+def standardize(preserve_stereo, preserve_taut, mol):
+    if preserve_stereo or preserve_taut:
         s_mol = standardizer.standardize(mol)
         # We don't need to get fragment parent, because the charge parent is the largest fragment
-        s_mol = standardizer.charge_parent(s_mol,   skip_standardize=True)
-        s_mol = standardizer.isotope_parent(s_mol,  skip_standardize=True)
-        s_mol = standardizer.tautomer_parent(s_mol, skip_standardize=True)
+        s_mol = standardizer.charge_parent(s_mol, skip_standardize=True)
+        s_mol = standardizer.isotope_parent(s_mol, skip_standardize=True)
+        if not preserve_stereo:
+            s_mol = standardizer.stereo_parent(s_mol, skip_standardize=True)
+        if not preserve_taut:
+            s_mol = standardizer.tautomer_parent(s_mol, skip_standardize=True)
         return standardizer.standardize(s_mol)
     else:
         # standardizer.super_parent(mol): _NOT_ standardizer.standardize(mol)
@@ -58,9 +61,12 @@ if __name__ == '__main__':
                         help = "molecules input file")
     parser.add_argument("-o", metavar = "output_std.smi", dest = "output_fn",
                         help = "molecules output file")
-    parser.add_argument('-p', dest='preserve_stereo',
+    parser.add_argument('-s', dest='preserve_stereo',
                         action='store_true', default=False,
                         help = "preserve stereo chemistry")
+    parser.add_argument('-t', dest='preserve_tautomer',
+                        action='store_true', default=False,
+                        help = "preserve tautomer (i.e. skip tautomer standardization)")
     # parse CLI ---------------------------------------------------------------
     if len(sys.argv) == 1:
         # user has no clue of what to do -> usage
@@ -70,6 +76,7 @@ if __name__ == '__main__':
     input_fn = args.input_fn
     output_fn = args.output_fn
     preserve_stereo = args.preserve_stereo
+    preserve_taut = args.preserve_tautomer
     # parse CLI end -----------------------------------------------------------
     count = 0
     errors = 0
@@ -82,7 +89,7 @@ if __name__ == '__main__':
                     errors += 1
                 else:
                     try:
-                        std = standardize(preserve_stereo, mol)
+                        std = standardize(preserve_stereo, preserve_taut, mol)
                         smi_std = Chem.MolToSmiles(std)
                         out.write("%s\t%s\n" % (smi_std, name))
                         count += 1
