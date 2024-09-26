@@ -8,9 +8,9 @@
 
 import argparse, re, sys, time
 from rdkit import Chem
-from rdkit.Chem.MolStandardize import Standardizer
-
-standardizer = Standardizer()
+#from rdkit.Chem.MolStandardize import Standardizer # rdkit.version <= '2023.09.3'
+#standardizer = Standardizer()
+from rdkit.Chem.MolStandardize import rdMolStandardize # rdkit.version >= '2024.03.5'
 
 regex = re.compile('\\s')
 
@@ -37,21 +37,36 @@ def parse_smiles_line(line):
     mol = Chem.MolFromSmiles(smi)
     return (mol, name)
 
+# # for rdkit.version == '2023.09.3'
+# def standardize(preserve_stereo, preserve_taut, mol):
+#     if preserve_stereo or preserve_taut:
+#         s_mol = standardizer.standardize(mol)
+#         # We don't need to get fragment parent, because the charge parent is the largest fragment
+#         s_mol = standardizer.charge_parent(s_mol, skip_standardize=True)
+#         s_mol = standardizer.isotope_parent(s_mol, skip_standardize=True)
+#         if not preserve_stereo:
+#             s_mol = standardizer.stereo_parent(s_mol, skip_standardize=True)
+#         if not preserve_taut:
+#             s_mol = standardizer.tautomer_parent(s_mol, skip_standardize=True)
+#         return standardizer.standardize(s_mol)
+#     else:
+#         # standardizer.super_parent(mol): _NOT_ standardizer.standardize(mol)
+#         # which doesn't even unsalt the molecule...
+#         return standardizer.super_parent(mol)
+
+# for rdkit.version == '2024.03.5'
 def standardize(preserve_stereo, preserve_taut, mol):
     if preserve_stereo or preserve_taut:
-        s_mol = standardizer.standardize(mol)
         # We don't need to get fragment parent, because the charge parent is the largest fragment
-        s_mol = standardizer.charge_parent(s_mol, skip_standardize=True)
-        s_mol = standardizer.isotope_parent(s_mol, skip_standardize=True)
+        s_mol = rdMolStandardize.ChargeParent(mol, skipStandardize=False)
+        s_mol = rdMolStandardize.IsotopeParent(s_mol, skipStandardize=True)
         if not preserve_stereo:
-            s_mol = standardizer.stereo_parent(s_mol, skip_standardize=True)
+            s_mol = rdMolStandardize.StereoParent(s_mol, skipStandardize=False)
         if not preserve_taut:
-            s_mol = standardizer.tautomer_parent(s_mol, skip_standardize=True)
-        return standardizer.standardize(s_mol)
+            s_mol = rdMolStandardize.TautomerParent(s_mol, skipStandardize=False)
+        return s_mol
     else:
-        # standardizer.super_parent(mol): _NOT_ standardizer.standardize(mol)
-        # which doesn't even unsalt the molecule...
-        return standardizer.super_parent(mol)
+        return rdMolStandardize.SuperParent(mol, skipStandardize=False)
 
 if __name__ == '__main__':
     before = time.time()
