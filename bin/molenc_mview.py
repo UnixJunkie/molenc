@@ -26,6 +26,7 @@ def smi_read_mols(fn):
     return [mol_of_smi_line(line) for line in lines]
 
 def main():
+    subset = ["img"]
     # <CLI> -------------------------------------------------------------------
     parser = argparse.ArgumentParser(
         description = "output molecules grid as html file")
@@ -36,7 +37,10 @@ def main():
     parser.add_argument("-c", metavar = "num_cols", dest = "n_cols",
                         type = int, default = 5,
                         help = "number of columns (default=5)")
-    # parse CLI
+    parser.add_argument('-s', dest='show_names',
+                        action='store_true', default=False,
+                        help = "show molecule names")
+    # handle options
     if len(sys.argv) == 1:
         # show help in case user has no clue of what to do
         parser.print_help(sys.stderr)
@@ -45,7 +49,10 @@ def main():
     input_fn = args.input_fn
     output_fn = args.output_fn
     n_cols = args.n_cols
+    show_names = args.show_names
     # </CLI> ------------------------------------------------------------------
+    if show_names:
+        subset=["img", "name"]
     mols = []
     # ----- SDF -----
     if input_fn.endswith(".sdf"):
@@ -69,7 +76,7 @@ def main():
 
     # create HTML document
     mols2grid.save(mols,
-                   # subset=["img", "name"],
+                   subset = subset,
                    n_cols = n_cols,
                    # size = (300, 350),
                    output=output_fn, template="static", prerender=True)
