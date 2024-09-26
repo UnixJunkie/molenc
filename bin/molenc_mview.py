@@ -33,6 +33,9 @@ def main():
                         help = "input file {smi|sdf|mol2}")
     parser.add_argument("-o", metavar = "output_fn", dest = "output_fn",
                         help = "output file (html)")
+    parser.add_argument("-c", metavar = "num_cols", dest = "n_cols",
+                        type = int, default = 5,
+                        help = "number of columns (default=5)")
     # parse CLI
     if len(sys.argv) == 1:
         # show help in case user has no clue of what to do
@@ -41,6 +44,7 @@ def main():
     args = parser.parse_args()
     input_fn = args.input_fn
     output_fn = args.output_fn
+    n_cols = args.n_cols
     # </CLI> ------------------------------------------------------------------
     mols = []
     # ----- SDF -----
@@ -66,7 +70,7 @@ def main():
     # create HTML document
     mols2grid.save(mols,
                    # subset=["img", "name"],
-                   # n_cols = 2, # designed, nearest_in_training_set
+                   n_cols = n_cols,
                    # size = (300, 350),
                    output=output_fn, template="static", prerender=True)
 
