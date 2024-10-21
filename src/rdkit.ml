@@ -32,7 +32,7 @@ end = struct
     lazy
       (let source =
          {pyml_bindgen_string_literal|
-import rdkit, deepsmiles, random, re, sys, typing
+import rdkit, random, re, sys, typing
 from rdkit import Chem
 import numpy as np
 
@@ -49,45 +49,45 @@ def count_neighbors(a: rdkit.Chem.rdchem.Atom) -> tuple[int, int]:
     nb_H = a.GetTotalNumHs()
     return (nb_heavy, nb_H)
 
-# DeepSMILES: no rings neither branches opening/closing
-to_deep_smiles = deepsmiles.Converter(rings=True, branches=True)
+# # DeepSMILES: no rings neither branches opening/closing
+# to_deep_smiles = deepsmiles.Converter(rings=True, branches=True)
 
-# space-separate all DeepSMILES tokens corresponding to given SMILES
-def tokenize_one(smi: str) -> str:
-    assert(smi.find('.') == -1) # enforce standardization/salt removal
-    mol = Chem.MolFromSmiles(smi)
-    # don't canonicalize: the input SMILES might have been randomized on purpose
-    protected_smi = Chem.MolToSmiles(mol, allHsExplicit=True, canonical=False)
-    protected_dsmi = to_deep_smiles.encode(protected_smi)
-    # print("pdsmi: '%s'" % protected_dsmi)
-    # space before [ and after ]
-    pdsmi = re.sub(r"(\[[^\]]+\])", r" \1 ", protected_dsmi)
-    # space before %
-    pdsmi = pdsmi.replace('%', ' %')
-    # protect branch closings (no branch openings in DeepSMILES)
-    pdsmi = pdsmi.replace(')', ' ) ')
-    # protect bonds
-    pdsmi = pdsmi.replace('-', ' - ')
-    # protect - when it is a formal charge
-    pdsmi = re.sub(' - (\d)\]', '-\1]', pdsmi)
-    pdsmi = re.sub(' - \]', '-]', pdsmi)
-    pdsmi = pdsmi.replace('=', ' = ')
-    pdsmi = pdsmi.replace('#', ' # ')
-    pdsmi = pdsmi.replace('$', ' $ ')
-    pdsmi = pdsmi.replace(':', ' : ')
-    # protect long numbers (prefixed by % in SMILES)
-    pdsmi = re.sub(r"%(\d)(\d)", r" %\1\2 ", pdsmi)
-    # single digit numbers are separate words
-    pdsmi = re.sub(r" (\d)(\d)", r" \1 \2", pdsmi)
-    # protect stereo bonds
-    pdsmi = pdsmi.replace("/", " / ")
-    pdsmi = pdsmi.replace("\\", " \\ ")
-    # several spaces to one
-    pdsmi = re.sub('[ ]+', ' ', pdsmi)
-    # rm leading/trailing whitespaces
-    pdsmi = pdsmi.strip()
-    # print("pdsmi: '%s'" % pdsmi)
-    return pdsmi
+# # space-separate all DeepSMILES tokens corresponding to given SMILES
+# def tokenize_one(smi: str) -> str:
+#     assert(smi.find('.') == -1) # enforce standardization/salt removal
+#     mol = Chem.MolFromSmiles(smi)
+#     # don't canonicalize: the input SMILES might have been randomized on purpose
+#     protected_smi = Chem.MolToSmiles(mol, allHsExplicit=True, canonical=False)
+#     protected_dsmi = to_deep_smiles.encode(protected_smi)
+#     # print("pdsmi: '%s'" % protected_dsmi)
+#     # space before [ and after ]
+#     pdsmi = re.sub(r"(\[[^\]]+\])", r" \1 ", protected_dsmi)
+#     # space before %
+#     pdsmi = pdsmi.replace('%', ' %')
+#     # protect branch closings (no branch openings in DeepSMILES)
+#     pdsmi = pdsmi.replace(')', ' ) ')
+#     # protect bonds
+#     pdsmi = pdsmi.replace('-', ' - ')
+#     # protect - when it is a formal charge
+#     pdsmi = re.sub(' - (\d)\]', '-\1]', pdsmi)
+#     pdsmi = re.sub(' - \]', '-]', pdsmi)
+#     pdsmi = pdsmi.replace('=', ' = ')
+#     pdsmi = pdsmi.replace('#', ' # ')
+#     pdsmi = pdsmi.replace('$', ' $ ')
+#     pdsmi = pdsmi.replace(':', ' : ')
+#     # protect long numbers (prefixed by % in SMILES)
+#     pdsmi = re.sub(r"%(\d)(\d)", r" %\1\2 ", pdsmi)
+#     # single digit numbers are separate words
+#     pdsmi = re.sub(r" (\d)(\d)", r" \1 \2", pdsmi)
+#     # protect stereo bonds
+#     pdsmi = pdsmi.replace("/", " / ")
+#     pdsmi = pdsmi.replace("\\", " \\ ")
+#     # several spaces to one
+#     pdsmi = re.sub('[ ]+', ' ', pdsmi)
+#     # rm leading/trailing whitespaces
+#     pdsmi = pdsmi.strip()
+#     # print("pdsmi: '%s'" % pdsmi)
+#     return pdsmi
 
 def random_reorder_atoms(mol: rdkit.Chem.rdchem.Mol):
     rand_order = list(range(mol.GetNumAtoms()))
@@ -251,20 +251,20 @@ class Rdkit:
             res.append(a.GetAtomicNum())
         return res
 
-    # seed: random_seed
-    # n: number of randomized SMILES to use
-    # randomize: boolean
-    # smi: SMILES to work on
-    def get_deep_smiles(self, seed: int, n: int, randomize: bool, smi: str) -> list[str]:
-        if n > 1:
-            rand_smiles = smi_randomize(smi, n, seed)
-            res = list(map(tokenize_one, rand_smiles))
-            return res
-        else:
-            rand_smi = smi
-            if randomize:
-                rand_smi = smi_randomize(smi, 1, seed)[0]
-            return [tokenize_one(rand_smi)]
+    # # seed: random_seed
+    # # n: number of randomized SMILES to use
+    # # randomize: boolean
+    # # smi: SMILES to work on
+    # def get_deep_smiles(self, seed: int, n: int, randomize: bool, smi: str) -> list[str]:
+    #     if n > 1:
+    #         rand_smiles = smi_randomize(smi, n, seed)
+    #         res = list(map(tokenize_one, rand_smiles))
+    #         return res
+    #     else:
+    #         rand_smi = smi
+    #         if randomize:
+    #             rand_smi = smi_randomize(smi, 1, seed)[0]
+    #         return [tokenize_one(rand_smi)]
 
 # # tests
 # m = Chem.MolFromSmiles('c1ccccc1')
