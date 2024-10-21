@@ -49,14 +49,22 @@ let int_of_type a: int =
   100000000000000 * (A.unsafe_get a 12) +
   1000000000000000 * (A.unsafe_get a 13)
 
+exception Improper_atom
+
 (* simple_type: [anum, fc, aro, heavies, hydrogens] *)
 let int_of_simple_type a: int =
   (* enforce expected length and minimal formal charge *)
-  assert(A.length a = 5 && a.(1) >= -3);
+  assert(A.length a = 5);
+  assert(a.(1) >= -3);
   a.(1) <- a.(1) + 3; (* only FC can be negative *)
   (* ensure there are no collisions *)
   for i = 1 to 4 do
-    assert(a.(i) >= 0 && a.(i) < 10)
+    if not (a.(i) >= 0 && a.(i) < 10) then
+      begin
+        let a_str = Utls.string_of_array string_of_int a in
+        Log.error "Molenc_AP.int_of_simple_type: improper atom: %s" a_str;
+        raise Improper_atom
+      end
   done;
   (      A.unsafe_get a 0) + (* anum *)
   1000 * (A.unsafe_get a 1) +
@@ -154,33 +162,37 @@ let fp_string_output writes mode out dict fp =
 
 (* unfolded counted atom pairs fingerprint encoding *)
 let encode_smiles_line max_dist simple_types line =
-  let smi, name = BatString.split ~by:"\t" line in
-  let mol = Rdkit.__init__ ~smi () in
-  let n = Rdkit.get_num_atoms mol () in
-  let typer, type2int =
-    if simple_types then
-      (Rdkit.type_atom_simple, int_of_simple_type)
-    else
-      (Rdkit.type_EltFCaroNeighbs, int_of_type) in
-  let atom_types = A.init n (fun i -> typer mol ~i ()) in
-  let hashed_types = A.map type2int atom_types in
-  let fp = ref APM.empty in
-  (* autocorrelation *)
-  for i = 0 to n - 2 do
-    (* only take into account HAs *)
-    if get_anum atom_types.(i) > 1 then
-      for j = i + 1 to n - 1 do
-        (* only take into account HAs *)
-        if get_anum atom_types.(j) > 1 then
-          let d = Rdkit.get_distance mol ~i ~j () in
-          if d <= max_dist then
-            let feat = Atom_pair.create hashed_types.(i) d hashed_types.(j) in
-            fp :=
-              try APM.add feat (1 + APM.find feat !fp) !fp
-              with Not_found -> APM.add feat 1 !fp
-      done
-  done;
-  { name; feat_counts = !fp }
+  try
+    let smi, name = BatString.split ~by:"\t" line in
+    let mol = Rdkit.__init__ ~smi () in
+    let n = Rdkit.get_num_atoms mol () in
+    let typer, type2int =
+      if simple_types then
+        (Rdkit.type_atom_simple, int_of_simple_type)
+      else
+        (Rdkit.type_EltFCaroNeighbs, int_of_type) in
+    let atom_types = A.init n (fun i -> typer mol ~i ()) in
+    let hashed_types = A.map type2int atom_types in
+    let fp = ref APM.empty in
+    (* autocorrelation *)
+    for i = 0 to n - 2 do
+      (* only take into account HAs *)
+      if get_anum atom_types.(i) > 1 then
+        for j = i + 1 to n - 1 do
+          (* only take into account HAs *)
+          if get_anum atom_types.(j) > 1 then
+            let d = Rdkit.get_distance mol ~i ~j () in
+            if d <= max_dist then
+              let feat = Atom_pair.create hashed_types.(i) d hashed_types.(j) in
+              fp :=
+                try APM.add feat (1 + APM.find feat !fp) !fp
+                with Not_found -> APM.add feat 1 !fp
+        done
+    done;
+    { name; feat_counts = !fp }
+  with Improper_atom ->
+    let () = Log.fatal "Molenc_AP.encode_smiles_line: cannot encode: %s" line in
+    exit 1
 
 let verbose = ref false
 
