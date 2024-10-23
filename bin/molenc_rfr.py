@@ -61,24 +61,35 @@ def split_AP_line(line):
     feat_val_strings = fields[2]
     return (name, pIC50, feat_val_strings)
 
+def string_contains(s, x):
+    try:
+        _i = s.index(x)
+        return True
+    except:
+        return False
+
 def read_features(row, col, data, i, max_feat_idx, feat_vals_str):
     # print('feat_vals: %d' % (len(feat_vals)))
     feat_vals = feat_vals_str.strip('[]')
     for feat_val in feat_vals.split(';'):
-        feat_str, val_str = feat_val.split(':')
-        feat = int(feat_str)
-        val = float(val_str)
-        # print('%d:%d' % (feat, val))
-        # assert(feat <= max_feat_idx)        
-        if feat > max_feat_idx:
-            print("molenc_rfr.py: read_features: \
+        if string_contains(feat_val, ":"):
+            feat_str, val_str = feat_val.split(':')
+            feat = int(feat_str)
+            val = float(val_str)
+            # print('%d:%d' % (feat, val))
+            # assert(feat <= max_feat_idx)
+            if feat > max_feat_idx:
+                print("molenc_rfr.py: read_features: \
 feat > max_feat_idx: %d > %d" % (feat, max_feat_idx),
-                  file=sys.stderr)
-            sys.exit(1)
-        if val != 0.0:
-            row.append(i)
-            col.append(feat)
-            data.append(val)
+                      file=sys.stderr)
+                sys.exit(1)
+            if val != 0.0:
+                row.append(i)
+                col.append(feat)
+                data.append(val)
+        else:
+            print("error: molenc_rfr.py: read_features: \
+ignoring molecule w/o feature at line %d" % i, file=sys.stderr)
 
 def read_AP_lines_regr(max_feature_index, lines):
     nb_lines = len(lines)
@@ -87,10 +98,21 @@ def read_AP_lines_regr(max_feature_index, lines):
     col = []
     data = []
     for i, line in enumerate(lines):
-        _name, pIC50, features_str = split_AP_line(line)
-        # log('%d %f' % (i, pIC50))
-        pIC50s.append(pIC50)
-        read_features(row, col, data, i, max_feature_index, features_str)
+        try:
+           # if line.endswith("[]"):
+           #     print("molenc_rfr.py: read_AP_lines_regr: \
+           #     ignoring molecule w/o features at line %d: %s" % (i, line),
+           #           file=sys.stderr)
+           # else:
+            _name, pIC50, features_str = split_AP_line(line)
+            # log('%d %f' % (i, pIC50))
+            pIC50s.append(pIC50)
+            read_features(row, col, data, i, max_feature_index, features_str)
+        except:
+            print("molenc_rfr.py: read_AP_lines_regr: \
+cannot parse line %d: %s" % (i, line),
+                  file=sys.stderr)
+            raise
     X = sparse.csr_matrix((data, (row, col)),
                           shape=(nb_lines, max_feature_index + 1))
     log('read_AP_lines_regr: (%d,%d)' % (X.shape[0], X.shape[1]))
