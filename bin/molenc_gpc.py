@@ -348,7 +348,7 @@ if __name__ == '__main__':
     else:
         assert(cv_folds > 1)
         truth, proba_preds = gpc_train_test_NxCV(all_lines, cv_folds)
-        log('truths: %d preds: %d' % (len(truth), len(preds)))
+        log('truths: %d preds: %d' % (len(truth), len(proba_preds)))
         auc = roc_auc_score(truth, proba_preds)
         auc_msg = 'GPC AUC=%.3f fn=%s' % (auc, input_fn)
         log(auc_msg)
