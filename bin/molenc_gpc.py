@@ -313,8 +313,8 @@ if __name__ == '__main__':
             log('loading model from %s' % model_input_fn)
             model = joblib.load(model_input_fn)
         else:
-            print('|X_train|=%d' % len(X_train))
-            print('|y_train|=%d' % len(y_train))
+            # print('|X_train|=%d' % len(X_train))
+            # print('|y_train|=%d' % len(y_train))
             model = gpc_train(X_train, y_train)
             if model_output_fn != '':
                 log('saving model to %s' % model_output_fn)
@@ -330,12 +330,12 @@ if __name__ == '__main__':
             dump_pred_probas(output_fn, names_test, y_preds)
         elif train_p < 1.0:
             pred_probas = predict_probas(model, X_test)
-            print('|X_test|=%d' % len(X_test))
-            print('|y_test|=%d' % len(y_test))
-            print('|pred_probas|=%d' % len(pred_probas))
+            # print('|X_test|=%d' % len(X_test))
+            # print('|y_test|=%d' % len(y_test))
+            # print('|pred_probas|=%d' % len(pred_probas))
             dump_pred_probas(output_fn, names_test, pred_probas)
-            print('t(y_test)=%s' % type(y_test))
-            print('t(pred_probas)=%s' % type(pred_probas))
+            # print('t(y_test)=%s' % type(y_test))
+            # print('t(pred_probas)=%s' % type(pred_probas))
             auc = roc_auc_score(y_test, pred_probas)
             if train_p > 0.0:
                 # train/test case
