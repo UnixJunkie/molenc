@@ -207,10 +207,9 @@ def gpc_train_test_NxCV(all_lines, cv_folds):
         model = gpc_train(X_train, y_train)
         truth = truth + list(y_ref)
         pred_probas = predict_probas(model, X_test)
-        pred_probas_lst = list(pred_probas)
-        roc_auc = roc_auc_score(y_ref, pred_probas_lst)
+        roc_auc = roc_auc_score(y_ref, pred_probas)
         log('fold: %d AUC: %f' % (fold, roc_auc))
-        proba_preds = proba_preds + pred_probas_lst
+        proba_preds = proba_preds + list(pred_probas)
         fold += 1
     return (truth, proba_preds)
 
@@ -347,9 +346,9 @@ if __name__ == '__main__':
                     (auc, input_fn))
     else:
         assert(cv_folds > 1)
-        truth, proba_preds = gpc_train_test_NxCV(all_lines, cv_folds)
-        log('truths: %d preds: %d' % (len(truth), len(proba_preds)))
-        auc = roc_auc_score(truth, proba_preds)
+        true_labels, preds = gpc_train_test_NxCV(all_lines, cv_folds)
+        assert(len(true_labels) == len(preds))
+        auc = roc_auc_score(true_labels, preds)
         auc_msg = 'GPC AUC=%.3f fn=%s' % (auc, input_fn)
         log(auc_msg)
         title = '%s folds=%d %s' % (input_fn, cv_folds, auc_msg)
