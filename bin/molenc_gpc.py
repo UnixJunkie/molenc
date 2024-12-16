@@ -322,12 +322,7 @@ if __name__ == '__main__':
                 else:
                     joblib.dump(model, model_output_fn, compress=3)
         # predict w/ trained model
-        if train_p == 0.0:
-            # production use
-            # y_preds, y_vars = predict_probas(model, X_test)
-            y_preds = predict_probas(model, X_test)
-            dump_pred_probas(output_fn, names_test, y_preds)
-        elif train_p < 1.0:
+        if train_p < 1.0:
             pred_probas = predict_probas(model, X_test)
             # print('|X_test|=%d' % len(X_test))
             # print('|y_test|=%d' % len(y_test))
