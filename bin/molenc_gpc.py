@@ -11,19 +11,17 @@ import argparse
 import joblib
 import math
 import numpy as np
-import os
+# import os
 import random
 import rdkit
-import scipy
 import sklearn
 import sys
-import tempfile
+# import tempfile
 import time
 import typing
 
 from rdkit import Chem, DataStructs
 from rdkit.Chem import rdFingerprintGenerator
-from scipy import sparse
 from sklearn.metrics import roc_auc_score, matthews_corrcoef
 
 def hour_min_sec() -> tuple[float, float, float]:
