@@ -8,6 +8,7 @@
 # input line format: '^SMILES\t[active]MOLNAME$'
 
 import argparse
+import joblib
 import math
 import numpy as np
 import os
@@ -25,7 +26,7 @@ from rdkit.Chem import rdFingerprintGenerator
 from scipy import sparse
 from sklearn.metrics import roc_auc_score, matthews_corrcoef
 
-def hour_min_sec():
+def hour_min_sec() -> tuple[float, float, float]:
     tm = time.localtime()
     return (tm.tm_hour, tm.tm_min, tm.tm_sec)
 
@@ -253,7 +254,7 @@ if __name__ == '__main__':
                         help = 'number of cross validation folds')
     # parse CLI ---------------------------------------------------------
     if len(sys.argv) == 1:
-        # user has no clue of what to do -> usage
+        # user has no clue of what to do: usage
         parser.print_help(sys.stderr)
         sys.exit(1)
     args = parser.parse_args()
@@ -261,7 +262,7 @@ if __name__ == '__main__':
     model_input_fn = args.model_input_fn
     model_output_fn = args.model_output_fn
     abort_if(model_input_fn != '' and model_output_fn != '',
-            "--load and --save are exclusive")
+             "--load and --save are exclusive")
     rng_seed = args.rng_seed
     if rng_seed != -1:
         # only if the user asked for it, we make experiments repeatable
@@ -294,13 +295,13 @@ if __name__ == '__main__':
     test_lines = []
     if cv_folds == 1:
         train_lines, test_lines = train_test_split(train_p, all_lines)
-        X_train, _names_train, y_train = read_SMILES_lines_regr(train_lines)
-        X_test, names_test, y_test = read_SMILES_lines_regr(test_lines)
+        X_train, _names_train, y_train = read_SMILES_lines_class(train_lines)
+        X_test, names_test, y_test = read_SMILES_lines_class(test_lines)
         if model_input_fn != '':
             log('loading model from %s' % model_input_fn)
             model = joblib.load(model_input_fn)
         else:
-            model = gpr_train(X_train, y_train)
+            model = gpc_train(X_train, y_train)
             if model_output_fn != '':
                 log('saving model to %s' % model_output_fn)
                 if no_compress:
@@ -310,30 +311,32 @@ if __name__ == '__main__':
         # predict w/ trained model
         if train_p == 0.0:
             # production use
-            y_preds, y_vars = gpr_pred(model, X_test)
-            dump_pred_vars(output_fn, names_test, y_preds, y_vars)
+            # y_preds, y_vars = predict_probas(model, X_test)
+            y_preds = predict_probas(model, X_test)
+            dump_pred_probas(output_fn, names_test, y_preds)
         elif train_p < 1.0:
-            y_preds = gpr_test(model, X_test)
-            dump_pred_scores(output_fn, names_test, y_preds)
-            r2 = r2_score(y_test, y_preds)
-            rmse = root_mean_squared_error(y_test, y_preds)
+            y_preds = predict_probas(model, X_test)
+            dump_pred_probas(output_fn, names_test, y_preds)
+            auc = roc_auc_score(y_test, y_preds)
+            mcc = matthews_corrcoef(y_test, y_preds)
             if train_p > 0.0:
                 # train/test case
-                log('R2: %.3f RMSE: %.3f fn: %s' % (r2, rmse, input_fn))
+                log('AUC: %.3f MCC: %.3f fn: %s' % (auc, mcc, input_fn))
             else:
                 # maybe production run or predictions
                 # on an external validation set
-                log('R2: %.3f RMSE: %.3f fn: %s !!! ONLY VALID if test set had target values !!!' % (r2, rmse, input_fn))
+                log('AUC: %.3f MCC: %.3f fn: %s !!! ONLY VALID if test set had target values !!!' %
+                    (auc, mcc, input_fn))
     else:
         assert(cv_folds > 1)
-        truth, preds = gpr_train_test_NxCV(all_lines, cv_folds)
+        truth, preds = gpc_train_test_NxCV(all_lines, cv_folds)
         log('truths: %d preds: %d' % (len(truth), len(preds)))
-        r2 = r2_score(truth, preds)
-        rmse = root_mean_squared_error(truth, preds)
-        r2_rmse = 'GPR R2=%.3f RMSE=%.3f fn=%s' % (r2, rmse, input_fn)
-        log(r2_rmse)
-        title = '%s folds=%d %s' % (input_fn, cv_folds, r2_rmse)
-        gnuplot(title, truth, preds)
+        auc = roc_auc_score(truth, preds)
+        mcc = matthews_corrcoef(truth, preds)
+        auc_mcc = 'GPR AUC=%.3f MCC=%.3f fn=%s' % (auc, mcc, input_fn)
+        log(auc_mcc)
+        title = '%s folds=%d %s' % (input_fn, cv_folds, auc_mcc)
+        # gnuplot(title, truth, preds)
     after = time.time()
     dt = after - before
     log('dt: %.2f' % dt)
