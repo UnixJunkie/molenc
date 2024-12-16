@@ -55,13 +55,16 @@ def train_test_split(train_portion, lines):
     assert(len(train) + len(test) == n)
     return (train, test)
 
-def predict_classes(model, X_test):
-    return model.predict(X_test)
+def predict_classes(model, X_test) -> np.ndarray:
+    classes = model.predict(X_test)
+    classes.flatten()
 
-def predict_probas(model, X_test):
-    return model.predict_proba(X_test)
+def predict_probas(model, X_test) -> np.ndarray:
+    probas = model.predict_proba(X_test)
+    # let's hope probas[:,1] are probabilities for the actives' class
+    return probas[:,1]
 
-def list_take_drop(l, n):
+def list_take_drop(l: list, n: int) -> tuple[list, list]:
     took = l[0:n]
     dropped = l[n:]
     return (took, dropped)
@@ -110,12 +113,18 @@ def parse_smiles_lines(lines: list[str]) -> tuple[list[rdkit.Chem.rdchem.Mol],
     return (mols, names, labels)
 
 def dump_pred_probas(output_fn, names, probas):
+    if len(names) != len(probas):
+        log('|names|=%d <> |probas|=%d' % (len(names), len(probas)))
+        exit(1)
     if output_fn != '':
         with open(output_fn, 'w') as output:
             for name, p in zip(names, probas):
                 print('%s\t%f' % (name, p), file=output)
 
 def dump_pred_labels(output_fn, names, labels):
+    if len(names) != len(labels):
+        log('|names|=%d <> |probas|=%d' % (len(names), len(labels)))
+        exit(1)
     if output_fn != '':
         with open(output_fn, 'w') as output:
             for name, label in zip(names, labels):
@@ -176,6 +185,9 @@ def read_SMILES_lines_class(lines):
     return (X_train, names, y_train)
 
 def gpc_train(X_train, y_train, seed=0):
+    if len(X_train) != len(y_train):
+        log('|X_train|=%d <> |y_train|=%d' % (len(X_train), len(y_train)))
+        exit(1)
     rbf_k = 1.0 * RBF(1.0)
     gpc = GaussianProcessClassifier(kernel=rbf_k,
                                     random_state=seed,
@@ -295,12 +307,16 @@ if __name__ == '__main__':
     test_lines = []
     if cv_folds == 1:
         train_lines, test_lines = train_test_split(train_p, all_lines)
-        X_train, _names_train, y_train = read_SMILES_lines_class(train_lines)
+        X_train, names_train, y_train = read_SMILES_lines_class(train_lines)
         X_test, names_test, y_test = read_SMILES_lines_class(test_lines)
+        assert(len(X_train) == len(names_train) == len(y_train))
+        assert(len(X_test) == len(names_test) == len(y_test))
         if model_input_fn != '':
             log('loading model from %s' % model_input_fn)
             model = joblib.load(model_input_fn)
         else:
+            print('|X_train|=%d' % len(X_train))
+            print('|y_train|=%d' % len(y_train))
             model = gpc_train(X_train, y_train)
             if model_output_fn != '':
                 log('saving model to %s' % model_output_fn)
@@ -316,17 +332,30 @@ if __name__ == '__main__':
             dump_pred_probas(output_fn, names_test, y_preds)
         elif train_p < 1.0:
             y_preds = predict_probas(model, X_test)
+            print('|X_test|=%d' % len(X_test))
+            print('|y_test|=%d' % len(y_test))
+            print('|y_preds|=%d' % len(y_preds))
             dump_pred_probas(output_fn, names_test, y_preds)
+            print('t(y_test)=%s' % type(y_test))
+            print('t(y_preds)=%s' % type(y_preds))
             auc = roc_auc_score(y_test, y_preds)
-            mcc = matthews_corrcoef(y_test, y_preds)
+            # mcc = matthews_corrcoef(y_test, y_preds)
+            # if train_p > 0.0:
+            #     # train/test case
+            #     log('AUC: %.3f MCC: %.3f fn: %s' % (auc, mcc, input_fn))
+            # else:
+            #     # maybe production run or predictions
+            #     # on an external validation set
+            #     log('AUC: %.3f MCC: %.3f fn: %s !!! ONLY VALID if test set had target values !!!' %
+            #         (auc, mcc, input_fn))
             if train_p > 0.0:
                 # train/test case
-                log('AUC: %.3f MCC: %.3f fn: %s' % (auc, mcc, input_fn))
+                log('AUC: %.3f fn: %s' % (auc, input_fn))
             else:
                 # maybe production run or predictions
                 # on an external validation set
-                log('AUC: %.3f MCC: %.3f fn: %s !!! ONLY VALID if test set had target values !!!' %
-                    (auc, mcc, input_fn))
+                log('AUC: %.3f fn: %s !!! ONLY VALID if test set had target values !!!' %
+                    (auc, input_fn))
     else:
         assert(cv_folds > 1)
         truth, preds = gpc_train_test_NxCV(all_lines, cv_folds)
