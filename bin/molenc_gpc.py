@@ -24,7 +24,7 @@ from rdkit import Chem, DataStructs
 from rdkit.Chem import rdFingerprintGenerator
 from sklearn.gaussian_process import GaussianProcessClassifier
 from sklearn.gaussian_process.kernels import RBF
-from sklearn.metrics import roc_auc_score, matthews_corrcoef
+from sklearn.metrics import roc_auc_score
 
 def hour_min_sec() -> tuple[float, float, float]:
     tm = time.localtime()
@@ -56,8 +56,7 @@ def train_test_split(train_portion, lines):
     return (train, test)
 
 def predict_classes(model, X_test) -> np.ndarray:
-    classes = model.predict(X_test)
-    classes.flatten()
+    return model.predict(X_test)
 
 def predict_probas(model, X_test) -> np.ndarray:
     probas = model.predict_proba(X_test)
@@ -199,7 +198,7 @@ def gpc_train(X_train, y_train, seed=0):
 
 def gpc_train_test_NxCV(all_lines, cv_folds):
     truth = []
-    preds = []
+    proba_preds = []
     fold = 0
     train_tests = list_split(all_lines, cv_folds)
     for train_set, test_set in train_tests:
@@ -207,14 +206,13 @@ def gpc_train_test_NxCV(all_lines, cv_folds):
         X_test, _names_test, y_ref = read_SMILES_lines_class(test_set)
         model = gpc_train(X_train, y_train)
         truth = truth + list(y_ref)
-        y_preds = predict_probas(model, X_test)
-        y_preds_lst = list(y_preds)
-        roc_auc = roc_auc_score(y_ref, y_preds_lst)
-        mcc = matthews_corrcoef(y_ref, y_preds_lst)
-        log('fold: %d AUC: %f MCC: %f' % (fold, roc_auc, mcc))
-        preds = preds + y_preds_lst
+        pred_probas = predict_probas(model, X_test)
+        pred_probas_lst = list(pred_probas)
+        roc_auc = roc_auc_score(y_ref, pred_probas_lst)
+        log('fold: %d AUC: %f' % (fold, roc_auc))
+        proba_preds = proba_preds + pred_probas_lst
         fold += 1
-    return (truth, preds)
+    return (truth, proba_preds)
 
 if __name__ == '__main__':
     before = time.time()
@@ -331,23 +329,14 @@ if __name__ == '__main__':
             y_preds = predict_probas(model, X_test)
             dump_pred_probas(output_fn, names_test, y_preds)
         elif train_p < 1.0:
-            y_preds = predict_probas(model, X_test)
+            pred_probas = predict_probas(model, X_test)
             print('|X_test|=%d' % len(X_test))
             print('|y_test|=%d' % len(y_test))
-            print('|y_preds|=%d' % len(y_preds))
-            dump_pred_probas(output_fn, names_test, y_preds)
+            print('|pred_probas|=%d' % len(pred_probas))
+            dump_pred_probas(output_fn, names_test, pred_probas)
             print('t(y_test)=%s' % type(y_test))
-            print('t(y_preds)=%s' % type(y_preds))
-            auc = roc_auc_score(y_test, y_preds)
-            # mcc = matthews_corrcoef(y_test, y_preds)
-            # if train_p > 0.0:
-            #     # train/test case
-            #     log('AUC: %.3f MCC: %.3f fn: %s' % (auc, mcc, input_fn))
-            # else:
-            #     # maybe production run or predictions
-            #     # on an external validation set
-            #     log('AUC: %.3f MCC: %.3f fn: %s !!! ONLY VALID if test set had target values !!!' %
-            #         (auc, mcc, input_fn))
+            print('t(pred_probas)=%s' % type(pred_probas))
+            auc = roc_auc_score(y_test, pred_probas)
             if train_p > 0.0:
                 # train/test case
                 log('AUC: %.3f fn: %s' % (auc, input_fn))
@@ -358,13 +347,12 @@ if __name__ == '__main__':
                     (auc, input_fn))
     else:
         assert(cv_folds > 1)
-        truth, preds = gpc_train_test_NxCV(all_lines, cv_folds)
+        truth, proba_preds = gpc_train_test_NxCV(all_lines, cv_folds)
         log('truths: %d preds: %d' % (len(truth), len(preds)))
-        auc = roc_auc_score(truth, preds)
-        mcc = matthews_corrcoef(truth, preds)
-        auc_mcc = 'GPR AUC=%.3f MCC=%.3f fn=%s' % (auc, mcc, input_fn)
-        log(auc_mcc)
-        title = '%s folds=%d %s' % (input_fn, cv_folds, auc_mcc)
+        auc = roc_auc_score(truth, proba_preds)
+        auc_msg = 'GPC AUC=%.3f fn=%s' % (auc, input_fn)
+        log(auc_msg)
+        title = '%s folds=%d %s' % (input_fn, cv_folds, auc_msg)
         # gnuplot(title, truth, preds)
     after = time.time()
     dt = after - before
