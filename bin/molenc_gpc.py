@@ -22,6 +22,8 @@ import typing
 
 from rdkit import Chem, DataStructs
 from rdkit.Chem import rdFingerprintGenerator
+from sklearn.gaussian_process import GaussianProcessClassifier
+from sklearn.gaussian_process.kernels import RBF
 from sklearn.metrics import roc_auc_score, matthews_corrcoef
 
 def hour_min_sec() -> tuple[float, float, float]:
@@ -178,10 +180,10 @@ def gpc_train(X_train, y_train, seed=0):
     gpc = GaussianProcessClassifier(kernel=rbf_k,
                                     random_state=seed,
                                     optimizer='fmin_l_bfgs_b',
-                                    n_restarts=5,
+                                    n_restarts_optimizer=5,
                                     copy_X_train=True)
-    model.fit(X_train, y_train)
-    return model
+    gpc.fit(X_train, y_train)
+    return gpc
 
 def gpc_train_test_NxCV(all_lines, cv_folds):
     truth = []
