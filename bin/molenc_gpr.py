@@ -204,9 +204,10 @@ def dump_pred_vars(output_fn, names, preds, stddevs):
 
 def gnuplot(title0, actual_values, predicted_values):
     # escape underscores so that gnuplot doesn't interprete them
-    title = title0.replace('_', '\_')
-    xy_min = min(actual_values + predicted_values)
-    xy_max = max(actual_values + predicted_values)
+    title = title0.replace('_', '\\_')
+    all_vals = actual_values + predicted_values
+    xy_min = min(all_vals)
+    xy_max = max(all_vals)
     _, commands_temp_fn = tempfile.mkstemp(prefix="gpr_", suffix=".gpl")
     commands_temp_file = open(commands_temp_fn, 'w')
     _, data_temp_fn = tempfile.mkstemp(prefix="gpr_", suffix=".txt")
@@ -232,7 +233,7 @@ def gnuplot(title0, actual_values, predicted_values):
         print(l, file=commands_temp_file)
     commands_temp_file.close()
     # dump data to temp file
-    for x, y in zip(predicted_values, actual_values):
+    for x, y in zip(actual_values, predicted_values):
         print('%f %f' % (x, y), file=data_temp_file)
     data_temp_file.close()
     os.system("gnuplot --persist %s" % commands_temp_fn)
