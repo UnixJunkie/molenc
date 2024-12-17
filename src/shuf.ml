@@ -14,22 +14,23 @@ let main () =
   Log.(set_log_level INFO);
   Log.color_on ();
   let argc, args = CLI.init () in
-  if argc = 1 then
-    begin
-      eprintf "usage:\n\
-               %s\n  \
-               -i <filename>: input file\n  \
-               -o <filename>: output file\n  \
-               [-n <int>]: output at most N lines (default=all)\n  \
-               [-s <int>]: random seed (default=none)\n"
+  (if argc = 1 then
+     begin
+       eprintf "usage:\n\
+                %s\n  \
+                -i <filename>: input file\n  \
+                -o <filename>: output file\n  \
+                [-n <int>]: output at most N lines (default=all)\n  \
+                [-s <int>]: random seed (default=none)\n"
         Sys.argv.(0);
-      exit 1
-    end;
-  CLI.finalize (); (* ------------------------------------------------------ *)
+       exit 1
+     end
+  );
   let input_fn = CLI.get_string ["-i"] args in
   let output_fn = CLI.get_string ["-o"] args in
   let maybe_n = CLI.get_int_opt ["-n"] args in
   let maybe_seed = CLI.get_int_opt ["-s"] args in
+  CLI.finalize (); (* ------------------------------------------------------ *)
   (* input *)
   let all_lines = A.of_list (LO.lines_of_file input_fn) in
   let count = A.length all_lines in
