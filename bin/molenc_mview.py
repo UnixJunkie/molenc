@@ -5,6 +5,7 @@
 
 import argparse, mols2grid, os, rdkit, sys
 from rdkit import Chem
+from rdkit.Chem import AllChem
 
 def sdf_read_mols(fn):
     suppl = Chem.SDMolSupplier(fn)
@@ -29,7 +30,7 @@ def main():
     subset = ["img"]
     # <CLI> -------------------------------------------------------------------
     parser = argparse.ArgumentParser(
-        description = "output molecules grid as html file")
+        description = "output a molecules grid to an html file")
     parser.add_argument("-i", metavar = "input_fn", dest = "input_fn",
                         help = "input file {smi|sdf|mol2}")
     parser.add_argument("-o", metavar = "output_fn", dest = "output_fn",
@@ -73,6 +74,17 @@ def main():
     else:
         print("unsupported file type: %s" % input_fn, file=sys.stderr)
         exit(1)
+
+    # try to have pairs of molecules w/ matching 2D description
+    align_2D_drawings = True # FBR: turn this one in CLI option if working
+    if align_2D_drawings:
+        for i, mol in enumerate(mols):
+            if i % 2 == 1:
+                # reference molecule (odd index)
+                AllChem.Compute2DCoords(mol)
+            else:
+                # molecule whose 2D drawing should be aligned to previous one
+                AllChem.GenerateDepictionMatching2DStructure(mol, mols[i-1])
 
     # create HTML document
     mols2grid.save(mols,
