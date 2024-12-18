@@ -76,15 +76,22 @@ def main():
         exit(1)
 
     # try to have pairs of molecules w/ matching 2D description
-    align_2D_drawings = True # FBR: turn this one in CLI option if working
+    align_2D_drawings = False # FBR: turn this one in CLI option if working
+    errors = 0
     if align_2D_drawings:
         for i, mol in enumerate(mols):
             if i % 2 == 1:
                 # reference molecule (odd index)
                 AllChem.Compute2DCoords(mol)
             else:
-                # molecule whose 2D drawing should be aligned to previous one
-                AllChem.GenerateDepictionMatching2DStructure(mol, mols[i-1])
+                try:
+                    # molecule whose 2D drawing should be aligned to previous one
+                    AllChem.GenerateDepictionMatching2DStructure(mol, mols[i-1])
+                except ValueError:
+                    # molecules are not similar enough to be superposed
+                    errors += 1
+    if errors > 0:
+        print("WARN: superposition errors: %d" % errors, file=sys.stderr)
 
     # create HTML document
     mols2grid.save(mols,
