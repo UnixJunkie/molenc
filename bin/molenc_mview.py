@@ -5,7 +5,9 @@
 
 import argparse, mols2grid, os, rdkit, sys
 from rdkit import Chem
-from rdkit.Chem import AllChem
+from rdkit.Chem import AllChem, rdFMCS
+import rdkit.Chem.rdDepictor
+from rdkit.Chem.rdDepictor import ConstrainedDepictionParams
 
 def sdf_read_mols(fn):
     suppl = Chem.SDMolSupplier(fn)
@@ -41,6 +43,9 @@ def main():
     parser.add_argument('-s', dest='show_names',
                         action='store_true', default=False,
                         help = "show molecule names")
+    parser.add_argument('-a', dest='align',
+                        action='store_true', default=False,
+                        help = "_try_ to depict similarly each pair of molecules")
     # handle options
     if len(sys.argv) == 1:
         # show help in case user has no clue of what to do
@@ -51,6 +56,7 @@ def main():
     output_fn = args.output_fn
     n_cols = args.n_cols
     show_names = args.show_names
+    align_2D_drawings = args.align
     # </CLI> ------------------------------------------------------------------
     if show_names:
         subset=["img", "name"]
@@ -75,21 +81,25 @@ def main():
         print("unsupported file type: %s" % input_fn, file=sys.stderr)
         exit(1)
 
-    # try to have pairs of molecules w/ matching 2D description
-    align_2D_drawings = False # FBR: turn this one in CLI option if working
+    # try to have pairs of molecules w/ matching 2D drawing/orientation
+    # e.g. mol_0 must be aligned to mol_1, mol_2 to mol_3, etc.
     errors = 0
     if align_2D_drawings:
-        for i, mol in enumerate(mols):
-            if i % 2 == 1:
-                # reference molecule (odd index)
-                AllChem.Compute2DCoords(mol)
-            else:
-                try:
-                    # molecule whose 2D drawing should be aligned to previous one
-                    AllChem.GenerateDepictionMatching2DStructure(mol, mols[i-1])
-                except ValueError:
-                    # molecules are not similar enough to be superposed
-                    errors += 1
+        # precalculate 2D coords for all mols
+        for mol in mols:
+            AllChem.Compute2DCoords(mol)
+        i = 0
+        params = ConstrainedDepictionParams()
+        params.alignOnly = True
+        while i < len(mols) - 1:
+            mcs = rdFMCS.FindMCS([mols[i], mols[i+1]])
+            mcs_smarts = mcs.smartsString
+            mcs_mol = Chem.MolFromSmarts(mcs_smarts)
+            # common reference drawing
+            AllChem.Compute2DCoords(mcs_mol)
+            AllChem.GenerateDepictionMatching2DStructure(mols[i], mcs_mol, params=params)
+            AllChem.GenerateDepictionMatching2DStructure(mols[i+1], mcs_mol, params=params)
+            i += 2
     if errors > 0:
         print("WARN: superposition errors: %d" % errors, file=sys.stderr)
 
@@ -98,6 +108,7 @@ def main():
                    subset = subset,
                    n_cols = n_cols,
                    # size = (300, 350),
+                   use_coords = align_2D_drawings,
                    output=output_fn, template="static", prerender=True)
 
     # view in browser
