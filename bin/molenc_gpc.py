@@ -129,6 +129,18 @@ def dump_pred_labels(output_fn, names, labels):
             for name, label in zip(names, labels):
                 print('%s\t%d' % (name, label), file=output)
 
+def dump_score_labels(output_fn: str,
+                      probas: list[float],
+                      labels: list[bool]):
+    num_p = len(probas)
+    num_l = len(labels)
+    if num_p != num_l:
+        log('|probas|=%d <> |labels|=%d' % (num_p, num_l))
+        exit(1)
+    with open(output_fn, 'w') as output:
+        for score, label in zip(probas, labels):
+            print('%f\t%d' % (score, label), file=output)
+
 # def gnuplot(title0, actual_values, predicted_values):
 #     # escape underscores so that gnuplot doesn't interprete them
 #     title = title0.replace('_', '\_')
