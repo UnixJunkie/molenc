@@ -16,7 +16,7 @@ import random
 import rdkit
 import sklearn
 import sys
-# import tempfile
+import tempfile
 import time
 import typing
 
@@ -223,6 +223,10 @@ def gpc_train(X_train, y_train, seed=0):
     gpc.fit(X_train, y_train)
     return gpc
 
+def temp_file(prfx, sfx):
+    _, temp_fn = tempfile.mkstemp(prefix=prfx, suffix=sfx)
+    return temp_fn
+
 def gpc_train_test_NxCV(all_lines, cv_folds):
     truth = []
     proba_preds = []
@@ -236,6 +240,11 @@ def gpc_train_test_NxCV(all_lines, cv_folds):
         pred_probas = predict_probas(model, X_test)
         roc_auc = roc_auc_score(y_ref, pred_probas)
         log('fold: %d AUC: %f' % (fold, roc_auc))
+        score_labels_fn = temp_file("gpc_", ".score_labels")
+        auc_curve_fn = temp_file("gpc_", ".roc")
+        dump_score_labels(score_labels_fn, pred_probas, y_ref)
+        croc_curve_auc = roc_curve(score_labels_fn, auc_curve_fn)
+        log('croc-curve: AUC: %f' % croc_curve_auc)
         proba_preds = proba_preds + list(pred_probas)
         fold += 1
     return (truth, proba_preds)
