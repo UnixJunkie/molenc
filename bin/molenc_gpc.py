@@ -153,7 +153,7 @@ def roc_curve(in_score_labels_fn: str,
         line = input.readline()
         strip = line.strip()
         tokens = strip.split()
-        auc = float(tokens[5])
+        auc = float(tokens[4])
     return auc
 
 # def gnuplot(title0, actual_values, predicted_values):
@@ -244,7 +244,7 @@ def gpc_train_test_NxCV(all_lines, cv_folds):
         auc_curve_fn = temp_file("gpc_", ".roc")
         dump_score_labels(score_labels_fn, pred_probas, y_ref)
         croc_curve_auc = roc_curve(score_labels_fn, auc_curve_fn)
-        log('croc-curve: AUC: %f' % croc_curve_auc)
+        log('croc-curve: AUC: %.3f' % croc_curve_auc)
         proba_preds = proba_preds + list(pred_probas)
         fold += 1
     return (truth, proba_preds)
