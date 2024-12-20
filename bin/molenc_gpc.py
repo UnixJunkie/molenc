@@ -11,7 +11,7 @@ import argparse
 import joblib
 import math
 import numpy as np
-# import os
+import os
 import random
 import rdkit
 import sklearn
@@ -140,6 +140,21 @@ def dump_score_labels(output_fn: str,
     with open(output_fn, 'w') as output:
         for score, label in zip(probas, labels):
             print('%f\t%d' % (score, label), file=output)
+
+# use the croc-curve command to compute the ROC curve then return its AUC
+def roc_curve(in_score_labels_fn: str,
+              out_curve_fn: str) -> float:
+    out_auc_fn = out_curve_fn + ".auc"
+    cmd = "croc-curve < %s >%s 2>%s" % (in_score_labels_fn, out_curve_fn, out_auc_fn)
+    ret = os.system(cmd)
+    assert(ret == 0)
+    auc = float('nan')
+    with open(out_auc_fn) as input:
+        line = input.readline()
+        strip = line.strip()
+        tokens = strip.split()
+        auc = float(tokens[5])
+    return auc
 
 # def gnuplot(title0, actual_values, predicted_values):
 #     # escape underscores so that gnuplot doesn't interprete them
