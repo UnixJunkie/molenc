@@ -156,40 +156,31 @@ def roc_curve(in_score_labels_fn: str,
         auc = float(tokens[4])
     return auc
 
-# def gnuplot(title0, actual_values, predicted_values):
-#     # escape underscores so that gnuplot doesn't interprete them
-#     title = title0.replace('_', '\_')
-#     xy_min = min(actual_values + predicted_values)
-#     xy_max = max(actual_values + predicted_values)
-#     _, commands_temp_fn = tempfile.mkstemp(prefix="gpr_", suffix=".gpl")
-#     commands_temp_file = open(commands_temp_fn, 'w')
-#     _, data_temp_fn = tempfile.mkstemp(prefix="gpr_", suffix=".txt")
-#     data_temp_file = open(data_temp_fn, 'w')
-#     gnuplot_commands = \
-#         ["set xlabel 'actual'",
-#          "set ylabel 'predicted'",
-#          "set xtics out nomirror",
-#          "set ytics out nomirror",
-#          "set xrange [%f:%f]" % (xy_min, xy_max),
-#          "set yrange [%f:%f]" % (xy_min, xy_max),
-#          "set key left",
-#          "set size square",
-#          "set title '%s'" % title,
-#          "g(x) = x",
-#          "f(x) = a*x + b",
-#          "fit f(x) '%s' u 1:2 via a, b" % data_temp_file.name,
-#          "plot g(x) t 'perfect' lc rgb 'black', \\",
-#          "'%s' using 1:2 not, \\" % data_temp_file.name,
-#          "f(x) t 'fit'"]
-#     # dump gnuplot commands to temp file
-#     for l in gnuplot_commands:
-#         print(l, file=commands_temp_file)
-#     commands_temp_file.close()
-#     # dump data to temp file
-#     for x, y in zip(predicted_values, actual_values):
-#         print('%f %f' % (x, y), file=data_temp_file)
-#     data_temp_file.close()
-#     os.system("gnuplot --persist %s" % commands_temp_fn)
+def temp_file(prfx, sfx):
+    _, temp_fn = tempfile.mkstemp(prefix=prfx, suffix=sfx)
+    return temp_fn
+
+def gnuplot(title0, auc_curve_fn):
+    # escape underscores so that gnuplot doesn't interprete them
+    title = title0.replace('_', '\_')
+    gnuplot_commands = \
+        ["set xlabel 'FPR'",
+         "set ylabel 'TPR'",
+         "set tics out nomirror",
+         "set size square",
+         "set xrange [0:1]",
+         "set yrange [0:1]",
+         "set key left",
+         "diag(x) = x",
+         "set title '%s'" % title,
+         "plot diag(x) not lc rgb 'black', '%s' u 1:2 w l" % auc_curve_fn]
+    # dump gnuplot commands
+    commands_temp_fn = temp_file("gpr_", ".gpl")    
+    with open(commands_temp_fn, 'w') as output:
+        for l in gnuplot_commands:
+            print(l, file=output)
+    os.system("gnuplot --persist %s" % commands_temp_fn)
+    os.remove(commands_temp_fn) # cleanup
 
 def ecfpX_of_mol(mol: rdkit.Chem.rdchem.Mol, radius) -> np.ndarray:
     generator = rdFingerprintGenerator.GetMorganGenerator(radius, fpSize=2048)
@@ -223,10 +214,6 @@ def gpc_train(X_train, y_train, seed=0):
     gpc.fit(X_train, y_train)
     return gpc
 
-def temp_file(prfx, sfx):
-    _, temp_fn = tempfile.mkstemp(prefix=prfx, suffix=sfx)
-    return temp_fn
-
 def gpc_train_test_NxCV(all_lines, cv_folds):
     truth = []
     proba_preds = []
@@ -239,12 +226,7 @@ def gpc_train_test_NxCV(all_lines, cv_folds):
         truth = truth + list(y_ref)
         pred_probas = predict_probas(model, X_test)
         roc_auc = roc_auc_score(y_ref, pred_probas)
-        log('fold: %d AUC: %f' % (fold, roc_auc))
-        score_labels_fn = temp_file("gpc_", ".score_labels")
-        auc_curve_fn = temp_file("gpc_", ".roc")
-        dump_score_labels(score_labels_fn, pred_probas, y_ref)
-        croc_curve_auc = roc_curve(score_labels_fn, auc_curve_fn)
-        log('croc-curve: AUC: %.3f' % croc_curve_auc)
+        log('fold: %d AUC: %.3f' % (fold, roc_auc))
         proba_preds = proba_preds + list(pred_probas)
         fold += 1
     return (truth, proba_preds)
@@ -369,7 +351,17 @@ if __name__ == '__main__':
             auc = roc_auc_score(y_test, pred_probas)
             if train_p > 0.0:
                 # train/test case
-                log('AUC: %.3f fn: %s' % (auc, input_fn))
+                title = "GPC AUC=%.3f fn=%s" % (auc, input_fn)
+                log(title)
+                score_labels_fn = temp_file("gpc_", ".score_labels")
+                auc_curve_fn = temp_file("gpc_", ".roc")
+                dump_score_labels(score_labels_fn, pred_probas, y_test)
+                croc_curve_auc = roc_curve(score_labels_fn, auc_curve_fn)
+                # print('DEBUG: ROC AUC file: %s' % auc_curve_fn)
+                gnuplot(title, auc_curve_fn)
+                # cleanup temp. files
+                os.remove(score_labels_fn)
+                os.remove(auc_curve_fn)
             else:
                 # maybe production run or predictions
                 # on an external validation set
@@ -380,10 +372,18 @@ if __name__ == '__main__':
         true_labels, preds = gpc_train_test_NxCV(all_lines, cv_folds)
         assert(len(true_labels) == len(preds))
         auc = roc_auc_score(true_labels, preds)
-        auc_msg = 'GPC AUC=%.3f fn=%s' % (auc, input_fn)
+        auc_msg = 'GPC folds=%d AUC=%.3f fn=%s' % (cv_folds, auc, input_fn)
         log(auc_msg)
-        title = '%s folds=%d %s' % (input_fn, cv_folds, auc_msg)
-        # gnuplot(title, truth, preds)
+        # show the overall (all folds combined) ROC AUC curve
+        score_labels_fn = temp_file("gpc_", ".score_labels")
+        auc_curve_fn = temp_file("gpc_", ".roc")
+        dump_score_labels(score_labels_fn, preds, true_labels)
+        croc_curve_auc = roc_curve(score_labels_fn, auc_curve_fn)
+        # print('DEBUG: ROC AUC file: %s' % auc_curve_fn)
+        gnuplot(auc_msg, auc_curve_fn)
+        # cleanup temp. files
+        os.remove(score_labels_fn)
+        os.remove(auc_curve_fn)
     after = time.time()
     dt = after - before
     log('dt: %.2f' % dt)
