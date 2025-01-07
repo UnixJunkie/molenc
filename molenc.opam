@@ -41,6 +41,7 @@ install: [
   ["cp" "bin/fpscores.pkl.gz" "%{bin}%/fpscores.pkl.gz"] # molenc_SA.py's data
   ["cp" "bin/molenc_nearest.py" "%{bin}%/molenc_nearest.py"]
   ["cp" "bin/molenc_histo.py" "%{bin}%/molenc_histo.py"]
+  ["cp" "bin/molenc_regr_stats.py" "%{bin}%/molenc_regr_stats.py"]
 ]
 depends: [
   "batteries" {>= "3.5.0"}
