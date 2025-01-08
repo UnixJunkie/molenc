@@ -173,7 +173,7 @@ def gnuplot(title0, auc_curve_fn):
          "set key left",
          "diag(x) = x",
          "set title '%s'" % title,
-         "plot diag(x) not lc rgb 'black', '%s' u 1:2 w l" % auc_curve_fn]
+         "plot diag(x) not lc rgb 'black', '%s' u 1:2 w l t 'ROC'" % auc_curve_fn]
     # dump gnuplot commands
     commands_temp_fn = temp_file("gpr_", ".gpl")    
     with open(commands_temp_fn, 'w') as output:
@@ -231,6 +231,17 @@ def gpc_train_test_NxCV(all_lines, cv_folds):
         fold += 1
     return (truth, proba_preds)
 
+def show_roc_curve(plot_title, pred_probas, true_labels):
+    score_labels_fn = temp_file("gpc_", ".score_labels")
+    auc_curve_fn = temp_file("gpc_", ".roc")
+    dump_score_labels(score_labels_fn, pred_probas, true_labels)
+    _croc_curve_auc = roc_curve(score_labels_fn, auc_curve_fn)
+    # print('DEBUG: ROC AUC file: %s' % auc_curve_fn)
+    gnuplot(plot_title, auc_curve_fn)
+    # cleanup
+    os.remove(score_labels_fn)
+    os.remove(auc_curve_fn)
+
 if __name__ == '__main__':
     before = time.time()
     # CLI options parsing
@@ -264,6 +275,11 @@ if __name__ == '__main__':
                         dest = 'no_compress',
                         default = False,
                         help = 'turn off saved model compression')
+    parser.add_argument('--no-plot',
+                        action = "store_true",
+                        dest = 'no_plot',
+                        default = False,
+                        help = 'do not show the ROC curve')
     parser.add_argument('-np',
                         metavar = '<int>', type = int,
                         dest = 'nprocs',
@@ -308,6 +324,7 @@ if __name__ == '__main__':
         train_p = 1.0
     assert(0.0 <= train_p <= 1.0)
     no_compress = args.no_compress
+    no_plot = args.no_plot
     # work ---------------------------------------------------------
     # read input
     all_lines = lines_of_file(input_fn)
@@ -353,15 +370,8 @@ if __name__ == '__main__':
                 # train/test case
                 title = "GPC AUC=%.3f fn=%s" % (auc, input_fn)
                 log(title)
-                score_labels_fn = temp_file("gpc_", ".score_labels")
-                auc_curve_fn = temp_file("gpc_", ".roc")
-                dump_score_labels(score_labels_fn, pred_probas, y_test)
-                croc_curve_auc = roc_curve(score_labels_fn, auc_curve_fn)
-                # print('DEBUG: ROC AUC file: %s' % auc_curve_fn)
-                gnuplot(title, auc_curve_fn)
-                # cleanup temp. files
-                os.remove(score_labels_fn)
-                os.remove(auc_curve_fn)
+                if not no_plot:
+                    show_roc_curve(title, pred_probas, y_test)
             else:
                 # maybe production run or predictions
                 # on an external validation set
@@ -375,15 +385,8 @@ if __name__ == '__main__':
         auc_msg = 'GPC folds=%d AUC=%.3f fn=%s' % (cv_folds, auc, input_fn)
         log(auc_msg)
         # show the overall (all folds combined) ROC AUC curve
-        score_labels_fn = temp_file("gpc_", ".score_labels")
-        auc_curve_fn = temp_file("gpc_", ".roc")
-        dump_score_labels(score_labels_fn, preds, true_labels)
-        croc_curve_auc = roc_curve(score_labels_fn, auc_curve_fn)
-        # print('DEBUG: ROC AUC file: %s' % auc_curve_fn)
-        gnuplot(auc_msg, auc_curve_fn)
-        # cleanup temp. files
-        os.remove(score_labels_fn)
-        os.remove(auc_curve_fn)
+        if not no_plot:
+            show_roc_curve(auc_msg, preds, true_labels)
     after = time.time()
     dt = after - before
     log('dt: %.2f' % dt)
