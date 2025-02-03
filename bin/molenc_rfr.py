@@ -308,7 +308,7 @@ def gnuplot(title0, actual_values, predicted_values):
         print(l, file=commands_temp_file)
     commands_temp_file.close()
     # dump data to temp file
-    for x, y in zip(predicted_values, actual_values):
+    for x, y in zip(actual_values, predicted_values):
         print('%f %f' % (x, y), file=data_temp_file)
     data_temp_file.close()
     os.system("gnuplot --persist %s" % commands_temp_fn)
