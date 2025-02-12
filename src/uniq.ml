@@ -40,8 +40,10 @@ module HtInRAM: HT = struct
 
   type t = (string, unit) Ht.t
 
-  let create input_fn =
-    Ht.create (LO.count input_fn)
+  let create _input_fn =
+    (* DO NOT ever try to read the whole input file in case of --in-RAM:
+     * we want to be able to read molecules from a UNIX pipe *)
+    Ht.create 1_000_000
 
   let mem db field =
     Ht.mem db field
