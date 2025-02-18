@@ -1,18 +1,25 @@
 #!/usr/bin/env python3
 #
-# usage: ./histo.py FILE:str MIN:float MAX:float STEPS:int
-#        0          1        2         3         4
+# usage: ./histo.py FILE:str STEPS:int
+#        0          1        2
 
 import sys
 
 input_fn = sys.argv[1]
-min_val = float(sys.argv[2])
-max_val = float(sys.argv[3])
+num_steps = float(int(sys.argv[2]))
+
+# read in values
+floats = []
+for line in open(input_fn).readlines():
+    strip = line.strip()
+    x = float(strip)
+    floats.append(x)
+assert(len(floats) > 0)
+
+min_val = min(floats)
+max_val = max(floats)
 assert(min_val < max_val)
-num_steps = float(int(sys.argv[4]))
-
 delta = (max_val - min_val) / num_steps
-
 print('DEBUG: min:%g max:%g steps:%d delta:%g' %
       (min_val, max_val, num_steps, delta), file=sys.stderr)
 
@@ -26,15 +33,13 @@ while x < max_val:
     i += 1
 
 # finalize the histogram
-for line in open(input_fn).readlines():
-    strip = line.strip()
-    x = float(strip)
+for x in floats:
     assert(x >= min_val)
     assert(x <= max_val)
     hist_bin = int((x - min_val) / delta)
     histo[hist_bin] += 1
 
-# print out the histogram
+# print out histogram
 x = min_val
 i = 0
 while x < max_val:
