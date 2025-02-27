@@ -10,18 +10,18 @@ import argparse
 import math
 import os
 import random
-import scipy
-import sklearn
+import scipy # type:ignore
+import sklearn # type:ignore
 import sys
 import tempfile
 import time
 import typing
-import joblib
+import joblib # type:ignore
 
-from sklearn.linear_model import ElasticNet, ElasticNetCV
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import r2_score, root_mean_squared_error
+from sklearn.linear_model import ElasticNet, ElasticNetCV  # type:ignore
+from sklearn.ensemble import RandomForestRegressor # type:ignore
+from sklearn.ensemble import RandomForestClassifier # type:ignore
+from sklearn.metrics import r2_score, root_mean_squared_error # type:ignore
 from scipy import sparse
 
 # FBR: TODO NxCV should really be parallelized...
@@ -357,6 +357,11 @@ if __name__ == '__main__':
                         dest = 'no_compress',
                         default = False,
                         help = 'turn off saved model compression')
+    parser.add_argument('--no-plot',
+                        action = "store_true",
+                        dest = 'no_plot',
+                        default = False,
+                        help = 'turn off regression plot')
     parser.add_argument('--eln',
                         action = "store_true",
                         dest = 'elastic_net',
@@ -452,6 +457,7 @@ if __name__ == '__main__':
     if max_samples == 1.0:
         max_samples = None # BUG in sklearn RFR probably; this forces 1.0
     no_compress = args.no_compress
+    no_plot = args.no_plot
     elastic_net = args.elastic_net
     classification = args.classification
     regressor = not classification
@@ -547,7 +553,8 @@ if __name__ == '__main__':
                 r2_rmse = 'R2=%.3f RMSE=%.4f' % (r2, rmse)
                 log(r2_rmse)
                 title = '%s N=%d folds=%d mtry=%g %s' % (input_fn, ntrees, cv_folds, max_features, r2_rmse)
-                gnuplot(title, truth, preds)
+                if not no_plot:
+                    gnuplot(title, truth, preds)
     after = time.time()
     dt = after - before
     log('dt: %.2f' % dt)
