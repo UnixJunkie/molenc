@@ -124,6 +124,10 @@ type unfold_count_fp = { name: string;
                          feat_counts: int APM.t }
 
 let fp_string_output writes mode out dict fp =
+  if APM.is_empty fp.feat_counts then
+    () (* skip molecules which failed encoding *)
+  else
+    begin
   fprintf out "%s,0.0,[" fp.name;
   let feat_counts = match mode with
     | Output -> (* writable dict *)
@@ -159,11 +163,12 @@ let fp_string_output writes mode out dict fp =
     ) feat_counts;
   fprintf out "]\n";
   incr writes
+end
 
 (* unfolded counted atom pairs fingerprint encoding *)
 let encode_smiles_line max_dist simple_types line =
+  let smi, name = BatString.split ~by:"\t" line in
   try
-    let smi, name = BatString.split ~by:"\t" line in
     let mol = Rdkit.__init__ ~smi () in
     let n = Rdkit.get_num_atoms mol () in
     let typer, type2int =
@@ -191,8 +196,8 @@ let encode_smiles_line max_dist simple_types line =
     done;
     { name; feat_counts = !fp }
   with Improper_atom ->
-    let () = Log.fatal "Molenc_AP.encode_smiles_line: cannot encode: %s" line in
-    exit 1
+    let () = Log.error "Molenc_AP.encode_smiles_line: cannot encode: %s" line in
+    { name; feat_counts = APM.empty }
 
 let verbose = ref false
 
