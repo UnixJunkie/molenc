@@ -32,7 +32,8 @@ with open(output_fn, 'w') as out:
             props = get_props(mol, tags)
             for i, p in enumerate(props):
                 if i > 0:
-                    print(',%s' % p, file=out)
+                    print(',%s' % p, end='', file=out)
                 else:
-                    print('%s' % p, file=out)
-            print('', file=out) # EOL
+                    print('%s' % p, end='', file=out)
+            # EOL plus makes empty fields obvious
+            print(',', file=out)
