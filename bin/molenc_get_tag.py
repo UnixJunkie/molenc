@@ -40,7 +40,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     input_fn = args.input_fn
     output_fn = args.output_fn
-    tags = args.tags
+    tags = args.tags.strip().split(',')
     # -------------------------------------------------------------------------
     with open(output_fn, 'w') as out:
         for mol in Chem.SDMolSupplier(input_fn):
