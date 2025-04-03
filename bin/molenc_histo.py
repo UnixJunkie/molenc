@@ -27,7 +27,7 @@ print('DEBUG: min:%g max:%g steps:%d delta:%g' %
 histo = {}
 x = min_val
 i = 0
-while x < max_val:
+while x <= max_val + delta:
     histo[i] = 0
     x += delta
     i += 1
@@ -42,7 +42,7 @@ for x in floats:
 # print out histogram
 x = min_val
 i = 0
-while x < max_val:
+while x <= max_val + delta:
     x_val = min_val + float(i) * delta
     y_val = histo[i]
     print('%f %d' % (x_val, y_val))
