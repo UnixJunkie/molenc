@@ -28,12 +28,18 @@ from rdkit.Chem.AtomPairs import Pairs
 PeriodicTable = Chem.GetPeriodicTable()
 
 def RobustSmilesMolSupplier(filename):
-    with open(filename) as f:
-        for i, line in enumerate(f):
-            words = line.split()
-            smile = words[0]
-            name = words[1]
-            yield (i, Chem.MolFromSmiles(smile), name)
+    with open(filename) as input:
+        for i, line in enumerate(input.readlines()):
+            words = line.strip().split()
+            smile = ""
+            name = "NO_NAME"
+            try:
+                smile = words[0]
+                name = words[1]
+                yield (i, Chem.MolFromSmiles(smile), name)
+            except IndexError:
+                # not enough fields on line
+                yield (i, None, name)
 
 # detect strange molecules
 def is_alien(MolW, cLogP, TPSA, RotB, HBA, HBD, FC):
