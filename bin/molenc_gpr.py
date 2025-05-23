@@ -314,6 +314,11 @@ if __name__ == '__main__':
                         dest = 'no_compress',
                         default = False,
                         help = 'turn off saved model compression')
+    parser.add_argument('--no-plot',
+                        action = "store_true",
+                        dest = 'no_plot',
+                        default = False,
+                        help = 'turn off gnuplot')
     parser.add_argument('-np',
                         metavar = '<int>', type = int,
                         dest = 'nprocs',
@@ -358,6 +363,7 @@ if __name__ == '__main__':
         train_p = 1.0
     assert(0.0 <= train_p <= 1.0)
     no_compress = args.no_compress
+    no_plot = args.no_plot
     # work ---------------------------------------------------------
     # read input
     all_lines = lines_of_file(input_fn)
@@ -401,7 +407,8 @@ if __name__ == '__main__':
             else:
                 # maybe production run or predictions
                 # on an external validation set
-                log('R2: %.3f RMSE: %.3f fn: %s !!! ONLY VALID if test set had target values !!!' % (r2, rmse, input_fn))
+                log('R2: %.3f RMSE: %.3f fn: %s !!! ONLY VALID if test set had target values !!!' %
+                    (r2, rmse, input_fn))
     else:
         assert(cv_folds > 1)
         truth, preds = gpr_train_test_NxCV(all_lines, cv_folds)
@@ -410,8 +417,9 @@ if __name__ == '__main__':
         rmse = root_mean_squared_error(truth, preds)
         r2_rmse = 'GPR R2=%.3f RMSE=%.3f fn=%s' % (r2, rmse, input_fn)
         log(r2_rmse)
-        title = '%s folds=%d %s' % (input_fn, cv_folds, r2_rmse)
-        gnuplot(title, truth, preds)
+        if no_plot == False:
+            title = '%s folds=%d %s' % (input_fn, cv_folds, r2_rmse)
+            gnuplot(title, truth, preds)
     after = time.time()
     dt = after - before
     log('dt: %.2f' % dt)
