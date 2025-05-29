@@ -43,7 +43,9 @@ if __name__ == '__main__':
     tags = args.tags.strip().split(',')
     # -------------------------------------------------------------------------
     with open(output_fn, 'w') as out:
-        for mol in Chem.SDMolSupplier(input_fn):
+        # we just want to extract SDF tags; we don't care if rdkit
+        # is unhappy w/ some molecules
+        for mol in Chem.SDMolSupplier(input_fn, sanitize=False):
             if mol:
                 props = get_props(mol, tags)
                 for i, p in enumerate(props):
