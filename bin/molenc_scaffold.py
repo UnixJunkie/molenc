@@ -9,7 +9,8 @@
 #
 # Compute the Bemis-Murcho generic scaffold (framework)
 # of each input molecule.
-#
+# And yes, the rdkit implementation of them is not faithful
+# to the published article:
 # Bemis, G. W., & Murcko, M. A. (1996).
 # "The properties of known drugs. 1. Molecular frameworks."
 # Journal of medicinal chemistry, 39(15), 2887-2893.
@@ -26,10 +27,11 @@ def RobustSmilesMolSupplier(filename):
             mol = Chem.MolFromSmiles(smi)
             yield (smi, name, mol)
 
+# only correct for a molecule whose hydrogens have been deleted previously
 def find_terminal_atoms(mol):
     res = []
     for a in mol.GetAtoms():
-        if len(a.GetBonds()) == 1:
+        if a.GetDegree() == 1:
             res.append(a)
     return res
 
