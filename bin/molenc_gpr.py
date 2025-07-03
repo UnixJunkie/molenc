@@ -238,8 +238,13 @@ def gnuplot(title0, actual_values, predicted_values):
     data_temp_file.close()
     os.system("gnuplot --persist %s" % commands_temp_fn)
 
+# global parameter
+stereo_sensitive = False
+
 def ecfpX_of_mol(mol: rdkit.Chem.rdchem.Mol, radius) -> np.ndarray:
-    generator = rdFingerprintGenerator.GetMorganGenerator(radius, fpSize=2048)
+    generator = \
+        rdFingerprintGenerator.GetMorganGenerator(
+            radius, fpSize=2048, includeChirality=stereo_sensitive)
     fp = generator.GetFingerprint(mol)
     arr = np.zeros((1,), int)
     DataStructs.ConvertToNumpyArray(fp, arr)
@@ -334,6 +339,11 @@ if __name__ == '__main__':
                         dest = 'cv_folds',
                         default = 1,
                         help = 'number of cross validation folds')
+    parser.add_argument('--stereo',
+                        action = "store_true",
+                        dest = 'stereo_sensitive',
+                        default = False,
+                        help = 'make the fingerprint stereo-sensitive')
     # parse CLI ---------------------------------------------------------
     if len(sys.argv) == 1:
         # user has no clue of what to do -> usage
@@ -343,6 +353,7 @@ if __name__ == '__main__':
     input_fn = args.input_fn
     model_input_fn = args.model_input_fn
     model_output_fn = args.model_output_fn
+    stereo_sensitive = args.stereo_sensitive # global var
     abort_if(model_input_fn != '' and model_output_fn != '',
             "--load and --save are exclusive")
     rng_seed = args.rng_seed
