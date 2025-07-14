@@ -3,7 +3,7 @@
 # Extract given tags from an SDF file
 # could also be called sdf2csv
 
-import argparse, rdkit, sys
+import argparse, gzip, rdkit, sys
 from rdkit import Chem
 
 # m.GetProp but w/ a default value
@@ -26,7 +26,7 @@ if __name__ == '__main__':
     # CLI options parsing
     parser = argparse.ArgumentParser(
         description = "compute atom types and distances")
-    parser.add_argument("-i", metavar = "input.sdf", dest = "input_fn",
+    parser.add_argument("-i", metavar = "input.sdf[.gz]", dest = "input_fn",
                         help = "molecules input file")
     parser.add_argument("-o", metavar = "output.txt", dest = "output_fn",
                         help = "output file")
@@ -42,10 +42,15 @@ if __name__ == '__main__':
     output_fn = args.output_fn
     tags = args.tags.strip().split(',')
     # -------------------------------------------------------------------------
-    with open(output_fn, 'w') as out:
+    suppl = None
+    if input_fn.endswith(".sdf.gz"):
         # we just want to extract SDF tags; we don't care if rdkit
-        # is unhappy w/ some molecules
-        for mol in Chem.SDMolSupplier(input_fn, sanitize=False):
+        # is unhappy w/ some molecules --> sanitize=False
+        suppl = Chem.ForwardSDMolSupplier(gzip.open(input_fn), sanitize=False)
+    else:
+        suppl = Chem.SDMolSupplier(input_fn, sanitize=False)
+    with open(output_fn, 'w') as out:
+        for mol in suppl:
             if mol:
                 props = get_props(mol, tags)
                 for i, p in enumerate(props):
