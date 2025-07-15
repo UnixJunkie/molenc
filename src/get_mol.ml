@@ -130,7 +130,7 @@ let main () =
   let argc, args = CLI.init () in
   if argc = 1 then
     (eprintf "usage:\n\
-              %s -i molecules.{sdf|mol2|smi|ph4} \
+              %s -i molecules.{sdf[.gz]|mol2|smi|ph4} \
               {-names \"mol1,mol2,...\"|-f names_file} [-v]\n  \
               -i <filename>: molecules input file\n  \
               [-o <filename>]: molecules output file (default=stdout)\n  \
