@@ -42,6 +42,10 @@ let read_one (input: in_channel): string =
       raise End_of_file
     else res
 
+
+let read_one_zip (_: Gzip.in_channel) =
+  failwith "Ph4.read_one_zip: not implemented yet"
+
 let get_name ph4_lines =
   let header, _rest = S.split ph4_lines ~by:"\n" in
   let _num_feats, name = parse_header_line header in

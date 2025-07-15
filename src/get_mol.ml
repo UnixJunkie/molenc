@@ -20,52 +20,91 @@ type mol_name_provider = On_cli of string
                        | From_file of string
 
 let mol_reader_for_file fn =
-  if S.ends_with fn ".mol2" then Mol2.(read_one_raw, get_name)
-  else if S.ends_with fn ".sdf" then Sdf.(read_one, get_fst_line)
-  else if S.ends_with fn ".smi" then Smi.(read_one, get_name)
-  else if S.ends_with fn ".ph4" then Ph4.(read_one, get_name)
-  else failwith ("Get_mol.mol_reader_for_file: not {.mol2|.sdf|.smi|.ph4}: " ^ fn)
+  if S.ends_with fn ".mol2" || S.ends_with fn ".mol2.gz" then
+    Mol2.(read_one_raw, read_one_zip, get_name)
+  else if S.ends_with fn ".sdf" || S.ends_with fn ".sdf.gz" then
+    Sdf.(read_one, read_one_zip, get_fst_line)
+  else if S.ends_with fn ".smi" || S.ends_with fn ".smi.gz" then
+    Smi.(read_one, read_one_zip, get_name)
+  else if S.ends_with fn ".ph4" || S.ends_with fn ".ph4.gz" then
+    Ph4.(read_one, read_one_zip, get_name)
+  else failwith ("Get_mol.mol_reader_for_file: not \
+                  {.mol2[.gz]|.sdf[.gz]|.smi[.gz]|.ph4[.gz]}: " ^ fn)
 
 let populate_db db input_fn =
-  let read_one_mol, read_mol_name = mol_reader_for_file input_fn in
+  let read_one_mol, read_one_mol_zip, read_mol_name = mol_reader_for_file input_fn in
   let count = ref 0 in
-  LO.with_in_file input_fn (fun input ->
-      try
-        while true do
-          let m = read_one_mol input in
-          Log.debug "m: %s" m;
-          let name = read_mol_name m in
-          Log.debug "name: %s" name;
-          DB.add db name m;
-          incr count;
-          if (!count mod 10_000) = 0 then
-            eprintf "read %d\r%!" !count;
-        done
-      with End_of_file -> DB.sync db
-    )
+  if S.ends_with input_fn ".gz" then
+    let input = Gzip.open_in input_fn in
+    try
+      while true do
+        let m = read_one_mol_zip input in
+        Log.debug "m: %s" m;
+        let name = read_mol_name m in
+        Log.debug "name: %s" name;
+        DB.add db name m;
+        incr count;
+        if (!count mod 10_000) = 0 then
+          eprintf "read %d\r%!" !count;
+      done
+    with End_of_file ->
+      (DB.sync db;
+       Gzip.close_in input)
+  else
+    LO.with_in_file input_fn (fun input ->
+        try
+          while true do
+            let m = read_one_mol input in
+            Log.debug "m: %s" m;
+            let name = read_mol_name m in
+            Log.debug "name: %s" name;
+            DB.add db name m;
+            incr count;
+            if (!count mod 10_000) = 0 then
+              eprintf "read %d\r%!" !count;
+          done
+        with End_of_file -> DB.sync db
+      )
 
 (* almost copy/paste of populate_db above ... *)
 let populate_ht names input_fn =
   let required_names = StringSet.of_list names in
   let nb_names = StringSet.cardinal required_names in
   let collected = Ht.create nb_names in
-  let read_one_mol, read_mol_name = mol_reader_for_file input_fn in
+  let read_one_mol, read_one_mol_zip, read_mol_name = mol_reader_for_file input_fn in
   let count = ref 0 in
-  LO.with_in_file input_fn (fun input ->
-      try
-        while true do
-          let m = read_one_mol input in
-          Log.debug "m: %s" m;
-          let name = read_mol_name m in
-          Log.debug "name: %s" name;
-          if StringSet.mem name required_names then
-            Ht.add collected name m;
-          incr count;
-          if (!count mod 10_000) = 0 then
-            eprintf "read %d\r%!" !count;
-        done
-      with End_of_file -> ()
-    );
+  (if S.ends_with input_fn ".gz" then
+     let input = Gzip.open_in input_fn in
+     try
+       while true do
+         let m = read_one_mol_zip input in
+         Log.debug "m: %s" m;
+         let name = read_mol_name m in
+         Log.debug "name: %s" name;
+         if StringSet.mem name required_names then
+           Ht.add collected name m;
+         incr count;
+         if (!count mod 10_000) = 0 then
+           eprintf "read %d\r%!" !count;
+       done
+     with End_of_file -> Gzip.close_in input
+   else
+     LO.with_in_file input_fn (fun input ->
+         try
+           while true do
+             let m = read_one_mol input in
+             Log.debug "m: %s" m;
+             let name = read_mol_name m in
+             Log.debug "name: %s" name;
+             if StringSet.mem name required_names then
+               Ht.add collected name m;
+             incr count;
+             if (!count mod 10_000) = 0 then
+               eprintf "read %d\r%!" !count;
+           done
+         with End_of_file -> ()
+       )
+  );
   collected
 
 let db_open_or_create verbose force input_fn =
