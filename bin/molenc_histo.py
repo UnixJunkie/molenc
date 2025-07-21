@@ -5,6 +5,10 @@
 
 import sys
 
+if len(sys.argv) == 1:
+    print("usage: molenc_histo.py INPUT_FILE NUM_STEPS", file=sys.stderr)
+    exit(1)
+
 input_fn = sys.argv[1]
 num_steps = float(int(sys.argv[2]))
 
