@@ -4,8 +4,6 @@
 
 import argparse, sys
 
-#      --norm: normalize output histogram; default = False
-
 if __name__ == '__main__':
     default_steps = 50
     # <CLI parsing> -----------------------------------------------------------
@@ -27,6 +25,9 @@ if __name__ == '__main__':
     parser.add_argument('--drop', dest='drop_values',
                         action='store_true', default=False,
                         help = "drop values outside bounds")
+    parser.add_argument('--norm', dest='normalize',
+                        action='store_true', default=False,
+                        help = "normalize histogram")
     # parse CLI
     if len(sys.argv) == 1:
         # show help in case user has no clue of what to do
@@ -45,6 +46,7 @@ if __name__ == '__main__':
     mini = args.min_val
     maxi = args.max_val
     drop_values = args.drop_values
+    normalize = args.normalize
     # </CLI parsing> ----------------------------------------------------------
 
     with open(output_fn, 'w') as output:
@@ -55,7 +57,8 @@ if __name__ == '__main__':
             x = float(strip)
             if drop_values and x >= mini and x <= maxi:
                 floats.append(x)
-        assert(len(floats) > 0)
+        total = len(floats)
+        assert(total > 0)
 
         min_val = min(floats)
         max_val = max(floats)
@@ -97,6 +100,9 @@ if __name__ == '__main__':
         while x <= max_val + delta:
             x_val = min_val + float(i) * delta
             y_val = histo[i]
-            print('%f %d' % (x_val, y_val), file=output)
+            if normalize:
+                print('%f %f' % (x_val, float(y_val)/float(total)), file=output)
+            else:
+                print('%f %d' % (x_val, y_val), file=output)
             x += delta
             i += 1
