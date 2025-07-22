@@ -85,7 +85,7 @@ def alien_diagnose(i, name, MolW, cLogP, TPSA, RotB, HBA, HBD, FC):
 def main():
     # CLI options parsing
     parser = argparse.ArgumentParser(
-        description = "Project molecules read from a SMILES file into an 8D \
+        description = "Project molecules read from a SMILES file into an 10D \
         space whose dimensions are molecular descriptors: \
         (MolW, HA, cLogP, AR, MR, TPSA, RotB, HBA, HBD, FC)")
     parser.add_argument("-i", metavar = "input_smi", dest = "input_smi",
