@@ -4,6 +4,8 @@
 
 import argparse, sys
 
+#      --norm: normalize output histogram; default = False
+
 if __name__ == '__main__':
     default_steps = 50
     # <CLI parsing> -----------------------------------------------------------
@@ -22,6 +24,9 @@ if __name__ == '__main__':
     parser.add_argument("-max", metavar = "max_val", dest = "max_val",
                         help = "maximum value (default=auto)",
                         default=-sys.float_info.max, type=float)
+    parser.add_argument('--drop', dest='drop_values',
+                        action='store_true', default=False,
+                        help = "drop values outside bounds")
     # parse CLI
     if len(sys.argv) == 1:
         # show help in case user has no clue of what to do
@@ -39,6 +44,7 @@ if __name__ == '__main__':
     num_steps = float(int(args.num_steps))
     mini = args.min_val
     maxi = args.max_val
+    drop_values = args.drop_values
     # </CLI parsing> ----------------------------------------------------------
 
     with open(output_fn, 'w') as output:
@@ -47,7 +53,8 @@ if __name__ == '__main__':
         for line in open(input_fn).readlines():
             strip = line.strip()
             x = float(strip)
-            floats.append(x)
+            if drop_values and x >= mini and x <= maxi:
+                floats.append(x)
         assert(len(floats) > 0)
 
         min_val = min(floats)
