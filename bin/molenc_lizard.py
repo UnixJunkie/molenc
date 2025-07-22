@@ -87,7 +87,7 @@ def main():
     parser = argparse.ArgumentParser(
         description = "Project molecules read from a SMILES file into an 8D \
         space whose dimensions are molecular descriptors: \
-        (MolW, HA, cLogP, MR, TPSA, RotB, HBA, HBD, FC)")
+        (MolW, HA, cLogP, AR, MR, TPSA, RotB, HBA, HBD, FC)")
     parser.add_argument("-i", metavar = "input_smi", dest = "input_smi",
                         help = "input SMILES file")
     parser.add_argument("-o", metavar = "output_csv", dest = "output_csv",
@@ -136,9 +136,9 @@ def main():
                     print("WARN: %s" % alien_str, file=sys.stderr)
                     alien_count += 1
                 if (not alien) or (not rm_aliens):
-                    csv_line = "%s,%g,%d,%g,%d,%g,%g,%d,%d,%d,%d" % \
-                               (name, MolW, HA, cLogP, AR, MR, TPSA, RotB,
-                                HBA, HBD, FC)
+                    csv_line = "%s,%g,%d,%g,%d,%g,%g,%d,%d,%d,%d,%d" % \
+                        (name, MolW, HA, cLogP, AR, MR, TPSA, RotB,
+                         HBA, HBD, FC)
                     print(csv_line, file=out_file)
                     out_count += 1
     total_count = out_count + error_count
