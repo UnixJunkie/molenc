@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 #
-# Extract given tags from an SDF file
-# could also be called sdf2csv
+# Extract given tags from an SDF file (sdf2csv)
 
 import argparse, gzip, rdkit, sys
 from rdkit import Chem
