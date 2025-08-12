@@ -25,7 +25,7 @@ def get_props(m, tags):
 if __name__ == '__main__':
     # CLI options parsing
     parser = argparse.ArgumentParser(
-        description = "compute atom types and distances")
+        description = "Extract listed properties from SDF file")
     parser.add_argument("-i", metavar = "input.sdf[.gz]", dest = "input_fn",
                         help = "molecules input file")
     parser.add_argument("-o", metavar = "output.txt", dest = "output_fn",
