@@ -15,7 +15,7 @@ if __name__ == '__main__':
                         help = "output file for gnuplot histeps")
     parser.add_argument("-n", metavar = "num_steps", dest = "num_steps",
                         help = "number of histogram steps (default=%d)" %
-                        default_steps)
+                        default_steps, default = default_steps)
     parser.add_argument("-min", metavar = "min_val", dest = "min_val",
                         help = "minimum value (default=auto)",
                         default=sys.float_info.max, type=float)
@@ -55,7 +55,9 @@ if __name__ == '__main__':
         for line in open(input_fn).readlines():
             strip = line.strip()
             x = float(strip)
-            if drop_values and x >= mini and x <= maxi:
+            if not drop_values:
+                floats.append(x)
+            elif (x >= mini and x <= maxi):
                 floats.append(x)
         total = len(floats)
         assert(total > 0)
@@ -63,10 +65,10 @@ if __name__ == '__main__':
         min_val = min(floats)
         max_val = max(floats)
         # if user provided bounds; we don't allow going over them
-        if min_val < mini:
+        if drop_values and min_val < mini:
             print("FATAL: actual min < min_val: %f < %f" % (min_val, mini), file=sys.stderr)
             exit(1)
-        if max_val > maxi:
+        if drop_values and max_val > maxi:
             print("FATAL: actual max > max_val: %f > %f" % (max_val, maxi), file=sys.stderr)
             exit(1)
         # for consistent histograms, the user will specify bounds
