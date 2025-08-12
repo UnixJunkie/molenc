@@ -13,5 +13,6 @@ sdf = Chem.SDMolSupplier(args.inputfile)
 writer = SmilesWriter(args.outputfile, delimiter='\t', includeHeader=False)
 
 for mol in sdf:
-  writer.write(mol)
+  if mol is not None:
+    writer.write(mol)
 writer.close()
