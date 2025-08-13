@@ -33,12 +33,16 @@ let main () =
   let tags_list = S.split_on_char ',' tags in
   let tags_set = StringSet.of_list tags_list in
   let num_tags = L.length tags_list in
-  (* FBR:TODO compressed input *)
   let tag2values = Ht.create num_tags in
   L.iter (fun tag ->
       Ht.add tag2values tag []
     ) tags_list;
-  let input = open_in input_fn in
+  let input =
+    if S.ends_with input_fn ".gz" then
+      let cmd = sprintf "zcat %s" input_fn in
+      Unix.open_process_in cmd
+    else
+      open_in input_fn in
   (try
      while true do
        let line = input_line input in
