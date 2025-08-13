@@ -38,23 +38,22 @@ let main () =
   L.iter (fun tag ->
       Ht.add tag2values tag []
     ) tags_list;
-  LO.with_in_file input_fn (fun input ->
-      try
-        while true do
-          let line = input_line input in
-          if S.length line > 0 && String.unsafe_get line 0 = '>' then
-            let _i = Str.search_forward sdf_tag_regexp line 0 in
-            let tag = Str.matched_group 1 line in
-            if StringSet.mem tag tags_set then
-              let prev = Ht.find tag2values tag in
-              (* the next line in the SDF has the actual value for that tag *)
-              let value = input_line input in
-              Ht.add tag2values tag (value :: prev)
-        done
-      with End_of_file -> ()
-      (* close pipe? *)
-      (* remove pipe file? *)
-    );
+  let input = open_in input_fn in
+  (try
+     while true do
+       let line = input_line input in
+       if S.length line > 0 && String.unsafe_get line 0 = '>' then
+         let _i = Str.search_forward sdf_tag_regexp line 0 in
+         let tag = Str.matched_group 1 line in
+         if StringSet.mem tag tags_set then
+           let prev = Ht.find tag2values tag in
+           (* the next line in the SDF has the actual value for that tag *)
+           let value = input_line input in
+           Ht.add tag2values tag (value :: prev)
+     done
+   with End_of_file -> close_in input
+  );
+  (* remove pipe file? *)
   let expected = match tags_list with
     | [] -> failwith "Get_sdf_tag.main: empty list of tags"
     | tag0 :: _tags -> L.length (Ht.find tag2values tag0) in
