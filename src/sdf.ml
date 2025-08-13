@@ -8,6 +8,7 @@ let line_buffer = Buffer.create 1024
 
 (* Gzip.input_line does not exist yet:
    https://github.com/xavierleroy/camlzip/issues/51
+   WARNING: very inefficient
 *)
 let gzip_input_line (input: Gzip.in_channel): string =
   try
