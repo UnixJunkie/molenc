@@ -17,8 +17,8 @@ let main () =
   let argc, args = CLI.init () in
   if argc = 1 then
     (eprintf "usage:\n\
-              %s -i molecules.sdf[.gz] -o molecules.csv -t tag1[,tag2[,...]\n
-              -i <filename>: (optionally compressed) SDF input file\n  \
+              %s -i molecules.sdf[.gz] -o molecules.csv -t tag1[,tag2[,...]\n  \
+              -i <filename>: SDF (or .sdf.gz) input file\n  \
               -o <filename>: CSV output file\n  \
               -t <string>: comma-separated list of tags to extract\n"
        Sys.argv.(0);
@@ -42,7 +42,7 @@ let main () =
       try
         while true do
           let line = input_line input in
-          if S.length line > 0 && String.unsafe_get line 0 == '>' then
+          if S.length line > 0 && String.unsafe_get line 0 = '>' then
             let _i = Str.search_forward sdf_tag_regexp line 0 in
             let tag = Str.matched_group 1 line in
             if StringSet.mem tag tags_set then
@@ -81,3 +81,5 @@ let main () =
         output_char output '\n' (* EOL *)
       done
     )
+
+let () = main ()
