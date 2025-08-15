@@ -24,7 +24,7 @@ from rdkit import Chem, DataStructs
 from rdkit.Chem import rdFingerprintGenerator
 from sklearn.gaussian_process import GaussianProcessClassifier
 from sklearn.gaussian_process.kernels import RBF
-from sklearn.metrics import roc_auc_score
+from sklearn.metrics import roc_auc_score, roc_curve
 
 def hour_min_sec() -> tuple[float, float, float]:
     tm = time.localtime()
@@ -141,21 +141,6 @@ def dump_score_labels(output_fn: str,
         for score, label in zip(probas, labels):
             print('%f\t%d' % (score, label), file=output)
 
-# use the croc-curve command to compute the ROC curve then return its AUC
-def roc_curve(in_score_labels_fn: str,
-              out_curve_fn: str) -> float:
-    out_auc_fn = out_curve_fn + ".auc"
-    cmd = "croc-curve < %s >%s 2>%s" % (in_score_labels_fn, out_curve_fn, out_auc_fn)
-    ret = os.system(cmd)
-    assert(ret == 0)
-    auc = float('nan')
-    with open(out_auc_fn) as input:
-        line = input.readline()
-        strip = line.strip()
-        tokens = strip.split()
-        auc = float(tokens[4])
-    return auc
-
 def temp_file(prfx, sfx):
     _, temp_fn = tempfile.mkstemp(prefix=prfx, suffix=sfx)
     return temp_fn
@@ -232,14 +217,14 @@ def gpc_train_test_NxCV(all_lines, cv_folds):
     return (truth, proba_preds)
 
 def show_roc_curve(plot_title, pred_probas, true_labels):
-    score_labels_fn = temp_file("gpc_", ".score_labels")
     auc_curve_fn = temp_file("gpc_", ".roc")
-    dump_score_labels(score_labels_fn, pred_probas, true_labels)
-    _croc_curve_auc = roc_curve(score_labels_fn, auc_curve_fn)
     # print('DEBUG: ROC AUC file: %s' % auc_curve_fn)
+    fpr, tpr, _thresholds = roc_curve(true_labels, pred_probas, pos_label=1)
+    with open(auc_curve_fn, 'wt') as output:
+        for fp, tp in zip(fpr, tpr):
+            print("%g %g" % (fp, tp), file=output)
     gnuplot(plot_title, auc_curve_fn)
     # cleanup
-    os.remove(score_labels_fn)
     os.remove(auc_curve_fn)
 
 if __name__ == '__main__':
