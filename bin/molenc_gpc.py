@@ -8,13 +8,13 @@
 # input line format: '^SMILES\t[active]MOLNAME$'
 
 import argparse
-import joblib
+import joblib # type: ignore
 import math
 import numpy as np
 import os
 import random
 import rdkit
-import sklearn
+import sklearn # type: ignore
 import sys
 import tempfile
 import time
@@ -22,9 +22,9 @@ import typing
 
 from rdkit import Chem, DataStructs
 from rdkit.Chem import rdFingerprintGenerator
-from sklearn.gaussian_process import GaussianProcessClassifier
-from sklearn.gaussian_process.kernels import RBF
-from sklearn.metrics import roc_auc_score, roc_curve
+from sklearn.gaussian_process import GaussianProcessClassifier # type: ignore
+from sklearn.gaussian_process.kernels import RBF # type: ignore
+from sklearn.metrics import roc_auc_score, roc_curve # type: ignore
 
 def hour_min_sec() -> tuple[float, float, float]:
     tm = time.localtime()
@@ -175,14 +175,25 @@ def ecfpX_of_mol(mol: rdkit.Chem.rdchem.Mol, radius) -> np.ndarray:
     # arr: np.ndarray of int64 w/ length 2048
     return arr
 
+def counted_atom_pairs_of_mol(mol):
+    generator = rdFingerprintGenerator.GetAtomPairGenerator(fpSize=8192, countSimulation=True)
+    fp = generator.GetFingerprint(mol)
+    arr = np.zeros((1,), int)
+    DataStructs.ConvertToNumpyArray(fp, arr)
+    return arr
+
 def ecfp4_of_mol(mol):
     return ecfpX_of_mol(mol, 2)
 
 # parse SMILES, ignore names, read pIC50s then encode molecules w/ ECFP4 2048b
 # return (X_train, y_train)
-def read_SMILES_lines_class(lines):
+def read_SMILES_lines_class(lines, use_CAP=False):
     mols, names, labels = parse_smiles_lines(lines)
-    X_train = np.array([ecfp4_of_mol(mol) for mol in mols])
+    X_train = None
+    if use_CAP:
+        X_train = np.array([counted_atom_pairs_of_mol(mol) for mol in mols])
+    else:
+        X_train = np.array([ecfp4_of_mol(mol) for mol in mols])
     y_train = np.array(labels)
     return (X_train, names, y_train)
 
@@ -199,14 +210,14 @@ def gpc_train(X_train, y_train, seed=0):
     gpc.fit(X_train, y_train)
     return gpc
 
-def gpc_train_test_NxCV(all_lines, cv_folds):
+def gpc_train_test_NxCV(all_lines, cv_folds, use_CAP):
     truth = []
     proba_preds = []
     fold = 0
     train_tests = list_split(all_lines, cv_folds)
     for train_set, test_set in train_tests:
-        X_train, _names_train, y_train = read_SMILES_lines_class(train_set)
-        X_test, _names_test, y_ref = read_SMILES_lines_class(test_set)
+        X_train, _names_train, y_train = read_SMILES_lines_class(train_set, use_CAP)
+        X_test, _names_test, y_ref = read_SMILES_lines_class(test_set, use_CAP)
         model = gpc_train(X_train, y_train)
         truth = truth + list(y_ref)
         pred_probas = predict_probas(model, X_test)
@@ -260,6 +271,11 @@ if __name__ == '__main__':
                         dest = 'no_compress',
                         default = False,
                         help = 'turn off saved model compression')
+    parser.add_argument('--CAP',
+                        action = "store_true",
+                        dest = 'use_CAP',
+                        default = False,
+                        help = 'use counted atom pairs instead of ECFP4')
     parser.add_argument('--no-plot',
                         action = "store_true",
                         dest = 'no_plot',
@@ -310,6 +326,7 @@ if __name__ == '__main__':
     assert(0.0 <= train_p <= 1.0)
     no_compress = args.no_compress
     no_plot = args.no_plot
+    use_CAP = args.use_CAP
     # work ---------------------------------------------------------
     # read input
     all_lines = lines_of_file(input_fn)
@@ -324,8 +341,8 @@ if __name__ == '__main__':
     test_lines = []
     if cv_folds == 1:
         train_lines, test_lines = train_test_split(train_p, all_lines)
-        X_train, names_train, y_train = read_SMILES_lines_class(train_lines)
-        X_test, names_test, y_test = read_SMILES_lines_class(test_lines)
+        X_train, names_train, y_train = read_SMILES_lines_class(train_lines, use_CAP)
+        X_test, names_test, y_test = read_SMILES_lines_class(test_lines, use_CAP)
         assert(len(X_train) == len(names_train) == len(y_train))
         assert(len(X_test) == len(names_test) == len(y_test))
         if model_input_fn != '':
@@ -364,7 +381,7 @@ if __name__ == '__main__':
                     (auc, input_fn))
     else:
         assert(cv_folds > 1)
-        true_labels, preds = gpc_train_test_NxCV(all_lines, cv_folds)
+        true_labels, preds = gpc_train_test_NxCV(all_lines, cv_folds, use_CAP)
         assert(len(true_labels) == len(preds))
         auc = roc_auc_score(true_labels, preds)
         auc_msg = 'GPC folds=%d AUC=%.3f fn=%s' % (cv_folds, auc, input_fn)
