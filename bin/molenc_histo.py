@@ -15,7 +15,7 @@ if __name__ == '__main__':
                         help = "output file for gnuplot histeps")
     parser.add_argument("-n", metavar = "num_steps", dest = "num_steps",
                         help = "number of histogram steps (default=%d)" %
-                        default_steps, default = default_steps)
+                        default_steps, default = default_steps, type=int)
     parser.add_argument("-min", metavar = "min_val", dest = "min_val",
                         help = "minimum value (default=auto)",
                         default=sys.float_info.max, type=float)
@@ -42,7 +42,7 @@ if __name__ == '__main__':
 
     input_fn = args.input_fn
     output_fn = args.output_fn
-    num_steps = float(int(args.num_steps))
+    num_steps = float(args.num_steps)
     mini = args.min_val
     maxi = args.max_val
     drop_values = args.drop_values
