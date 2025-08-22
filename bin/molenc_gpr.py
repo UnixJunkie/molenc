@@ -9,31 +9,31 @@
 # line format: SMILES\tMOLNAME\tpIC50
 
 import argparse
-import gpflow
-import joblib
+import gpflow # type: ignore
+import joblib # type: ignore
 import math
 import numpy as np
 import os
 import random
 import rdkit
-import scipy
-import sklearn
+import scipy # type: ignore
+import sklearn # type: ignore
 import sys
 import tempfile
-import tensorflow as tf
+import tensorflow as tf # type: ignore
 import time
 import typing
 
-from gpflow.mean_functions import Constant
-from gpflow.utilities import positive
-from gpflow.utilities.ops import broadcasting_elementwise
+from gpflow.mean_functions import Constant # type: ignore
+from gpflow.utilities import positive # type: ignore
+from gpflow.utilities.ops import broadcasting_elementwise # type: ignore
 from rdkit import Chem, DataStructs
 from rdkit.Chem import rdFingerprintGenerator
 from scipy import sparse
-from sklearn.metrics import r2_score
+from sklearn.metrics import r2_score # type: ignore
 # from sklearn.metrics import root_mean_squared_error
 from sklearn.metrics import mean_squared_error # if root_mean_squared_error is not available
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler # type: ignore
 
 # sklearn.metrics.root_mean_squared_error
 def root_mean_squared_error(y_true, y_pred):
@@ -251,14 +251,25 @@ def ecfpX_of_mol(mol: rdkit.Chem.rdchem.Mol, radius) -> np.ndarray:
     # arr: np.ndarray of int64 w/ length 2048
     return arr
 
+def counted_atom_pairs_of_mol(mol):
+    generator = rdFingerprintGenerator.GetAtomPairGenerator(fpSize=8192, countSimulation=True)
+    fp = generator.GetFingerprint(mol)
+    arr = np.zeros((1,), int)
+    DataStructs.ConvertToNumpyArray(fp, arr)
+    return arr
+
 def ecfp4_of_mol(mol):
     return ecfpX_of_mol(mol, 2)
 
 # parse SMILES, ignore names, read pIC50s then encode molecules w/ ECFP4 2048b
 # return (X_train, y_train)
-def read_SMILES_lines_regr(lines):
+def read_SMILES_lines_regr(lines, use_CAP):
     mols, names, pIC50s = parse_smiles_lines(lines)
-    X_train = np.array([ecfp4_of_mol(mol) for mol in mols])
+    X_train = None
+    if use_CAP:
+        X_train = np.array([counted_atom_pairs_of_mol(mol) for mol in mols])
+    else:
+        X_train = np.array([ecfp4_of_mol(mol) for mol in mols])
     y_train = np.array(pIC50s)
     return (X_train, names, y_train)
 
@@ -267,14 +278,14 @@ def gpr_train(X_train, y_train):
     model.fit(X_train, y_train)
     return model
 
-def gpr_train_test_NxCV(all_lines, cv_folds):
+def gpr_train_test_NxCV(all_lines, cv_folds, use_CAP):
     truth = []
     preds = []
     fold = 0
     train_tests = list_split(all_lines, cv_folds)
     for train_set, test_set in train_tests:
-        X_train, _names_train, y_train = read_SMILES_lines_regr(train_set)
-        X_test, _names_test, y_ref = read_SMILES_lines_regr(test_set)
+        X_train, _names_train, y_train = read_SMILES_lines_regr(train_set, use_CAP)
+        X_test, _names_test, y_ref = read_SMILES_lines_regr(test_set, use_CAP)
         model = gpr_train(X_train, y_train)
         truth = truth + list(y_ref)
         y_preds = gpr_test(model, X_test)
@@ -319,6 +330,11 @@ if __name__ == '__main__':
                         dest = 'no_compress',
                         default = False,
                         help = 'turn off saved model compression')
+    parser.add_argument('--CAP',
+                        action = "store_true",
+                        dest = 'use_CAP',
+                        default = False,
+                        help = 'use counted atom pairs instead of ECFP4')
     parser.add_argument('--no-plot',
                         action = "store_true",
                         dest = 'no_plot',
@@ -375,6 +391,7 @@ if __name__ == '__main__':
     assert(0.0 <= train_p <= 1.0)
     no_compress = args.no_compress
     no_plot = args.no_plot
+    use_CAP = args.use_CAP
     # work ---------------------------------------------------------
     # read input
     all_lines = lines_of_file(input_fn)
@@ -389,8 +406,8 @@ if __name__ == '__main__':
     test_lines = []
     if cv_folds == 1:
         train_lines, test_lines = train_test_split(train_p, all_lines)
-        X_train, _names_train, y_train = read_SMILES_lines_regr(train_lines)
-        X_test, names_test, y_test = read_SMILES_lines_regr(test_lines)
+        X_train, _names_train, y_train = read_SMILES_lines_regr(train_lines, use_CAP)
+        X_test, names_test, y_test = read_SMILES_lines_regr(test_lines, use_CAP)
         if model_input_fn != '':
             log('loading model from %s' % model_input_fn)
             model = joblib.load(model_input_fn)
@@ -422,7 +439,7 @@ if __name__ == '__main__':
                     (r2, rmse, input_fn))
     else:
         assert(cv_folds > 1)
-        truth, preds = gpr_train_test_NxCV(all_lines, cv_folds)
+        truth, preds = gpr_train_test_NxCV(all_lines, cv_folds, use_CAP)
         log('truths: %d preds: %d' % (len(truth), len(preds)))
         r2 = r2_score(truth, preds)
         rmse = root_mean_squared_error(truth, preds)
