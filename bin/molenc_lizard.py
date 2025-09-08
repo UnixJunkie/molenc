@@ -114,7 +114,8 @@ def main():
     error_count = 0
     with open(output_csv, 'w') as out_file:
         if not no_header:
-            print("#name,MolW,HA,cLogP,AR,MR,TPSA,RotB,HBA,HBD,FC", file=out_file)
+            print("#name,MolW,HA,cLogP,AR,MR,TPSA,RotB,HBA,HBD,FC",
+                  file=out_file)
         for i, mol, name in RobustSmilesMolSupplier(input_smi):
             if mol is None:
                 error_count += 1
