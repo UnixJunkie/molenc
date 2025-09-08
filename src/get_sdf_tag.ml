@@ -11,7 +11,7 @@ module Log = Dolog.Log
 module S = BatString
 module StringSet = BatSet.String
 
-let sdf_tag_regexp = Str.regexp "^>  <\\(.+\\)>"
+let sdf_tag_regexp = Str.regexp "^>[ ]+<\\(.+\\)>"
 
 let main () =
   let argc, args = CLI.init () in
