@@ -4,7 +4,7 @@
   (public_name molenc)
   (modules ap_types atom_env fingerprint fpMol atom_pair mini_mol MSE_mol
            myList node piEltHA scale utls WMH norm bloom index rdkit sdf_3D gram ptable)
-  (libraries batteries camlzip dolog bst parany pyml vector3 line_oriented str))
+  (libraries batteries dolog bst parany pyml vector3 line_oriented str))
 
 ;; installed executables / public targets
 (executables

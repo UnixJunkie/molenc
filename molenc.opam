@@ -47,7 +47,6 @@ install: [
 depends: [
   "batteries" {>= "3.5.0"}
   "bst" {>= "2.0.0"}
-  "camlzip"
   "conf-graphviz"
   "conf-python-3"
   "conf-rdkit"
