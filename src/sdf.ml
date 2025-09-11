@@ -6,28 +6,6 @@ type t = string
 
 let line_buffer = Buffer.create 1024
 
-(* Gzip.input_line does not exist yet:
-   https://github.com/xavierleroy/camlzip/issues/51
-   WARNING: very inefficient
-*)
-let gzip_input_line (input: Gzip.in_channel): string =
-  try
-    let c = ref (Gzip.input_char input) in
-    while !c <> '\n' do
-      Buffer.add_char line_buffer !c;
-      c := Gzip.input_char input
-    done;
-    let res = Buffer.contents line_buffer in
-    Buffer.clear line_buffer;
-    res
-  with End_of_file ->
-    let res = Buffer.contents line_buffer in
-    Buffer.clear line_buffer;
-    if res = "" then
-      raise End_of_file
-    else
-      res
-
 exception Read_one
 
 let read_one (input: in_channel): t =
@@ -35,28 +13,6 @@ let read_one (input: in_channel): t =
   try
     while true do
       let line = input_line input in
-      if line = "$$$$" then (* end of molecule in SDF format *)
-        (Buffer.add_string buff line;
-         Buffer.add_char buff '\n';
-         raise Read_one)
-      else
-        (Buffer.add_string buff line;
-         Buffer.add_char buff '\n')
-    done;
-    assert(false)
-  with
-  | End_of_file | Read_one ->
-    let res = Buffer.contents buff in
-    if res = "" then
-      raise End_of_file
-    else
-      res
-
-let read_one_zip (input: Gzip.in_channel): t =
-  let buff = Buffer.create 10240 in
-  try
-    while true do
-      let line = gzip_input_line input in
       if line = "$$$$" then (* end of molecule in SDF format *)
         (Buffer.add_string buff line;
          Buffer.add_char buff '\n';
