@@ -31,11 +31,23 @@ let mol_reader_for_file fn =
   else failwith ("Get_mol.mol_reader_for_file: not \
                   {.mol2[.gz]|.sdf[.gz]|.smi[.gz]|.ph4[.gz]}: " ^ fn)
 
+(* like LO.with_in_file but transparently supporting .gz files *)
+let with_in_file fn f =
+  let input =
+    if S.ends_with fn ".gz" then
+      let cmd = sprintf "zcat %s" fn in
+      Log.info "running: %s" cmd;
+      Unix.open_process_in cmd
+    else
+      open_in_bin fn in
+  let res = f input in
+  close_in input;
+  res
+
 let populate_db db input_fn =
   let read_one_mol, read_mol_name = mol_reader_for_file input_fn in
   let count = ref 0 in
-  (* if S.ends_with input_fn ".gz" then *)
-  LO.with_in_file input_fn (fun input ->
+  with_in_file input_fn (fun input ->
       try
         while true do
           let m = read_one_mol input in
@@ -57,8 +69,7 @@ let populate_ht names input_fn =
   let collected = Ht.create nb_names in
   let read_one_mol, read_mol_name = mol_reader_for_file input_fn in
   let count = ref 0 in
-  (* if S.ends_with input_fn ".gz" then *)
-  LO.with_in_file input_fn (fun input ->
+  with_in_file input_fn (fun input ->
       try
         while true do
           let m = read_one_mol input in
@@ -98,7 +109,7 @@ let main () =
   let argc, args = CLI.init () in
   if argc = 1 then
     (eprintf "usage:\n\
-              %s -i molecules.{sdf[.gz]|mol2|smi|ph4} \
+              %s -i molecules.{sdf|mol2|smi|ph4}[.gz] \
               {-names \"mol1,mol2,...\"|-f names_file} [-v]\n  \
               -i <filename>: molecules input file\n  \
               [-o <filename>]: molecules output file (default=stdout)\n  \
@@ -161,6 +172,7 @@ let main () =
              let db = L.find (fun db -> DB.mem db name) dbs in
              (* extract molecule from it *)
              let m = DB.find db name in
+             (* FBR: also support compressed output files in the same way *)
              fprintf out "%s" m
            with Not_found ->
              (* no db contains this molecule *)
