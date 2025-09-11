@@ -52,9 +52,6 @@ let read_one_raw (input: in_channel): string =
       Buffer.reset buff;
       res
 
-let read_one_zip (_: Gzip.in_channel) =
-  failwith "Mol2.read_one_zip: not implemented yet"
-
 let get_name mol_lines =
   let _header, rest = S.split mol_lines ~by:"\n" in
   let name, _tail = S.split rest ~by:"\n" in

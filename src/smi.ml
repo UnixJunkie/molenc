@@ -7,9 +7,6 @@ let read_one (input: in_channel): string =
      end molecules with a '\n' *)
   (BatString.strip line) ^ "\n"
 
-let read_one_zip (_: Gzip.in_channel) =
-  failwith "Smi.read_one_zip: not implemented yet"
-
 let get_name smiles_line =
   let _smiles, name =
     try BatString.split smiles_line ~by:"\t"
