@@ -112,12 +112,13 @@ let main () =
               %s -i molecules.{sdf|mol2|smi|ph4}[.gz] \
               {-names \"mol1,mol2,...\"|-f names_file} [-v]\n  \
               -i <filename>: molecules input file\n  \
-              [-o <filename>]: molecules output file (default=stdout)\n  \
+              [-o <filename[.gz]>]: molecules output file (default=stdout)\n  \
               [-names <string>,<string>,...]: molecule names\n  \
               [-f <filename>]: get molecule names from file\n  \
               [-if <filename>,<filename>,...]: several molecule input files\n  \
               [--force]: overwrite existing db file(s), if any\n  \
-              [--no-index]: do not create db file(s)\n"
+              [--no-index]: do not create index files to accelerate \n\
+              future queries on same input files\n"
        Sys.argv.(0);
      exit 1);
   let verbose = CLI.get_set_bool ["-v"] args in
@@ -145,7 +146,13 @@ let main () =
   let nb_names = L.length names in
   let out = match maybe_output_fn with
     | None -> stdout
-    | Some output_fn -> open_out_bin output_fn in
+    | Some output_fn ->
+      if S.ends_with output_fn ".gz" then
+        let cmd = sprintf "gzip -cq > %s" output_fn in
+        Log.info "running: %s" cmd;
+        Unix.open_process_out cmd
+      else
+        open_out_bin output_fn in
   (if no_index then
      begin
        let collected = match input_fns with
