@@ -14,9 +14,6 @@ module S = BatString
 module StringSet = BatSet.String
 module Utls = Molenc.Utls
 
-let db_name_of fn =
-  fn ^ ".db"
-
 type mol_name_provider = On_cli of string
                        | From_file of string
 
@@ -64,7 +61,7 @@ let lz4_string tmp_in_fn tmp_out_fn compress_or_not s =
              then "lz4 -zcq %s > %s"
              else "lz4 -dcq %s > %s")
       tmp_in_fn tmp_out_fn in
-  Log.info "running: %s" cmd;
+  (* Log.info "running: %s" cmd; *)
   let ret = Sys.command cmd in
   if ret <> 0 then
     (Log.fatal "Get_mol.lz4_string: command %s terminated w/ %d"
@@ -137,7 +134,11 @@ let populate_ht names input_fn =
   collected
 
 let db_open_or_create verbose force compress input_fn =
-  let db_fn = db_name_of input_fn in
+  let db_fn =
+    if compress then
+      input_fn ^ ".lz4db"
+    else
+      input_fn ^ ".db" in
   (* is there a DB already? *)
   let db_exists, db =
     if force || not (Sys.file_exists db_fn) then
