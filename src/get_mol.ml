@@ -44,7 +44,7 @@ let with_in_file fn f =
   close_in input;
   res
 
-let populate_db db input_fn =
+let read_all_molecules db_add db_close input_fn =
   let read_one_mol, read_mol_name = mol_reader_for_file input_fn in
   let count = ref 0 in
   with_in_file input_fn (fun input ->
@@ -54,36 +54,31 @@ let populate_db db input_fn =
           Log.debug "m: %s" m;
           let name = read_mol_name m in
           Log.debug "name: %s" name;
-          DB.add db name m;
+          db_add name m;
           incr count;
           if (!count mod 10_000) = 0 then
             eprintf "read %d\r%!" !count;
         done
-      with End_of_file -> DB.sync db
+      with End_of_file -> db_close ()
     )
+
+let populate_db db input_fn =
+  let db_add name m =
+    DB.add db name m in
+  let db_close () =
+    DB.sync db in
+  read_all_molecules db_add db_close input_fn
 
 (* almost copy/paste of populate_db above ... *)
 let populate_ht names input_fn =
   let required_names = StringSet.of_list names in
   let nb_names = StringSet.cardinal required_names in
   let collected = Ht.create nb_names in
-  let read_one_mol, read_mol_name = mol_reader_for_file input_fn in
-  let count = ref 0 in
-  with_in_file input_fn (fun input ->
-      try
-        while true do
-          let m = read_one_mol input in
-          Log.debug "m: %s" m;
-          let name = read_mol_name m in
-          Log.debug "name: %s" name;
-          if StringSet.mem name required_names then
-            Ht.add collected name m;
-          incr count;
-          if (!count mod 10_000) = 0 then
-            eprintf "read %d\r%!" !count;
-        done
-      with End_of_file -> ()
-    );
+  let db_add name m =
+    if StringSet.mem name required_names then
+      Ht.add collected name m in
+  let db_close () = () in
+  read_all_molecules db_add db_close input_fn;
   collected
 
 let db_open_or_create verbose force input_fn =
@@ -179,7 +174,6 @@ let main () =
              let db = L.find (fun db -> DB.mem db name) dbs in
              (* extract molecule from it *)
              let m = DB.find db name in
-             (* FBR: also support compressed output files in the same way *)
              fprintf out "%s" m
            with Not_found ->
              (* no db contains this molecule *)
