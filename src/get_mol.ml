@@ -5,6 +5,7 @@ open Printf
 
 module CLI = Minicli.CLI
 module DB = Dokeysto.Db.RW
+module Fn = Filename
 module Ht = BatHashtbl
 module L = BatList
 module LO = Line_oriented
@@ -48,12 +49,44 @@ let with_in_file fn f =
 let cat_mols mols =
   String.concat "" (L.rev mols)
 
+(* read input channel in full *)
+let string_of_in_chan c =
+  really_input_string c (in_channel_length c)
+
+let lz4_string tmp_in_fn tmp_out_fn compress_or_not s =
+  (* dump string to file *)
+  LO.with_out_file tmp_in_fn (fun out ->
+      output_string out s
+    );
+  (* compress/decompress *)
+  let cmd =
+    sprintf (if compress_or_not
+             then "lz4 -zcq %s > %s"
+             else "lz4 -dcq %s > %s")
+      tmp_in_fn tmp_out_fn in
+  Log.info "running: %s" cmd;
+  let ret = Sys.command cmd in
+  if ret <> 0 then
+    (Log.fatal "Get_mol.lz4_string: command %s terminated w/ %d"
+       cmd ret;
+     exit 1)
+  else
+    (* read lz4 output *)
+    LO.with_in_file tmp_out_fn string_of_in_chan
+
 (* consecutive molecules w/ same name are stored under the same entry *)
-let read_all_molecules db_add db_close input_fn =
+let read_all_molecules compress db_add db_close input_fn =
   let read_one_mol, read_mol_name = mol_reader_for_file input_fn in
   let count = ref 0 in
   let mols = ref [] in
   let prev_name = ref "" in
+  let tmp_in_fn, tmp_out_fn, lz4 =
+    if compress then
+      let tmp_in_fn = Fn.temp_file ~temp_dir:"/tmp" "get_mol_" "" in
+      let tmp_out_fn = Fn.temp_file ~temp_dir:"/tmp" "get_mol_" ".lz4" in
+      (tmp_in_fn, tmp_out_fn, lz4_string tmp_in_fn tmp_out_fn true)
+    else
+      ("", "", fun x -> x) in
   with_in_file input_fn (fun input ->
       try
         while true do
@@ -64,7 +97,7 @@ let read_all_molecules db_add db_close input_fn =
           (if name <> !prev_name then
              begin
                if !mols <> [] then
-                 db_add !prev_name (cat_mols !mols)
+                 db_add !prev_name (lz4 (cat_mols !mols))
                ;
                mols := [m];
                prev_name := name
@@ -77,16 +110,18 @@ let read_all_molecules db_add db_close input_fn =
             eprintf "read %d\r%!" !count;
         done;
         if !mols <> [] then
-          db_add !prev_name (cat_mols !mols)
+          db_add !prev_name (lz4 (cat_mols !mols))
       with End_of_file -> db_close ()
-    )
+    );
+  if tmp_in_fn <> "" then Unix.unlink tmp_in_fn;
+  if tmp_out_fn <> "" then Unix.unlink tmp_out_fn
 
-let populate_db db input_fn =
+let populate_db compress db input_fn =
   let db_add name m =
     DB.add db name m in
   let db_close () =
     DB.sync db in
-  read_all_molecules db_add db_close input_fn
+  read_all_molecules compress db_add db_close input_fn
 
 (* almost copy/paste of populate_db above ... *)
 let populate_ht names input_fn =
@@ -97,10 +132,11 @@ let populate_ht names input_fn =
     if StringSet.mem name required_names then
       Ht.add collected name m in
   let db_close () = () in
-  read_all_molecules db_add db_close input_fn;
+  (* for an in-RAM ht, never compress *)
+  read_all_molecules false db_add db_close input_fn;
   collected
 
-let db_open_or_create verbose force input_fn =
+let db_open_or_create verbose force compress input_fn =
   let db_fn = db_name_of input_fn in
   (* is there a DB already? *)
   let db_exists, db =
@@ -112,7 +148,7 @@ let db_open_or_create verbose force input_fn =
     else
       (Log.warn "reusing %s" db_fn;
        (true, DB.open_existing db_fn)) in
-  if not db_exists then populate_db db input_fn;
+  if not db_exists then populate_db compress db input_fn;
   if verbose then
     DB.iter (fun k v ->
         Log.debug "k: %s v: %s" k v
@@ -131,8 +167,9 @@ let main () =
               [-f <filename>]: get molecule names from file\n  \
               [-if <filename>,<filename>,...]: several molecule input files\n  \
               [--force]: overwrite existing db file(s), if any\n  \
-              [--no-index]: do not create index files to accelerate \n\
-              future queries on same input files\n"
+              [--no-index]: do not create index files to accelerate\n  \
+              future queries on same input files\n\
+              [-z]: toggle unlz4/lz4 compression of values from/to cache files\n"
        Sys.argv.(0);
      exit 1);
   let verbose = CLI.get_set_bool ["-v"] args in
@@ -148,6 +185,7 @@ let main () =
   let maybe_output_fn = CLI.get_string_opt ["-o"] args in
   let force_db_creation = CLI.get_set_bool ["--force"] args in
   let no_index = CLI.get_set_bool ["--no-index"] args in
+  let compress = CLI.get_set_bool ["-z"] args in
   let names_provider = match CLI.get_string_opt ["-names"] args with
     | Some names -> On_cli names
     | None ->
@@ -186,23 +224,35 @@ let main () =
      end
    else
      begin
-       let dbs = L.map (db_open_or_create verbose force_db_creation) input_fns in
+       let tmp_in_fn, tmp_out_fn, unlz4 =
+         if compress then
+           let tmp_in_fn = Fn.temp_file ~temp_dir:"/tmp" "get_mol_" ".lz4" in
+           let tmp_out_fn = Fn.temp_file ~temp_dir:"/tmp" "get_mol_" "" in
+           (tmp_in_fn, tmp_out_fn, lz4_string tmp_in_fn tmp_out_fn false)
+         else
+           ("", "", fun x -> x) in
+       let dbs =
+         L.map
+           (db_open_or_create verbose force_db_creation compress)
+           input_fns in
        L.iter (fun name ->
            try
              (* find containing db, if any *)
              let db = L.find (fun db -> DB.mem db name) dbs in
              (* extract molecule from it *)
-             let m = DB.find db name in
+             let m = unlz4 (DB.find db name) in
              fprintf out "%s" m
            with Not_found ->
              (* no db contains this molecule *)
              Log.warn "not found: %s" name
          ) names;
-       L.iter DB.close dbs
+       L.iter DB.close dbs;
+       if tmp_in_fn <> "" then Unix.unlink tmp_in_fn;
+       if tmp_out_fn <> "" then Unix.unlink tmp_out_fn
      end
   );
-  (match maybe_output_fn with
-   | Some _fn -> close_out out
-   | None -> ())
+  match maybe_output_fn with
+  | Some _fn -> close_out out
+  | None -> ()
 
 let () = main ()
