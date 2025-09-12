@@ -44,9 +44,16 @@ let with_in_file fn f =
   close_in input;
   res
 
+(* several consecutive molecules w/ same name as a large string *)
+let cat_mols mols =
+  String.concat "" (L.rev mols)
+
+(* consecutive molecules w/ same name are stored under the same entry *)
 let read_all_molecules db_add db_close input_fn =
   let read_one_mol, read_mol_name = mol_reader_for_file input_fn in
   let count = ref 0 in
+  let mols = ref [] in
+  let prev_name = ref "" in
   with_in_file input_fn (fun input ->
       try
         while true do
@@ -54,11 +61,23 @@ let read_all_molecules db_add db_close input_fn =
           Log.debug "m: %s" m;
           let name = read_mol_name m in
           Log.debug "name: %s" name;
-          db_add name m;
+          (if name <> !prev_name then
+             begin
+               if !mols <> [] then
+                 db_add !prev_name (cat_mols !mols)
+               ;
+               mols := [m];
+               prev_name := name
+             end
+           else
+             mols := m :: !mols
+          );
           incr count;
           if (!count mod 10_000) = 0 then
             eprintf "read %d\r%!" !count;
-        done
+        done;
+        if !mols <> [] then
+          db_add !prev_name (cat_mols !mols)
       with End_of_file -> db_close ()
     )
 
