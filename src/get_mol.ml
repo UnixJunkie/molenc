@@ -166,10 +166,11 @@ let main () =
               [-o <filename[.gz]>]: molecules output file (default=stdout)\n  \
               [-names <string>,<string>,...]: molecule names\n  \
               [-f <filename>]: get molecule names from file\n  \
-              [-if <filename>,<filename>,...]: several molecule input files\n  \
+              [-nf <filename>]: output unfound molecule names to file\n  \
+              [-if <filename>]: read molecule input file names from file\n  \
               [--force]: overwrite existing db file(s), if any\n  \
               [--no-index]: do not create index files to accelerate\n  \
-              future queries on same input files\n\
+              future queries on same input files\n\  \
               [-z]: toggle unlz4/lz4 compression of values from/to cache files\n"
        Sys.argv.(0);
      exit 1);
@@ -182,8 +183,16 @@ let main () =
     | (None, None) -> failwith "Get_mol: provide either -i or -if"
     | (Some _, Some _) -> failwith "Get_mol: both -i and -if"
     | (Some fn, None) -> [fn]
-    | (None, Some filenames) -> S.split_on_string filenames ~by:"," in
+    | (None, Some fn) -> LO.lines_of_file fn in
   let maybe_output_fn = CLI.get_string_opt ["-o"] args in
+  let maybe_not_found_fn = CLI.get_string_opt ["-nf"] args in
+  let not_found_names = ref StringSet.empty in
+  let not_found =
+    match maybe_not_found_fn with
+    | None -> (fun name -> Log.warn "not found: %s" name)
+    | Some _fn -> (fun name ->
+        not_found_names := StringSet.add name !not_found_names
+      ) in
   let force_db_creation = CLI.get_set_bool ["--force"] args in
   let no_index = CLI.get_set_bool ["--no-index"] args in
   let compress = CLI.get_set_bool ["-z"] args in
@@ -219,8 +228,7 @@ let main () =
            try (* extract molecule *)
              let m = Ht.find collected name in
              fprintf out "%s" m
-           with Not_found ->
-             Log.warn "not found: %s" name
+           with Not_found -> not_found name
          ) names
      end
    else
@@ -245,15 +253,26 @@ let main () =
              fprintf out "%s" m
            with Not_found ->
              (* no db contains this molecule *)
-             Log.warn "not found: %s" name
+             not_found name
          ) names;
        L.iter DB.close dbs;
        if tmp_in_fn <> "" then Unix.unlink tmp_in_fn;
        if tmp_out_fn <> "" then Unix.unlink tmp_out_fn
      end
   );
-  match maybe_output_fn with
-  | Some _fn -> close_out out
-  | None -> ()
+  (match maybe_output_fn with
+   | Some _fn -> close_out out
+   | None -> ()
+  );
+  (* dump not found names to file *)
+  (match maybe_not_found_fn with
+   | None -> ()
+   | Some fn ->
+     LO.with_out_file fn (fun out ->
+         StringSet.iter (fun name ->
+             fprintf out "%s\n" name
+           ) !not_found_names
+       )
+  )
 
 let () = main ()
