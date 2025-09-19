@@ -106,9 +106,12 @@ let read_all_molecules compress db_add db_close input_fn =
           if (!count mod 10_000) = 0 then
             eprintf "read %d\r%!" !count;
         done;
-        if !mols <> [] then
-          db_add !prev_name (lz4 (cat_mols !mols))
-      with End_of_file -> db_close ()
+      with End_of_file ->
+        begin
+          if !mols <> [] then
+            db_add !prev_name (lz4 (cat_mols !mols));
+          db_close ()
+        end
     );
   if tmp_in_fn <> "" then Unix.unlink tmp_in_fn;
   if tmp_out_fn <> "" then Unix.unlink tmp_out_fn
