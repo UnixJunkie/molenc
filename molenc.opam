@@ -51,7 +51,7 @@ depends: [
   "conf-python-3"
   "conf-rdkit"
   "cpm" {>= "9.0.0"}
-  "dokeysto"
+  "dokeysto" {>= "4.0.2"}
   "dolog" {>= "5.0.0"}
   "dune" {>= "1.11"}
   "line_oriented" {>= "1.2.0"}
