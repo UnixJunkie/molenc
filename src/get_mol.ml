@@ -4,7 +4,8 @@
 open Printf
 
 module CLI = Minicli.CLI
-module DB = Dokeysto.Db.RW
+module RW_DB = Dokeysto.Db.RW
+module RO_DB = Dokeysto.Db.RO
 module Fn = Filename
 module Ht = BatHashtbl
 module L = BatList
@@ -118,9 +119,9 @@ let read_all_molecules compress db_add db_close input_fn =
 
 let populate_db compress db input_fn =
   let db_add name m =
-    DB.add db name m in
+    RW_DB.add db name m in
   let db_close () =
-    DB.sync db in
+    RW_DB.close db in
   read_all_molecules compress db_add db_close input_fn
 
 (* almost copy/paste of populate_db above ... *)
@@ -143,21 +144,32 @@ let db_open_or_create verbose force compress input_fn =
     else
       input_fn ^ ".db" in
   (* is there a DB already? *)
-  let db_exists, db =
+  let db_exists =
     if force || not (Sys.file_exists db_fn) then
       (Log.info "creating %s" db_fn;
        Utls.rm_file db_fn;
        Utls.rm_file (db_fn ^ ".idx");
-       (false, DB.create db_fn))
+       false)
     else
       (Log.warn "reusing %s" db_fn;
-       (true, DB.open_existing db_fn)) in
-  if not db_exists then populate_db compress db input_fn;
+       true) in
+  let db =
+    if db_exists then
+      RO_DB.open_existing db_fn
+    else
+      let rw_db = RW_DB.create db_fn in
+      populate_db compress rw_db input_fn;
+      (* now we can open it read-only *)
+      RO_DB.open_existing db_fn in
   if verbose then
-    DB.iter (fun k v ->
+    RO_DB.iter (fun k v ->
         Log.debug "k: %s v: %s" k v
       ) db;
   db
+
+(* We might have to Unix.wait before exit:
+   Unix.open_process_in|open_process_out should
+   might create children process which are still alive *)
 
 let main () =
   let argc, args = CLI.init () in
@@ -250,15 +262,15 @@ let main () =
        L.iter (fun name ->
            try
              (* find containing db, if any *)
-             let db = L.find (fun db -> DB.mem db name) dbs in
+             let db = L.find (fun db -> RO_DB.mem db name) dbs in
              (* extract molecule from it *)
-             let m = unlz4 (DB.find db name) in
+             let m = unlz4 (RO_DB.find db name) in
              fprintf out "%s" m
            with Not_found ->
              (* no db contains this molecule *)
              not_found name
          ) names;
-       L.iter DB.close dbs;
+       L.iter RO_DB.close dbs;
        if tmp_in_fn <> "" then Unix.unlink tmp_in_fn;
        if tmp_out_fn <> "" then Unix.unlink tmp_out_fn
      end
