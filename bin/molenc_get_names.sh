@@ -6,9 +6,8 @@
 set -u
 
 function get_sdf_names () {
-    FN=$1
-    head -1 ${FN}
-    \egrep --no-group-separator -A1 '^\$\$\$\$$' ${FN} | \egrep -v '^\$\$\$\$$'
+    (echo '$$$$'; cat $1) | \
+        \egrep --no-group-separator -A1 '^\$\$\$\$$' | \egrep -v '^\$\$\$\$$'
 }
 
 for fn in "$@"; do
