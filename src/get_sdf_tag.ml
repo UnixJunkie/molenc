@@ -46,7 +46,8 @@ let main () =
   (try
      while true do
        let line = input_line input in
-       if S.length line > 0 && String.unsafe_get line 0 = '>' then
+       (* line must start w/ at least: '> <' so that it holds an SDF tag *)
+       if S.length line > 3 && String.unsafe_get line 0 = '>' then
          let _i = Str.search_forward sdf_tag_regexp line 0 in
          let tag = Str.matched_group 1 line in
          if StringSet.mem tag tags_set then
