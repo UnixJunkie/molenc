@@ -137,7 +137,7 @@ def main():
                     print("WARN: %s" % alien_str, file=sys.stderr)
                     alien_count += 1
                 if (not alien) or (not rm_aliens):
-                    csv_line = "%s,%g,%d,%g,%d,%g,%g,%d,%d,%d,%d,%d" % \
+                    csv_line = "%s,%g,%d,%g,%d,%g,%g,%d,%d,%d,%d" % \
                         (name, MolW, HA, cLogP, AR, MR, TPSA, RotB,
                          HBA, HBD, FC)
                     print(csv_line, file=out_file)
