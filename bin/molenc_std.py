@@ -7,6 +7,7 @@
 # CLI wrapper for rdkit's standardizer
 
 import argparse, re, sys, time
+from multiprocessing import Pool
 from rdkit import Chem
 #from rdkit.Chem.MolStandardize import Standardizer # rdkit.version <= '2023.09.3'
 #standardizer = Standardizer()
@@ -68,6 +69,25 @@ def standardize(preserve_stereo, preserve_taut, mol):
     else:
         return rdMolStandardize.SuperParent(mol, skipStandardize=False)
 
+def process(line):
+    errors = 0
+    count = 0
+    res = ""
+    stripped = line.strip()
+    mol, name = parse_smiles_line(stripped)
+    if mol == None:
+        errors += 1
+    else:
+        try:
+            std = standardize(preserve_stereo, preserve_taut, mol)
+            smi_std = Chem.MolToSmiles(std)
+            res = "%s\t%s\n" % (smi_std, name)
+            count += 1
+        except Exception:
+            print("exception: %s" % name, file=sys.stderr)
+            errors += 1
+    return (errors, count, res)
+
 if __name__ == '__main__':
     before = time.time()
     # CLI options parsing
@@ -81,7 +101,14 @@ if __name__ == '__main__':
                         help = "preserve stereo chemistry")
     parser.add_argument('-t', dest='preserve_tautomer',
                         action='store_true', default=False,
-                        help = "preserve tautomer (i.e. skip tautomer standardization)")
+                        help = "preserve tautomer \
+(i.e. skip tautomer standardization)")
+    parser.add_argument("-n", metavar = "nprocs", dest = "nprocs",
+                        type = int, default = 1,
+                        help = "number of processors for parallelization (default=%(default)s)")
+    parser.add_argument("-c", metavar = "chunk_size", dest = "csize",
+                        type = int, default = 50,
+                        help = "chunk size for parallelization (default=%(default)s)")
     # parse CLI ---------------------------------------------------------------
     if len(sys.argv) == 1:
         # user has no clue of what to do -> usage
@@ -92,25 +119,29 @@ if __name__ == '__main__':
     output_fn = args.output_fn
     preserve_stereo = args.preserve_stereo
     preserve_taut = args.preserve_tautomer
+    nprocs = args.nprocs
+    csize = args.csize
     # parse CLI end -----------------------------------------------------------
     count = 0
     errors = 0
+    pool = None
+    if nprocs > 1:
+        pool = Pool(nprocs)
     with open(output_fn, 'w') as out:
         with open(input_fn, 'r') as input:
-            for line in input.readlines():
-                stripped = line.strip()
-                mol, name = parse_smiles_line(stripped)
-                if mol == None:
-                    errors += 1
-                else:
-                    try:
-                        std = standardize(preserve_stereo, preserve_taut, mol)
-                        smi_std = Chem.MolToSmiles(std)
-                        out.write("%s\t%s\n" % (smi_std, name))
-                        count += 1
-                    except Exception:
-                        print("exception: %s" % name, file=sys.stderr)
-                        errors += 1
+            if nprocs > 1:
+                for e, c, res in pool.imap(process, input, csize):
+                    errors += e
+                    count += c
+                    if len(res) > 0:
+                        out.write("%s" % res)
+            else:
+                for line in input.readlines():
+                    e, c, res = process(line)
+                    errors += e
+                    count += c
+                    if len(res) > 0:
+                        out.write("%s" % res)
     after = time.time()
     dt = after - before
     print("%d molecules @ %.2fHz; %d errors" % (count, count / dt, errors),
