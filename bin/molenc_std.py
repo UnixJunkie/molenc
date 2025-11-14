@@ -129,7 +129,7 @@ if __name__ == '__main__':
         pool = Pool(nprocs)
     with open(output_fn, 'w') as out:
         with open(input_fn, 'r') as input:
-            if nprocs > 1:
+            if pool is not None:
                 for e, c, res in pool.imap(process, input, csize):
                     errors += e
                     count += c
