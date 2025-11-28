@@ -16,17 +16,14 @@ errors = 0
 
 three_pep_bonds = Chem.MolFromSmiles('NCC(=O)NCC(=O)NCC(=O)')
 
-def is_peptide(mol):
-    return mol.HasSubstructMatch(three_pep_bonds)
-
 for line in open(input_fn).readlines():
     smi = line.strip().split()[0]
     mol = Chem.MolFromSmiles(smi)
     if mol:
-        if not is_peptide(mol):
-            print(line, end='')
-        else:
+        if mol.HasSubstructMatch(three_pep_bonds):
             peptides += 1
+        else:
+            print(line, end='')
     else:
         print('ERROR: could not parse: %s' % line, file=sys.stderr)
         errors += 1
