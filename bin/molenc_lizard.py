@@ -82,8 +82,6 @@ def alien_diagnose(i, name, MolW, cLogP, TPSA, RotB, HBA, HBD, FC):
         err_msg += "; (FC=%d) >= 2" % FC
     return err_msg
 
-# FBR: remove MR
-
 def fun_for_mol_desc(mol_desc):
     if mol_desc == "MolW":
         return Descriptors.MolWt
@@ -113,7 +111,7 @@ def main():
     parser = argparse.ArgumentParser(
         description = "Project molecules read from a SMILES file into an 10D \
         space whose dimensions are molecular descriptors: \
-        (MolW, HA, cLogP, AR, MR, TPSA, RotB, HBA, HBD, FC)")
+        (MolW, HA, cLogP, AR, TPSA, RotB, HBA, HBD, FC)")
     parser.add_argument("-i", metavar = "input_smi", dest = "input_smi",
                         help = "input SMILES file")
     parser.add_argument("-o", metavar = "output_csv", dest = "output_csv",
@@ -140,7 +138,7 @@ def main():
     error_count = 0
     with open(output_csv, 'w') as out_file:
         if not no_header:
-            print("#name,MolW,HA,cLogP,AR,MR,TPSA,RotB,HBA,HBD,FC",
+            print("#name,MolW,HA,cLogP,AR,TPSA,RotB,HBA,HBD,FC",
                   file=out_file)
         for i, mol, name in RobustSmilesMolSupplier(input_smi):
             if mol is None:
@@ -150,7 +148,6 @@ def main():
                 HA = Lipinski.HeavyAtomCount(mol)
                 cLogP = Descriptors.MolLogP(mol)
                 AR = Lipinski.NumAromaticRings(mol)
-                MR = Descriptors.MolMR(mol)
                 TPSA = Descriptors.TPSA(mol)
                 RotB = Descriptors.NumRotatableBonds(mol)
                 HBA = Descriptors.NumHAcceptors(mol)
@@ -163,8 +160,8 @@ def main():
                     print("WARN: %s" % alien_str, file=sys.stderr)
                     alien_count += 1
                 if (not alien) or (not rm_aliens):
-                    csv_line = "%s,%g,%d,%g,%d,%g,%g,%d,%d,%d,%d" % \
-                        (name, MolW, HA, cLogP, AR, MR, TPSA, RotB,
+                    csv_line = "%s,%g,%d,%g,%d,%g,%d,%d,%d,%d" % \
+                        (name, MolW, HA, cLogP, AR, TPSA, RotB,
                          HBA, HBD, FC)
                     print(csv_line, file=out_file)
                     out_count += 1
