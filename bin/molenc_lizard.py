@@ -82,6 +82,32 @@ def alien_diagnose(i, name, MolW, cLogP, TPSA, RotB, HBA, HBD, FC):
         err_msg += "; (FC=%d) >= 2" % FC
     return err_msg
 
+# FBR: remove MR
+
+def fun_for_mol_desc(mol_desc):
+    if mol_desc == "MolW":
+        return Descriptors.MolWt
+    elif mol_desc == "HA":
+        return Lipinski.HeavyAtomCount
+    elif mol_desc == "cLogP":
+        return Descriptors.MolLogP
+    elif mol_desc == "AR":
+        return Lipinski.NumAromaticRings
+    elif mol_desc == "TPSA":
+        return Descriptors.TPSA
+    elif mol_desc == "RotB":
+        return Descriptors.NumRotatableBonds
+    elif mol_desc == "HBA":
+        return Descriptors.NumHAcceptors
+    elif mol_desc == "HBD":
+        return Descriptors.NumHDonors
+    elif mol_desc == "FC":
+        return Chem.rdmolops.GetFormalCharge
+    else:
+        print("FATAL: molenc_lizard.py: fun_for_mol_desc: \
+        unsupported: %s" % mol_desc, file=sys.stderr)
+        exit(1)
+
 def main():
     # CLI options parsing
     parser = argparse.ArgumentParser(
