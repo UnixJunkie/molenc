@@ -119,6 +119,10 @@ def main():
     parser.add_argument('--no-header', dest='no_header',
                         action='store_true', default=False,
                         help = "no CSV header in output file")
+    parser.add_argument('--only', metavar = "mol_desc", dest='mol_desc',
+                        default="all",
+                        help = "if you want to compute just one molecular \
+                        descriptor")
     # just warn about aliens by default
     parser.add_argument('--remove-aliens', dest='rm_aliens',
                         action='store_true', default=False,
@@ -133,36 +137,48 @@ def main():
     output_csv = args.output_csv
     rm_aliens = args.rm_aliens
     no_header = args.no_header
+    mol_desc = args.mol_desc
     out_count = 0
     alien_count = 0
     error_count = 0
+    fun = None
+    if mol_desc != "all":
+        fun = fun_for_mol_desc(mol_desc)
     with open(output_csv, 'w') as out_file:
         if not no_header:
-            print("#name,MolW,HA,cLogP,AR,TPSA,RotB,HBA,HBD,FC",
-                  file=out_file)
+            if mol_desc == "all":
+                print("#name,MolW,HA,cLogP,AR,TPSA,RotB,HBA,HBD,FC",
+                      file=out_file)
+            else:
+                print("#name,%s" % mol_desc, file=out_file)
         for i, mol, name in RobustSmilesMolSupplier(input_smi):
             if mol is None:
                 error_count += 1
             else:
-                MolW = Descriptors.MolWt(mol)
-                HA = Lipinski.HeavyAtomCount(mol)
-                cLogP = Descriptors.MolLogP(mol)
-                AR = Lipinski.NumAromaticRings(mol)
-                TPSA = Descriptors.TPSA(mol)
-                RotB = Descriptors.NumRotatableBonds(mol)
-                HBA = Descriptors.NumHAcceptors(mol)
-                HBD = Descriptors.NumHDonors(mol)
-                FC = Chem.rdmolops.GetFormalCharge(mol)
-                alien = is_alien(MolW, cLogP, TPSA, RotB, HBA, HBD, FC)
-                if alien:
-                    alien_str = alien_diagnose(i, name, MolW, cLogP, TPSA,
-                                               RotB, HBA, HBD, FC)
-                    print("WARN: %s" % alien_str, file=sys.stderr)
-                    alien_count += 1
-                if (not alien) or (not rm_aliens):
-                    csv_line = "%s,%g,%d,%g,%d,%g,%d,%d,%d,%d" % \
-                        (name, MolW, HA, cLogP, AR, TPSA, RotB,
-                         HBA, HBD, FC)
+                if mol_desc == "all":
+                    MolW = Descriptors.MolWt(mol)
+                    HA = Lipinski.HeavyAtomCount(mol)
+                    cLogP = Descriptors.MolLogP(mol)
+                    AR = Lipinski.NumAromaticRings(mol)
+                    TPSA = Descriptors.TPSA(mol)
+                    RotB = Descriptors.NumRotatableBonds(mol)
+                    HBA = Descriptors.NumHAcceptors(mol)
+                    HBD = Descriptors.NumHDonors(mol)
+                    FC = Chem.rdmolops.GetFormalCharge(mol)
+                    alien = is_alien(MolW, cLogP, TPSA, RotB, HBA, HBD, FC)
+                    if alien:
+                        alien_str = alien_diagnose(i, name, MolW, cLogP, TPSA,
+                                                   RotB, HBA, HBD, FC)
+                        print("WARN: %s" % alien_str, file=sys.stderr)
+                        alien_count += 1
+                    if (not alien) or (not rm_aliens):
+                        csv_line = "%s,%g,%d,%g,%d,%g,%d,%d,%d,%d" % \
+                            (name, MolW, HA, cLogP, AR, TPSA, RotB,
+                             HBA, HBD, FC)
+                        print(csv_line, file=out_file)
+                        out_count += 1
+                else:
+                    csv_line = "%s,%g" % (name, fun(mol))
                     print(csv_line, file=out_file)
                     out_count += 1
     total_count = out_count + error_count
