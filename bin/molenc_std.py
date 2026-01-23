@@ -134,14 +134,14 @@ if __name__ == '__main__':
                     errors += e
                     count += c
                     if len(res) > 0:
-                        out.write("%s" % res)
+                        out.write(res)
             else:
                 for line in input.readlines():
                     e, c, res = process(line)
                     errors += e
                     count += c
                     if len(res) > 0:
-                        out.write("%s" % res)
+                        out.write(res)
     after = time.time()
     dt = after - before
     print("%d molecules @ %.2fHz; %d errors" % (count, count / dt, errors),
