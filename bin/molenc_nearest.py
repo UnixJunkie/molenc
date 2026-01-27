@@ -9,7 +9,7 @@
 # WARNING: this is O(N^2), so inefficient in case there are many
 #          "reference" molecules
 
-import argparse, rdkit, sys, time, typing
+import argparse, rdkit, sys, time
 
 from rdkit import Chem, DataStructs
 from rdkit.Chem import rdFingerprintGenerator
@@ -24,7 +24,8 @@ def log(*args, **kwargs):
     print('%02d:%02d:%02d ' % hms, file=sys.stderr, end='')
     return print(*args, **kwargs, file=sys.stderr)
 
-def parse_smiles_line(line: str) -> tuple[str, str]:
+# t: (line: str) -> tuple[str, str]
+def parse_smiles_line(line):
     # print("DEBUG: %s" % line)
     split = line.strip().split()
     smi = split[0]
