@@ -56,25 +56,28 @@ if __name__ == '__main__':
     parser.add_argument('-i',
                         metavar = '<filename>', type = str,
                         dest = 'input_fn',
+                        required=True,
                         help = 'molecules to annotate (SMILES file)')
     parser.add_argument('-r',
                         metavar = '<filename>', type = str,
                         dest = 'ref_fn',
-                        default = '',
+                        required=True,
                         help = 'reference molecules (SMILES file)')
-    # parser.add_argument('-np',
-    #                     metavar = '<int>', type = int,
-    #                     dest = 'nprocs',
-    #                     default = 1,
-    #                     help = 'max number of processes')
+    parser.add_argument('-t',
+                        metavar = 'threshold', type = float,
+                        dest = 'threshold',
+                        default = 0.0,
+                        help = 'Tanimoto filtering threshold \
+                        (default=0.0: no filtering)')
     # parse CLI ---------------------------------------------------------
     if len(sys.argv) == 1:
         # user has no clue of what to do -> usage
         parser.print_help(sys.stderr)
         sys.exit(1)
     args = parser.parse_args()
-    input_fn = args.input_fn
-    ref_fn = args.ref_fn
+    input_fn: str = args.input_fn
+    ref_fn: str = args.ref_fn
+    threshold: float = args.threshold
     log("computing FPs for ref. molecules...")
     ref_names = []
     ref_smi = []
@@ -97,9 +100,10 @@ if __name__ == '__main__':
             if mol != None:
                 i, best_tani = find_nearest(mol, ref_fps)
                 # the candidate molecule
-                print('%s\t%s' % (smi, name))
-                # its molecular annotation
-                print('%s\t%s_T=%.2f' % (ref_smi[i], ref_names[i], best_tani))
+                if threshold > 0.0 and best_tani > threshold:
+                    print('%s\t%s' % (smi, name))
+                    # its molecular annotation
+                    print('%s\t%s_T=%.2f' % (ref_smi[i], ref_names[i], best_tani))
     after = time.time()
     dt = after - before
     log('dt: %.2f' % dt)
