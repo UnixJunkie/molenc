@@ -20,6 +20,8 @@ import sys
 import tempfile
 import time
 
+from functools import partial
+from multiprocessing import Pool
 from rdkit import Chem, DataStructs
 from rdkit.Chem import rdFingerprintGenerator
 #from sklearn.metrics import mean_squared_error, r2_score # type: ignore
@@ -164,7 +166,7 @@ def gnuplot(title0, actual_values, predicted_values, png_out_fn):
          "f(x) t 'fit'"]
     if png_out_fn != "":
         gnuplot_commands += ["set term pngcairo",
-                             "set output '%s'" % png_out_fn, 
+                             "set output '%s'" % png_out_fn,
                              "replot"]
     # dump gnuplot commands to temp file
     for l in gnuplot_commands:
@@ -227,24 +229,42 @@ def gpr_train(X_train, y_train):
     model.fit(X_train, y_train)
     return model
 
-def gpr_train_test_NxCV(all_lines, cv_folds, use_CAP):
+def gpr_train_test(use_CAP, train_set, test_set):
+    X_train, _names_train, y_train = read_SMILES_lines_regr(train_set, use_CAP)
+    X_test, _names_test, y_ref = read_SMILES_lines_regr(test_set, use_CAP)
+    model = gpr_train(X_train, y_train)
+    truth = list(y_ref)
+    y_preds_lst = list(gpr_test(model, X_test))
+    r2 = r2_score(y_ref, y_preds_lst)
+    rmse = root_mean_squared_error(y_ref, y_preds_lst)
+    log('R2: %f RMSE: %f' % (r2, rmse))
+    return (truth, y_preds_lst)
+
+def gpr_train_test_NxCV(all_lines, cv_folds, use_CAP, nprocs: int):
     truth: list = []
     preds: list = []
     fold = 0
     train_tests = list_split(all_lines, cv_folds)
-    for train_set, test_set in train_tests:
-        X_train, _names_train, y_train = read_SMILES_lines_regr(train_set, use_CAP)
-        X_test, _names_test, y_ref = read_SMILES_lines_regr(test_set, use_CAP)
-        model = gpr_train(X_train, y_train)
-        truth = truth + list(y_ref)
-        y_preds = gpr_test(model, X_test)
-        y_preds_lst = list(y_preds)
-        r2 = r2_score(y_ref, y_preds_lst)
-        rmse = root_mean_squared_error(y_ref, y_preds_lst)
-        log('fold: %d R2: %f RMSE: %f' % (fold, r2, rmse))
-        preds = preds + y_preds_lst
-        fold += 1
-    return (truth, preds)
+    if nprocs > 1:
+        pool = Pool(nprocs)
+        f = partial(gpr_train_test, use_CAP)
+        for actual, predicted in pool.imap(f, train_tests, 1):
+            truth = truth + actual
+            preds = preds + predicted
+    else:
+        for train_set, test_set in train_tests:
+            X_train, _names_train, y_train = read_SMILES_lines_regr(train_set, use_CAP)
+            X_test, _names_test, y_ref = read_SMILES_lines_regr(test_set, use_CAP)
+            model = gpr_train(X_train, y_train)
+            truth = truth + list(y_ref)
+            y_preds = gpr_test(model, X_test)
+            y_preds_lst = list(y_preds)
+            r2 = r2_score(y_ref, y_preds_lst)
+            rmse = root_mean_squared_error(y_ref, y_preds_lst)
+            log('fold: %d R2: %f RMSE: %f' % (fold, r2, rmse))
+            preds = preds + y_preds_lst
+            fold += 1
+        return (truth, preds)
 
 if __name__ == '__main__':
     before = time.time()
@@ -279,6 +299,10 @@ if __name__ == '__main__':
                         dest = 'rng_seed',
                         default = -1,
                         help = 'RNG seed')
+    parser.add_argument('-np',
+                        metavar = 'nprocs:int', type = int,
+                        dest = 'nprocs', default = 1,
+                        help = 'maximum parallelization factor (default=1)')
     parser.add_argument('--no-compress',
                         action = "store_true",
                         dest = 'no_compress',
@@ -394,7 +418,7 @@ if __name__ == '__main__':
                     (r2, rmse, input_fn))
     else:
         assert(cv_folds > 1)
-        truth, preds = gpr_train_test_NxCV(all_lines, cv_folds, use_CAP)
+        truth, preds = gpr_train_test_NxCV(all_lines, cv_folds, use_CAP, nprocs)
         log('truths: %d preds: %d' % (len(truth), len(preds)))
         r2 = r2_score(truth, preds)
         rmse = root_mean_squared_error(truth, preds)
