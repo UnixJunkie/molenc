@@ -85,9 +85,9 @@ def list_split(l, n):
     x = float(len(l))
     test_n = math.ceil(x / float(n))
     # log('test_n: %d' % test_n)
-    res = []
-    taken = []
-    rest = l
+    res: list = []
+    taken: list = []
+    rest: list = l
     for _i in range(0, n):
         curr_test, curr_rest = list_take_drop(rest, test_n)
         curr_train = taken + curr_rest
@@ -136,7 +136,7 @@ def dump_pred_vars(output_fn, names, preds, stddevs):
             for name, pred, std in zip(names, preds, stddevs):
                 print('%s\t%f\t%f' % (name, pred, std), file=output)
 
-def gnuplot(title0, actual_values, predicted_values):
+def gnuplot(title0, actual_values, predicted_values, png_out_fn):
     # escape underscores so that gnuplot doesn't interprete them
     title = title0.replace('_', '\\_')
     all_vals = actual_values + predicted_values
@@ -162,6 +162,10 @@ def gnuplot(title0, actual_values, predicted_values):
          "plot g(x) t 'perfect' lc rgb 'black', \\",
          "'%s' using 1:2 not, \\" % data_temp_file.name,
          "f(x) t 'fit'"]
+    if png_out_fn != "":
+        gnuplot_commands += ["set term pngcairo",
+                             "set output '%s'" % png_out_fn, 
+                             "replot"]
     # dump gnuplot commands to temp file
     for l in gnuplot_commands:
         print(l, file=commands_temp_file)
@@ -224,8 +228,8 @@ def gpr_train(X_train, y_train):
     return model
 
 def gpr_train_test_NxCV(all_lines, cv_folds, use_CAP):
-    truth = []
-    preds = []
+    truth: list = []
+    preds: list = []
     fold = 0
     train_tests = list_split(all_lines, cv_folds)
     for train_set, test_set in train_tests:
@@ -255,6 +259,11 @@ if __name__ == '__main__':
                         dest = 'output_fn',
                         default = '',
                         help = 'predictions output file')
+    parser.add_argument('-oplot',
+                        metavar = '<filename.png>', type = str,
+                        dest = 'png_out_fn',
+                        default = '',
+                        help = 'gnuplot PNG output file')
     parser.add_argument('--save',
                         metavar = '<filename>', type = str,
                         dest = 'model_output_fn',
@@ -322,6 +331,7 @@ if __name__ == '__main__':
         # only if the user asked for it, we make experiments repeatable
         random.seed(rng_seed)
     output_fn = args.output_fn
+    png_out_fn = args.png_out_fn
     cv_folds = args.cv_folds
     assert(cv_folds >= 1)
     nprocs = args.nprocs
@@ -392,7 +402,7 @@ if __name__ == '__main__':
         log(r2_rmse)
         if no_plot == False:
             title = '%s folds=%d %s' % (input_fn, cv_folds, r2_rmse)
-            gnuplot(title, truth, preds)
+            gnuplot(title, truth, preds, png_out_fn)
     after = time.time()
     dt = after - before
     log('dt: %.2f' % dt)
