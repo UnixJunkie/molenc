@@ -33,8 +33,6 @@ from sklearn.gaussian_process import GaussianProcessRegressor # type: ignore
 # def root_mean_squared_error(y_true, y_pred):
 #     return mean_squared_error(y_true, y_pred, squared=False)
 
-# FBR: TODO NxCV should really be parallelized...
-
 # original code for the GPR from
 # https://github.com/MobleyLab/active-learning-notebooks/blob/main/MultiobjectiveAL.ipynb
 # refactored by Francois Berenger
