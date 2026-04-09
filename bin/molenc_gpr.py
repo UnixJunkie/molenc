@@ -229,7 +229,9 @@ def gpr_train(X_train, y_train):
     model.fit(X_train, y_train)
     return model
 
-def gpr_train_test(use_CAP, train_set, test_set):
+def gpr_train_test(use_CAP, train_test):
+    train_set = train_test[0]
+    test_set = train_test[1]
     X_train, _names_train, y_train = read_SMILES_lines_regr(train_set, use_CAP)
     X_test, _names_test, y_ref = read_SMILES_lines_regr(test_set, use_CAP)
     model = gpr_train(X_train, y_train)
@@ -264,7 +266,7 @@ def gpr_train_test_NxCV(all_lines, cv_folds, use_CAP, nprocs: int):
             log('fold: %d R2: %f RMSE: %f' % (fold, r2, rmse))
             preds = preds + y_preds_lst
             fold += 1
-        return (truth, preds)
+    return (truth, preds)
 
 if __name__ == '__main__':
     before = time.time()
@@ -318,11 +320,6 @@ if __name__ == '__main__':
                         dest = 'no_plot',
                         default = False,
                         help = 'turn off gnuplot')
-    parser.add_argument('-np',
-                        metavar = '<int>', type = int,
-                        dest = 'nprocs',
-                        default = 1,
-                        help = 'max number of processes')
     parser.add_argument('-p',
                         metavar = '<float>', type = float,
                         dest = 'train_p',
