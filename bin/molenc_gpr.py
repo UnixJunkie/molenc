@@ -212,16 +212,14 @@ def read_SMILES_lines_regr(lines, use_CAP):
     return (X_train, names, y_train)
 
 def tanimoto_opt(a: np.ndarray, b: np.ndarray, **kwargs) -> float:
-    # assume inputs are 0/1 arrays
-    a = a.astype(np.uint8, copy=False)
-    b = b.astype(np.uint8, copy=False)
-    inter = np.dot(a, b)
-    union = a.sum() + b.sum() - inter
-    if union != 0:
-        return (inter / union)
-    else:
+    a = a.astype(bool, copy=False)
+    b = b.astype(bool, copy=False)
+    union = np.count_nonzero(a | b)
+    if union == 0:
         return 0.0
-
+    else:
+        return (float(np.count_nonzero(a & b)) / float(union))
+    
 def gpr_train(X_train, y_train):
     model = GaussianProcessRegressor(kernel=PairwiseKernel(metric=tanimoto_opt), normalize_y=True)
     model.fit(X_train, y_train)
@@ -246,7 +244,7 @@ def gpr_train_test_NxCV(all_lines, cv_folds, use_CAP, nprocs: int):
     fold = 0
     train_tests = list_split(all_lines, cv_folds)
     if nprocs > 1:
-        pool = Pool(nprocs)
+        pool = Pool(min(nprocs, cv_folds))
         f = partial(gpr_train_test, use_CAP)
         for actual, predicted in pool.imap(f, train_tests, 1):
             truth = truth + actual
