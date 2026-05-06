@@ -100,7 +100,7 @@ if __name__ == '__main__':
             if mol != None:
                 i, best_tani = find_nearest(mol, ref_fps)
                 # the candidate molecule
-                if threshold > 0.0 and best_tani > threshold:
+                if best_tani > threshold:
                     print('%s\t%s' % (smi, name))
                     # its molecular annotation
                     print('%s\t%s_T=%.2f' % (ref_smi[i], ref_names[i], best_tani))
