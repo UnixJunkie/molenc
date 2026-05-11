@@ -197,7 +197,11 @@ def counted_atom_pairs_of_mol(mol):
     return arr
 
 def ecfp4_of_mol(mol):
+    # print('ECFP4', file=sys.stderr)
     return ecfpX_of_mol(mol, 2)
+
+# default fingerprint
+fp_of_mol = ecfp4_of_mol
 
 # parse SMILES, ignore names, read pIC50s then encode molecules w/ ECFP4 2048b
 # return (X_train, y_train)
@@ -207,7 +211,7 @@ def read_SMILES_lines_regr(lines, use_CAP):
     if use_CAP:
         X_train = np.array([counted_atom_pairs_of_mol(mol) for mol in mols])
     else:
-        X_train = np.array([ecfp4_of_mol(mol) for mol in mols])
+        X_train = np.array([fp_of_mol(mol) for mol in mols])
     y_train = np.array(pIC50s)
     return (X_train, names, y_train)
 
@@ -227,9 +231,12 @@ def gpr_train(X_train, y_train):
     model = GaussianProcessRegressor(kernel=PairwiseKernel(metric=tanimoto_opt),
                                      normalize_y=True)
     if not use_tanimoto_kernel:
+        print('INFO: RBF kernel', file=sys.stderr)
         model = GaussianProcessRegressor(kernel=RBF() + WhiteKernel(),
                                          n_restarts_optimizer=5,
                                          normalize_y=True)
+    else:
+        print('INFO: Tanimoto kernel', file=sys.stderr)
     model.fit(X_train, y_train)
     return model
 
@@ -344,6 +351,12 @@ if __name__ == '__main__':
                         dest = 'rbf_kernel',
                         default = False,
                         help = 'use (RBF + white_noise) kernel instead of Tanimoto_K')
+    parser.add_argument('--chemeleon',
+                        action = "store_true",
+                        dest = 'chemeleon_fp',
+                        default = False,
+                        help = 'use chemeleon fingerprint instead of \
+                        ECFP4_2048b; also forces the RBF kernel')
     # parse CLI ---------------------------------------------------------
     if len(sys.argv) == 1:
         # user has no clue of what to do -> usage
@@ -378,6 +391,7 @@ if __name__ == '__main__':
     no_plot = args.no_plot
     use_CAP = args.use_CAP
     rbf_kernel = args.rbf_kernel
+    chemeleon_fp = args.chemeleon_fp
     # work ---------------------------------------------------------
     # read input
     all_lines = lines_of_file(input_fn)
@@ -391,9 +405,16 @@ if __name__ == '__main__':
     train_lines = []
     test_lines = []
     kernel_str = "Tani"
-    if rbf_kernel:
+    if rbf_kernel or chemeleon_fp:
         use_tanimoto_kernel = False
         kernel_str = "RBF"
+    if chemeleon_fp:
+        # requires chemprop-2.2.2 to be installed so not put at the top
+        # we don't want to always force chemprop to be installed
+        # (large and complex dependency)
+        import chemeleon_fp
+        fingerprint = chemeleon_fp.CheMeleonFingerprint()
+        fp_of_mol = (lambda mol: fingerprint(mol))
     if cv_folds == 1:
         train_lines, test_lines = train_test_split(train_p, all_lines)
         X_train, _names_train, y_train = read_SMILES_lines_regr(train_lines, use_CAP)
