@@ -26,7 +26,7 @@ from rdkit import Chem, DataStructs
 from rdkit.Chem import rdFingerprintGenerator
 #from sklearn.metrics import mean_squared_error, r2_score # type: ignore
 from sklearn.metrics import root_mean_squared_error, r2_score # type: ignore
-from sklearn.gaussian_process.kernels import PairwiseKernel # type: ignore
+from sklearn.gaussian_process.kernels import PairwiseKernel, RBF, WhiteKernel # type: ignore
 from sklearn.gaussian_process import GaussianProcessRegressor # type: ignore
 
 # # sklearn.metrics.root_mean_squared_error
@@ -219,18 +219,18 @@ def tanimoto_opt(a: np.ndarray, b: np.ndarray, **kwargs) -> float:
         return 0.0
     else:
         return (float(np.count_nonzero(a & b)) / float(union))
-    
-def gpr_train(X_train, y_train):
-    model = GaussianProcessRegressor(kernel=PairwiseKernel(metric=tanimoto_opt), normalize_y=True)
+
+def gpr_train(kernel, X_train, y_train):
+    model = GaussianProcessRegressor(kernel=kernel, normalize_y=True)
     model.fit(X_train, y_train)
     return model
 
-def gpr_train_test(use_CAP, train_test):
+def gpr_train_test(kernel, use_CAP, train_test):
     train_set = train_test[0]
     test_set = train_test[1]
     X_train, _names_train, y_train = read_SMILES_lines_regr(train_set, use_CAP)
     X_test, _names_test, y_ref = read_SMILES_lines_regr(test_set, use_CAP)
-    model = gpr_train(X_train, y_train)
+    model = gpr_train(kernel, X_train, y_train)
     truth = list(y_ref)
     y_preds_lst = list(gpr_test(model, X_test))
     r2 = r2_score(y_ref, y_preds_lst)
@@ -238,14 +238,14 @@ def gpr_train_test(use_CAP, train_test):
     log('R2: %f RMSE: %f' % (r2, rmse))
     return (truth, y_preds_lst)
 
-def gpr_train_test_NxCV(all_lines, cv_folds, use_CAP, nprocs: int):
+def gpr_train_test_NxCV(kernel, all_lines, cv_folds, use_CAP, nprocs: int):
     truth: list = []
     preds: list = []
     fold = 0
     train_tests = list_split(all_lines, cv_folds)
     if nprocs > 1:
         pool = Pool(min(nprocs, cv_folds))
-        f = partial(gpr_train_test, use_CAP)
+        f = partial(gpr_train_test, kernel, use_CAP)
         for actual, predicted in pool.imap(f, train_tests, 1):
             truth = truth + actual
             preds = preds + predicted
@@ -253,7 +253,7 @@ def gpr_train_test_NxCV(all_lines, cv_folds, use_CAP, nprocs: int):
         for train_set, test_set in train_tests:
             X_train, _names_train, y_train = read_SMILES_lines_regr(train_set, use_CAP)
             X_test, _names_test, y_ref = read_SMILES_lines_regr(test_set, use_CAP)
-            model = gpr_train(X_train, y_train)
+            model = gpr_train(kernel, X_train, y_train)
             truth = truth + list(y_ref)
             y_preds = gpr_test(model, X_test)
             y_preds_lst = list(y_preds)
@@ -331,6 +331,11 @@ if __name__ == '__main__':
                         dest = 'stereo_sensitive',
                         default = False,
                         help = 'make the fingerprint stereo-sensitive')
+    parser.add_argument('--RBF',
+                        action = "store_true",
+                        dest = 'rbf_kernel',
+                        default = False,
+                        help = 'use (RBF + white_noise) kernel')
     # parse CLI ---------------------------------------------------------
     if len(sys.argv) == 1:
         # user has no clue of what to do -> usage
@@ -364,6 +369,7 @@ if __name__ == '__main__':
     no_compress = args.no_compress
     no_plot = args.no_plot
     use_CAP = args.use_CAP
+    rbf_kernel = args.rbf_kernel
     # work ---------------------------------------------------------
     # read input
     all_lines = lines_of_file(input_fn)
@@ -376,6 +382,11 @@ if __name__ == '__main__':
     model = None
     train_lines = []
     test_lines = []
+    # Tanimoto kernel
+    kernel = PairwiseKernel(metric=tanimoto_opt)
+    if rbf_kernel:
+        # Radial Basis Function + learnable noise level
+        kernel = RBF() + WhiteKernel()
     if cv_folds == 1:
         train_lines, test_lines = train_test_split(train_p, all_lines)
         X_train, _names_train, y_train = read_SMILES_lines_regr(train_lines, use_CAP)
@@ -384,7 +395,7 @@ if __name__ == '__main__':
             log('loading model from %s' % model_input_fn)
             model = joblib.load(model_input_fn)
         else:
-            model = gpr_train(X_train, y_train)
+            model = gpr_train(kernel, X_train, y_train)
             if model_output_fn != '':
                 log('saving model to %s' % model_output_fn)
                 if no_compress:
@@ -411,7 +422,7 @@ if __name__ == '__main__':
                     (r2, rmse, input_fn))
     else:
         assert(cv_folds > 1)
-        truth, preds = gpr_train_test_NxCV(all_lines, cv_folds, use_CAP, nprocs)
+        truth, preds = gpr_train_test_NxCV(kernel, all_lines, cv_folds, use_CAP, nprocs)
         log('truths: %d preds: %d' % (len(truth), len(preds)))
         r2 = r2_score(truth, preds)
         rmse = root_mean_squared_error(truth, preds)
