@@ -411,9 +411,10 @@ if __name__ == '__main__':
     use_CAP: bool = args.use_CAP
     use_FlexTani_K = args.flex_tani_kernel
     use_chemeleon_fp: bool = args.chemeleon_fp
+    use_RBF_K = args.rbf_kernel or use_chemeleon_fp
     # work ---------------------------------------------------------
     kernel_str = ""
-    if args.rbf_kernel:
+    if use_RBF_K:
         use_Tani_K = False
         use_RBF_K = True
         use_FlexTani_K = False
