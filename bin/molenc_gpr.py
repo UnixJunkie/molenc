@@ -233,7 +233,7 @@ use_FlexTani_K = False
 kernel_power: int = 1
 
 Tanimoto_K = PairwiseKernel(metric=tanimoto_opt)
-FlexTani_K = ConstantKernel() * (PairwiseKernel(metric=tanimoto_opt) ** kernel_power) + WhiteKernel()
+FlexTani_K = None
 RBF_K = RBF() + WhiteKernel()
 
 def gpr_train(X_train, y_train):
@@ -255,6 +255,7 @@ def gpr_train(X_train, y_train):
         print('FATAL: no kernel selected', file=sys.stderr)
         exit(1)
     model.fit(X_train, y_train)
+    print('INFO: kernel parameters: %s' % model.kernel_)
     return model
 
 def gpr_train_test(use_CAP, train_test):
@@ -416,7 +417,7 @@ if __name__ == '__main__':
     use_chemeleon_fp: bool = args.chemeleon_fp
     # work ---------------------------------------------------------
     kernel_str = ""
-    if args.use_rbf_k:
+    if args.rbf_kernel:
         use_Tani_K = False
         use_RBF_K = True
         use_FlexTani_K = False
@@ -425,6 +426,7 @@ if __name__ == '__main__':
         use_Tani_K = False
         use_RBF_K = False
         use_FlexTani_K = True
+        FlexTani_K = ConstantKernel() * (PairwiseKernel(metric=tanimoto_opt) ** kernel_power) + WhiteKernel()
         assert(not use_chemeleon_fp)
         kernel_str = "FlexTani"
     if use_Tani_K:
