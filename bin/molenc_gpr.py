@@ -228,12 +228,8 @@ use_Tani_K = True # default
 use_RBF_K = False
 use_FlexTani_K = False
 
-# default exponent for the flexible Tanimoto kernel
-# MUST BE POSITIVE INTEGER
-kernel_power: int = 1
-
 Tanimoto_K = PairwiseKernel(metric=tanimoto_opt)
-FlexTani_K = None
+FlexTani_K = ConstantKernel() * PairwiseKernel(metric=tanimoto_opt) + WhiteKernel()
 RBF_K = RBF() + WhiteKernel()
 
 def gpr_train(X_train, y_train):
@@ -359,11 +355,6 @@ if __name__ == '__main__':
                         dest = 'cv_folds',
                         default = 1,
                         help = 'number of cross validation folds')
-    parser.add_argument('--power',
-                        metavar = '<int>', type = int,
-                        dest = 'kernel_power',
-                        default = 0,
-                        help = 'use flexible Tanimoto kernel w/ positive integer power')
     parser.add_argument('--stereo',
                         action = "store_true",
                         dest = 'stereo_sensitive',
@@ -374,6 +365,11 @@ if __name__ == '__main__':
                         dest = 'rbf_kernel',
                         default = False,
                         help = 'use (RBF + white_noise) kernel instead of Tanimoto')
+    parser.add_argument('--FlexTani',
+                        action = "store_true",
+                        dest = 'flex_tani_kernel',
+                        default = False,
+                        help = 'use flexible Tanimoto kernel')
     parser.add_argument('--chemeleon',
                         action = "store_true",
                         dest = 'chemeleon_fp',
@@ -413,7 +409,7 @@ if __name__ == '__main__':
     no_compress: bool = args.no_compress
     no_plot: bool = args.no_plot
     use_CAP: bool = args.use_CAP
-    kernel_power = args.kernel_power
+    use_FlexTani_K = args.flex_tani_kernel
     use_chemeleon_fp: bool = args.chemeleon_fp
     # work ---------------------------------------------------------
     kernel_str = ""
@@ -422,11 +418,10 @@ if __name__ == '__main__':
         use_RBF_K = True
         use_FlexTani_K = False
         kernel_str = "RBF"
-    if kernel_power > 0:
+    if use_FlexTani_K:
         use_Tani_K = False
         use_RBF_K = False
         use_FlexTani_K = True
-        FlexTani_K = ConstantKernel() * (PairwiseKernel(metric=tanimoto_opt) ** kernel_power) + WhiteKernel()
         assert(not use_chemeleon_fp)
         kernel_str = "FlexTani"
     if use_Tani_K:
