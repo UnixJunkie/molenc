@@ -26,7 +26,7 @@ from rdkit import Chem, DataStructs
 from rdkit.Chem import rdFingerprintGenerator
 #from sklearn.metrics import mean_squared_error, r2_score # type: ignore
 from sklearn.metrics import root_mean_squared_error, r2_score # type: ignore
-from sklearn.gaussian_process.kernels import PairwiseKernel, RBF, WhiteKernel # type: ignore
+from sklearn.gaussian_process.kernels import ConstantKernel, PairwiseKernel, RBF, WhiteKernel # type: ignore
 from sklearn.gaussian_process import GaussianProcessRegressor # type: ignore
 
 # # sklearn.metrics.root_mean_squared_error
@@ -224,19 +224,36 @@ def tanimoto_opt(a: np.ndarray, b: np.ndarray, **kwargs) -> float:
     else:
         return (float(np.count_nonzero(a & b)) / float(union))
 
-# default=Tanimoto_K, else RBF_K
-use_tanimoto_kernel = True
+use_Tani_K = True # default
+use_RBF_K = False
+use_FlexTani_K = False
+
+# default exponent for the flexible Tanimoto kernel
+# MUST BE POSITIVE INTEGER
+kernel_power: int = 1
+
+Tanimoto_K = PairwiseKernel(metric=tanimoto_opt)
+FlexTani_K = ConstantKernel() * (PairwiseKernel(metric=tanimoto_opt) ** kernel_power) + WhiteKernel()
+RBF_K = RBF() + WhiteKernel()
 
 def gpr_train(X_train, y_train):
-    model = GaussianProcessRegressor(kernel=PairwiseKernel(metric=tanimoto_opt),
+    model = GaussianProcessRegressor(kernel=Tanimoto_K,
                                      normalize_y=True)
-    if not use_tanimoto_kernel:
+    if use_Tani_K:
+        print('INFO: Tanimoto kernel', file=sys.stderr)
+    elif use_RBF_K:
         print('INFO: RBF kernel', file=sys.stderr)
-        model = GaussianProcessRegressor(kernel=RBF() + WhiteKernel(),
+        model = GaussianProcessRegressor(kernel=RBF_K,
+                                         n_restarts_optimizer=5,
+                                         normalize_y=True)
+    elif use_FlexTani_K:
+        print('INFO: flexible Tanimoto kernel', file=sys.stderr)
+        model = GaussianProcessRegressor(kernel=FlexTani_K,
                                          n_restarts_optimizer=5,
                                          normalize_y=True)
     else:
-        print('INFO: Tanimoto kernel', file=sys.stderr)
+        print('FATAL: no kernel selected', file=sys.stderr)
+        exit(1)
     model.fit(X_train, y_train)
     return model
 
@@ -341,6 +358,11 @@ if __name__ == '__main__':
                         dest = 'cv_folds',
                         default = 1,
                         help = 'number of cross validation folds')
+    parser.add_argument('--power',
+                        metavar = '<int>', type = int,
+                        dest = 'kernel_power',
+                        default = 0,
+                        help = 'use flexible Tanimoto kernel w/ positive integer power')
     parser.add_argument('--stereo',
                         action = "store_true",
                         dest = 'stereo_sensitive',
@@ -350,36 +372,36 @@ if __name__ == '__main__':
                         action = "store_true",
                         dest = 'rbf_kernel',
                         default = False,
-                        help = 'use (RBF + white_noise) kernel instead of Tanimoto_K')
+                        help = 'use (RBF + white_noise) kernel instead of Tanimoto')
     parser.add_argument('--chemeleon',
                         action = "store_true",
                         dest = 'chemeleon_fp',
                         default = False,
                         help = 'use chemeleon fingerprint instead of \
-                        ECFP4_2048b; also forces the RBF kernel')
+                        ECFP4_2048b; implies RBF kernel')
     # parse CLI ---------------------------------------------------------
     if len(sys.argv) == 1:
         # user has no clue of what to do -> usage
         parser.print_help(sys.stderr)
         sys.exit(1)
     args = parser.parse_args()
-    input_fn = args.input_fn
-    model_input_fn = args.model_input_fn
-    model_output_fn = args.model_output_fn
+    input_fn: str = args.input_fn
+    model_input_fn: str = args.model_input_fn
+    model_output_fn: str = args.model_output_fn
     stereo_sensitive = args.stereo_sensitive # global var
     abort_if(model_input_fn != '' and model_output_fn != '',
             "--load and --save are exclusive")
-    rng_seed = args.rng_seed
+    rng_seed: int = args.rng_seed
     if rng_seed != -1:
         # only if the user asked for it, we make experiments repeatable
         random.seed(rng_seed)
-    output_fn = args.output_fn
-    png_out_fn = args.png_out_fn
-    cv_folds = args.cv_folds
+    output_fn: str = args.output_fn
+    png_out_fn: str = args.png_out_fn
+    cv_folds: int = args.cv_folds
     assert(cv_folds >= 1)
-    nprocs = args.nprocs
+    nprocs: int = args.nprocs
     abort_if(nprocs < 1, 'nprocs must be >= 1')
-    train_p = args.train_p
+    train_p: float = args.train_p
     if model_input_fn != '':
         log('loading trained model: train_p <- 0.0')
         train_p = 0.0
@@ -387,12 +409,28 @@ if __name__ == '__main__':
         log('training prod model: train_p <- 1.0')
         train_p = 1.0
     assert(0.0 <= train_p <= 1.0)
-    no_compress = args.no_compress
-    no_plot = args.no_plot
-    use_CAP = args.use_CAP
-    rbf_kernel = args.rbf_kernel
-    chemeleon_fp = args.chemeleon_fp
+    no_compress: bool = args.no_compress
+    no_plot: bool = args.no_plot
+    use_CAP: bool = args.use_CAP
+    kernel_power = args.kernel_power
+    use_chemeleon_fp: bool = args.chemeleon_fp
     # work ---------------------------------------------------------
+    kernel_str = ""
+    if args.use_rbf_k:
+        use_Tani_K = False
+        use_RBF_K = True
+        use_FlexTani_K = False
+        kernel_str = "RBF"
+    if kernel_power > 0:
+        use_Tani_K = False
+        use_RBF_K = False
+        use_FlexTani_K = True
+        assert(not use_chemeleon_fp)
+        kernel_str = "FlexTani"
+    if use_Tani_K:
+        # Tani_K is for binary fingerprints only
+        assert(not use_chemeleon_fp)
+        kernel_str = "Tani"
     # read input
     all_lines = lines_of_file(input_fn)
     if train_p > 0.0:
@@ -404,11 +442,7 @@ if __name__ == '__main__':
     model = None
     train_lines = []
     test_lines = []
-    kernel_str = "Tani"
-    if rbf_kernel or chemeleon_fp:
-        use_tanimoto_kernel = False
-        kernel_str = "RBF"
-    if chemeleon_fp:
+    if use_chemeleon_fp:
         # requires chemprop-2.2.2 to be installed so not put at the top
         # we don't want to always force chemprop to be installed
         # (large and complex dependency)
